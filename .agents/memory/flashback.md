@@ -14,8 +14,8 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 
 | Module | Stack | Status |
 | :--- | :--- | :--- |
-| **Frontend Core** | Next.js 15 (App Router) + TypeScript + Tailwind + shadcn/ui | 🟡 Phase 1 Planned (Milestone 1.1) |
-| **Backend API** | FastAPI (Python 3.12+) + Pydantic v2 + structlog | 🟡 Phase 1 Planned (Milestone 1.1) |
+| **Frontend Core** | Next.js 15 (App Router) + TypeScript + Tailwind + shadcn/ui | 🟢 Milestone 1.1 Complete |
+| **Backend API** | FastAPI (Python 3.12+) + Pydantic v2 + structlog | 🟢 Milestone 1.1 Complete |
 | **Database & Vectors** | PostgreSQL 17 + pgvector (Supabase) + SQLAlchemy asyncpg | 🟡 Phase 1 Planned (Milestone 1.2) |
 | **Authentication** | Supabase Auth (GitHub OAuth + Email/Password) | 🟡 Phase 1 Planned (Milestone 1.3) |
 | **Background Queue** | ARQ (asyncio + Upstash Redis) | 🟡 Phase 1 Planned (Milestone 1.5) |
@@ -116,6 +116,11 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-10-26] — Step 1.1c: Next.js 15 Frontend Scaffolding & Landing Page
+- **Scope / Module**: Frontend UI (`frontend/src/app`, `frontend/src/lib`, `frontend/tailwind.config.ts`)
+- **Details**: Scaffolded Next.js 15 (v15.5.28) App Router application with React 19, TypeScript strict mode, and Tailwind CSS. Implemented root layout, global dark-first design theme, 7-Stage Core Loop architecture showcase, and live backend connectivity status badge probing `/api/health`. Full Next.js production build (`next build`) and TypeScript check (`tsc --noEmit`) verified 100%. Concludes Milestone 1.1 (Project Scaffolding).
+- **Key Files**: `frontend/package.json`, `frontend/tsconfig.json`, `frontend/src/app/layout.tsx`, `frontend/src/app/page.tsx`, `frontend/src/app/globals.css`, `docs/specs/step-1-1c-frontend-scaffold.md`
 
 ### [2026-10-26] — Step 1.1b: Local Infrastructure & Docker Compose Setup
 - **Scope / Module**: Infrastructure & Containerization (`docker-compose.yml`, `.env.example`, `backend/Dockerfile`, `backend/tests/test_infra.py`)
