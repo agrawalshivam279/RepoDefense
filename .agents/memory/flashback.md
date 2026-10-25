@@ -117,6 +117,11 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 
 ## 4. Chronological Activity & Change Log
 
+### [2026-10-26] — Step 1.2a: SQLAlchemy 2.0 Async Engine & Core Tenancy Models
+- **Scope / Module**: Database & Core Models (`backend/app/core/database.py`, `backend/app/models/base.py`, `backend/app/models/project.py`, `backend/tests/test_database.py`)
+- **Details**: Configured asynchronous database connection engine and session factory (`AsyncSessionLocal`) with connection pool tuning for Supabase PostgreSQL 17. Defined DeclarativeBase and `TimestampMixin`. Implemented core tenancy domain models: `User` (Supabase Auth reference), `Project` (GitHub repository records), and `RepositorySnapshot` with UUID primary keys and cascading referential integrity. Verified 100% via live database integration tests against Supabase PostgreSQL 17.11.
+- **Key Files**: `backend/app/core/config.py`, `backend/app/core/database.py`, `backend/app/models/base.py`, `backend/app/models/project.py`, `backend/tests/test_database.py`, `docs/specs/step-1-2a-sqlalchemy-core-models.md`
+
 ### [2026-10-26] — Step 1.1c: Next.js 15 Frontend Scaffolding & Landing Page
 - **Scope / Module**: Frontend UI (`frontend/src/app`, `frontend/src/lib`, `frontend/tailwind.config.ts`)
 - **Details**: Scaffolded Next.js 15 (v15.5.28) App Router application with React 19, TypeScript strict mode, and Tailwind CSS. Implemented root layout, global dark-first design theme, 7-Stage Core Loop architecture showcase, and live backend connectivity status badge probing `/api/health`. Full Next.js production build (`next build`) and TypeScript check (`tsc --noEmit`) verified 100%. Concludes Milestone 1.1 (Project Scaffolding).

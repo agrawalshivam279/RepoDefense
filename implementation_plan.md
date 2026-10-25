@@ -80,6 +80,9 @@ gantt
 
 ### Milestone 1.2: Database Models & Migrations
 - **Goal:** Core database schema with SQLAlchemy models and Alembic migrations.
+- **Sub-tasks:**
+  - [x] **Step 1.2a: SQLAlchemy Async Engine & Core Tenancy Models** (`User`, `Project`, `RepositorySnapshot`, async session factory, CRUD tests)
+  - [ ] **Step 1.2b: Code Analysis & pgvector Vector Models + Alembic Migrations** (`AnalyzedFile`, `CodeSymbol`, `Dependency`, `Evidence`, `CodeEmbedding`, pgvector HNSW)
 - **Components:**
   - SQLAlchemy models for: `User`, `Project`, `RepositorySnapshot`, `AnalyzedFile`, `CodeSymbol`, `Dependency`, `Evidence`, `CodeEmbedding`.
   - Alembic migration setup.
