@@ -117,6 +117,11 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 
 ## 4. Chronological Activity & Change Log
 
+### [2026-10-26] — Step 1.1b: Local Infrastructure & Docker Compose Setup
+- **Scope / Module**: Infrastructure & Containerization (`docker-compose.yml`, `.env.example`, `backend/Dockerfile`, `backend/tests/test_infra.py`)
+- **Details**: Configured reproducible local developer infrastructure using Docker Compose with PostgreSQL 17 (`pgvector/pgvector:pg17`) and Redis 7 (`redis:7-alpine`) backed by health checks and named volumes. Defined `.env.example` mapping local and cloud settings. Created multi-stage non-root `backend/Dockerfile` (`appuser` UID 10001). Implemented automated infrastructure tests in `backend/tests/test_infra.py`.
+- **Key Files**: `docker-compose.yml`, `.env.example`, `backend/Dockerfile`, `backend/tests/test_infra.py`, `docs/specs/step-1-1b-local-infra-docker.md`
+
 ### [2026-10-26] — Step 1.1a: FastAPI Project Scaffold & Health Check
 - **Scope / Module**: Backend API (`backend/app/core`, `backend/app/schemas`, `backend/app/main.py`)
 - **Details**: Provisioned foundational FastAPI (Python 3.12+) application scaffolding with `pyproject.toml`, Pydantic v2 `BaseSettings` (`backend/app/core/config.py`), CORS middleware, and `/api/health` probe endpoint (`HealthResponse`). Verified 100% via unit tests in `backend/tests/test_health.py` and zero lint errors with `ruff`.
