@@ -64,7 +64,7 @@ gantt
 - **Sub-tasks:**
   - [x] **Step 1.1a: FastAPI Project Scaffold & Health Check** (FastAPI app, Pydantic v2 settings, CORS, `/api/health`, pytest)
   - [x] **Step 1.1b: Local Infrastructure & Docker Compose** (PostgreSQL 17 + pgvector, Upstash/local Redis, `.env.example`, Dockerfile)
-  - [ ] **Step 1.1c: Next.js 15 Frontend Scaffolding & Landing Page** (Next.js 15 App Router, TypeScript, Tailwind CSS, shadcn/ui)
+  - [x] **Step 1.1c: Next.js 15 Frontend Scaffolding & Landing Page** (Next.js 15 App Router, TypeScript, Tailwind CSS, shadcn/ui)
 - **Components:**
   - Initialize Next.js 15 project with App Router, TypeScript, Tailwind, shadcn/ui.
   - Initialize FastAPI project with proper folder structure.
