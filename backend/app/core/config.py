@@ -20,6 +20,14 @@ class Settings(BaseSettings):
         default=["http://localhost:3000", "http://127.0.0.1:3000"],
         description="Allowed CORS origins for web clients",
     )
+    DATABASE_URL: str = Field(
+        default="postgresql+asyncpg://repouser:repopassword@localhost:5432/repodefense",
+        description="Database connection URL",
+    )
+    REDIS_URL: str = Field(
+        default="redis://localhost:6379/0",
+        description="Redis connection URL",
+    )
 
 
 settings = Settings()
