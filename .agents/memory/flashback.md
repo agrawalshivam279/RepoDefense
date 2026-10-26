@@ -18,8 +18,8 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **Backend API** | FastAPI (Python 3.12+) + Pydantic v2 + structlog | 🟢 Milestone 1.1 Complete |
 | **Database & Vectors** | PostgreSQL 17 + pgvector (Supabase) + SQLAlchemy asyncpg | 🟢 Milestone 1.2 Complete |
 | **Authentication** | Supabase Auth (GitHub OAuth + Email/Password) | 🟢 Milestone 1.3 Complete |
-| **Background Queue** | ARQ (asyncio + Upstash Redis) | 🟡 Phase 1 Planned (Milestone 1.5) |
-| **Static Code Ingestion** | Shallow Git Clone + Security Filter (No Code Exec) | 🟡 Step 1.5a Complete (Step 1.5b in progress) |
+| **Background Queue** | ARQ (asyncio + Upstash Redis) | 🟢 Milestone 1.5 Complete |
+| **Static Code Ingestion** | Shallow Git Clone + Security Filter (No Code Exec) | 🟢 Milestone 1.5 Complete |
 | **AST Analysis** | Tree-sitter (Python, TS/JS, Go, Java) | ⚪ Phase 2 Planned (Milestone 1.7) |
 | **Embeddings & RAG** | `all-MiniLM-L6-v2` via sentence-transformers (Local) | ⚪ Phase 2 Planned (Milestone 1.8) |
 | **AI LLM Routing** | LiteLLM (OpenAI-compatible, FreeLLMAPI primary) | ⚪ Phase 3 Planned (Milestone 1.9) |
@@ -117,10 +117,10 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 
 ## 4. Chronological Activity & Change Log
 
-### [2026-10-26] — Step 1.5a: Untrusted Code Sanitizer, Path Traversal Defense & Secret Scanner
-- **Scope / Module**: Static Security Engine (`backend/app/security/traversal.py`, `backend/app/security/secrets.py`, `backend/app/security/sanitizer.py`, `backend/tests/test_sanitizer.py`)
-- **Details**: Built the security engine enforcing untrusted codebase protection. Implemented `validate_safe_path` using `Path.is_relative_to()` to prevent directory escapes and outbound symlink attacks. Built credential regex scanner and redactor (`redact_secrets`) replacing sensitive tokens with `[REDACTED_SECRET]`. Created `sanitize_workspace` enforcing 500 MB max repo size, 10,000 max file count, and 10 MB single-file caps while ignoring noisy build directories and binary payloads. Verified 100% across 23 backend tests and Next.js production build.
-- **Key Files**: `backend/app/security/__init__.py`, `backend/app/security/traversal.py`, `backend/app/security/secrets.py`, `backend/app/security/sanitizer.py`, `backend/tests/test_sanitizer.py`, `docs/specs/step-1-5a-security-sanitizer-scanner.md`
+### [2026-10-26] — Step 1.5b: ARQ Background Worker & Git Shallow Clone Pipeline
+- **Scope / Module**: Asynchronous Ingestion & Background Worker (`backend/app/core/redis.py`, `backend/app/workers/cloner.py`, `backend/app/workers/main.py`, `backend/app/api/v1/projects.py`, `backend/tests/test_cloner_worker.py`)
+- **Details**: Implemented ARQ Redis background job infrastructure and shallow git cloning pipeline. Built connection pool manager `backend/app/core/redis.py` with offline fallback logging. Implemented `backend/app/workers/cloner.py` with strict git branch sanitization (`sanitize_git_branch`) against argument injection, shallow git clone (`--depth=1 --single-branch`) and HEAD commit extraction (`git rev-parse HEAD`) via `asyncio.create_subprocess_exec` in isolated temporary directories. Integrated `sanitize_workspace` to enforce 500 MB / 10,000 files quota, record `RepositorySnapshot` upon completion, and manage state machine transitions (`pending` -> `cloning` -> `cloned` / `failed`). Wired background job enqueuing to `POST /api/v1/projects` and configured application lifespan shutdown hooks. Verified 100% via 10 hermetic unit/integration tests and 33/33 full backend test suite passing. Concludes Milestone 1.5 (Repository Cloning & Security Filter).
+- **Key Files**: `backend/app/core/redis.py`, `backend/app/workers/cloner.py`, `backend/app/workers/main.py`, `backend/app/api/v1/projects.py`, `backend/app/main.py`, `backend/pyproject.toml`, `backend/tests/test_cloner_worker.py`, `docs/specs/step-1-5b-arq-cloner-worker.md`
 
 ### [2026-10-26] — Step 1.5a: Untrusted Code Sanitizer, Path Traversal Defense & Secret Scanner
 - **Scope / Module**: Ingestion Security & Static Code Filter (`backend/app/security/traversal.py`, `backend/app/security/secrets.py`, `backend/app/security/sanitizer.py`, `backend/tests/test_sanitizer.py`)

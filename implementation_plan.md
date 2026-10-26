@@ -128,7 +128,7 @@ gantt
 - **Goal:** Safely clone a GitHub repository and filter files.
 - **Sub-tasks:**
   - [x] **Step 1.5a: Untrusted Code Sanitizer, Path Traversal Defense & Secret Scanner** (traversal.py, secrets.py, sanitizer.py, binary exclusion, quota limits)
-  - [ ] **Step 1.5b: ARQ Background Worker & Git Shallow Clone Pipeline** (ARQ worker pool, Upstash Redis queue, git shallow clone, project status update)
+  - [x] **Step 1.5b: ARQ Background Worker & Git Shallow Clone Pipeline** (ARQ worker pool, Upstash Redis queue, git shallow clone, project status update)
 - **Components:**
   - Shallow git clone (`--depth=1`).
   - Repository size validation (max 500MB).
