@@ -112,7 +112,7 @@ gantt
 - **Goal:** User can submit a GitHub repo URL and create a project.
 - **Sub-tasks:**
   - [x] **Step 1.4a: FastAPI Projects API & GitHub URL Validation** (schemas/project.py, api/v1/projects.py, URL regex validation, duplicate conflict, tenant isolation)
-  - [ ] **Step 1.4b: Next.js 15 Project Dashboard & Add Repository Form** (/dashboard, project listing cards, Add Repository modal, form validation)
+  - [x] **Step 1.4b: Next.js 15 Project Dashboard & Add Repository Form** (/dashboard, project listing cards, Add Repository modal, form validation)
 - **Components:**
   - POST `/api/projects` endpoint.
   - URL validation (GitHub URLs only).
