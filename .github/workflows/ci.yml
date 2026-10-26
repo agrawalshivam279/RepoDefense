@@ -18,7 +18,7 @@ jobs:
           POSTGRES_PASSWORD: repopassword
           POSTGRES_DB: repodefense
         ports:
-          - 5432:5432
+          - 5433:5432
         options: >-
           --health-cmd "pg_isready -U repouser -d repodefense"
           --health-interval 5s
@@ -62,14 +62,14 @@ jobs:
 
       - name: Run Database Migrations (alembic)
         env:
-          DATABASE_URL: postgresql+asyncpg://repouser:repopassword@127.0.0.1:5432/repodefense
+          DATABASE_URL: postgresql+asyncpg://repouser:repopassword@127.0.0.1:5433/repodefense
         run: |
           cd backend
           python -m alembic upgrade head
 
       - name: Backend Unit Tests (pytest)
         env:
-          DATABASE_URL: postgresql+asyncpg://repouser:repopassword@127.0.0.1:5432/repodefense
+          DATABASE_URL: postgresql+asyncpg://repouser:repopassword@127.0.0.1:5433/repodefense
           REDIS_URL: redis://127.0.0.1:6379/0
         run: |
           if [ -d backend/tests ]; then
