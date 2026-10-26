@@ -20,7 +20,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **Authentication** | Supabase Auth (GitHub OAuth + Email/Password) | 🟢 Milestone 1.3 Complete |
 | **Background Queue** | ARQ (asyncio + Upstash Redis) | 🟢 Milestone 1.5 Complete |
 | **Static Code Ingestion & Cataloging** | Shallow Git Clone + Security Filter + File Scanner | 🟢 Milestone 1.5 & 1.6 Complete |
-| **AST Analysis** | Tree-sitter (Python, TS/JS, Go, Java) | ⚪ Phase 2 Planned (Milestone 1.7) |
+| **AST Analysis** | Tree-sitter (Python, TS/JS, Go, Java) | 🟡 Step 1.7a Complete (Step 1.7b in progress) |
 | **Embeddings & RAG** | `all-MiniLM-L6-v2` via sentence-transformers (Local) | ⚪ Phase 2 Planned (Milestone 1.8) |
 | **AI LLM Routing** | LiteLLM (OpenAI-compatible, FreeLLMAPI primary) | ⚪ Phase 3 Planned (Milestone 1.9) |
 | **Defense State Machine** | Deterministic Python FSM (`backend/app/ai/fsm.py`) | ⚪ Phase 3 Planned (Milestone 1.10) |
@@ -116,6 +116,11 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-10-26] — Step 1.7a: Tree-sitter Base Engine & Python AST Symbol Extractor
+- **Scope / Module**: AST Parsing & Symbol Extraction (`backend/app/analyzers/ast/base.py`, `backend/app/analyzers/ast/python.py`, `backend/app/analyzers/ast/__init__.py`, `backend/pyproject.toml`, `backend/tests/test_ast_python.py`)
+- **Details**: Built the Tree-sitter AST parsing infrastructure and Python symbol extraction engine. Declared `tree-sitter` and `tree-sitter-python` dependencies. Designed `SymbolMetadata` schema and `BaseASTParser` interface. Implemented `PythonASTParser` using concrete syntax trees to extract functions, async functions, classes, member methods, signatures, docstrings, and route/auth decorators with exact 1-indexed line boundaries (`start_line`, `end_line`). Created language dispatch router and `persist_code_symbols` batch insertion in PostgreSQL 17 linked to `AnalyzedFile`. Verified 100% via 6 unit/integration tests and 47/47 full backend test suite passing.
+- **Key Files**: `backend/app/analyzers/ast/base.py`, `backend/app/analyzers/ast/python.py`, `backend/app/analyzers/ast/__init__.py`, `backend/pyproject.toml`, `backend/tests/test_ast_python.py`, `docs/specs/step-1-7a-ast-python-parser.md`
 
 ### [2026-10-26] — Milestone 1.6: File Scanning & Language Detection Engine
 - **Scope / Module**: Codebase Cataloging & Language Classification (`backend/app/analyzers/languages.py`, `backend/app/analyzers/scanner.py`, `backend/app/analyzers/__init__.py`, `backend/app/workers/cloner.py`, `backend/tests/test_file_scanner.py`)
