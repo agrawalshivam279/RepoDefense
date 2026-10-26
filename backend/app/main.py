@@ -1,10 +1,21 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.auth import router as auth_router
 from app.api.v1.projects import router as projects_router
 from app.core.config import settings
+from app.core.redis import close_arq_redis_pool
 from app.schemas.health import HealthResponse
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan manager to handle startup and cleanup events."""
+    yield
+    await close_arq_redis_pool()
+
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -16,6 +27,7 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     docs_url=f"{settings.API_V1_STR}/docs",
     redoc_url=f"{settings.API_V1_STR}/redoc",
+    lifespan=lifespan,
 )
 
 # Configure CORS Middleware

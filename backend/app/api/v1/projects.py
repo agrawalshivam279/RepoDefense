@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.redis import enqueue_clone_job
 from app.core.security import get_current_user
 from app.models.project import Project, User
 from app.schemas.project import ProjectCreate, ProjectResponse
@@ -18,8 +19,8 @@ router = APIRouter(prefix="/projects", tags=["Projects"])
     status_code=status.HTTP_201_CREATED,
     summary="Register a GitHub repository project",
     description=(
-        "Validates the GitHub URL and creates a new project record "
-        "linked to the authenticated user."
+        "Validates the GitHub URL, creates a new project record "
+        "linked to the authenticated user, and enqueues background cloning."
     ),
 )
 async def create_project(
@@ -27,7 +28,7 @@ async def create_project(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ProjectResponse:
-    """Creates a new Project record for the authenticated user, checking for duplicates."""
+    """Creates a new Project record for the authenticated user and enqueues cloning."""
     stmt = select(Project).where(
         Project.user_id == current_user.id,
         Project.github_url == payload.github_url,
@@ -50,6 +51,10 @@ async def create_project(
     db.add(project)
     await db.commit()
     await db.refresh(project)
+
+    # Asynchronously enqueue repository shallow clone and sanitization job
+    await enqueue_clone_job(project.id)
+
     return ProjectResponse.model_validate(project)
 
 
