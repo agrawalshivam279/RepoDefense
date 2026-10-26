@@ -1,10 +1,14 @@
-"""Repository analyzers: scanning, AST, dependencies, git history, and evidence."""
+"""Repository analyzers: scanning, AST, dependencies, git history, evidence, and chunking."""
 
 from app.analyzers.ast import (
     SymbolMetadata,
     extract_and_persist_file_symbols,
     extract_code_symbols,
     persist_code_symbols,
+)
+from app.analyzers.chunker import (
+    chunk_analyzed_file,
+    estimate_token_count,
 )
 from app.analyzers.dependencies import (
     DependencyMetadata,
@@ -48,4 +52,6 @@ __all__ = [
     "extract_git_history",
     "extract_evidence",
     "extract_and_persist_evidence",
+    "estimate_token_count",
+    "chunk_analyzed_file",
 ]
