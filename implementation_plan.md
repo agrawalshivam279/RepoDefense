@@ -156,10 +156,10 @@ gantt
 - **AI Coding Prompt:** "Write a Python module to walk a directory tree and catalog files. For each file, determine the programming language based on the extension, count lines, and calculate size. Save this data using the `AnalyzedFile` SQLAlchemy model."
 
 ### Milestone 1.7: AST Parsing & Symbol Extraction
-- **Goal:** Parse source files with Tree-sitter, extract functions/classes/imports.
+- **Goal:** [x] Parse source files with Tree-sitter, extract functions/classes/imports.
 - **Sub-tasks:**
   - [x] **Step 1.7a: Tree-sitter Base Engine & Python AST Symbol Extractor** (base.py, python.py, SymbolMetadata, CodeSymbol persistence)
-  - [ ] **Step 1.7b: TypeScript/JavaScript AST Parser & Cloner Worker Pipeline** (typescript.py, endpoint detection, worker AST parsing pipeline)
+  - [x] **Step 1.7b: TypeScript/JavaScript AST Parser & Cloner Worker Pipeline** (typescript.py, endpoint detection, worker AST parsing pipeline)
 - **Components:**
   - Tree-sitter integration for Python, JavaScript, TypeScript, Java, Go.
   - Function extraction (name, params, return type, line range).

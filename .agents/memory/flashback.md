@@ -20,7 +20,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **Authentication** | Supabase Auth (GitHub OAuth + Email/Password) | 🟢 Milestone 1.3 Complete |
 | **Background Queue** | ARQ (asyncio + Upstash Redis) | 🟢 Milestone 1.5 Complete |
 | **Static Code Ingestion & Cataloging** | Shallow Git Clone + Security Filter + File Scanner | 🟢 Milestone 1.5 & 1.6 Complete |
-| **AST Analysis** | Tree-sitter (Python, TS/JS, Go, Java) | 🟡 Step 1.7a Complete (Step 1.7b in progress) |
+| **AST Analysis** | Tree-sitter (Python, TS/JS, Go, Java) | 🟢 Milestone 1.7 Complete (Tree-sitter Python, TS, TSX, JS) |
 | **Embeddings & RAG** | `all-MiniLM-L6-v2` via sentence-transformers (Local) | ⚪ Phase 2 Planned (Milestone 1.8) |
 | **AI LLM Routing** | LiteLLM (OpenAI-compatible, FreeLLMAPI primary) | ⚪ Phase 3 Planned (Milestone 1.9) |
 | **Defense State Machine** | Deterministic Python FSM (`backend/app/ai/fsm.py`) | ⚪ Phase 3 Planned (Milestone 1.10) |
@@ -116,6 +116,11 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-10-26] — Step 1.7b: TypeScript/JavaScript AST Parser & Cloner Worker Pipeline
+- **Scope / Module**: AST Parsing & Cloner Pipeline (`backend/app/analyzers/ast/typescript.py`, `backend/app/analyzers/ast/__init__.py`, `backend/app/analyzers/__init__.py`, `backend/app/workers/cloner.py`, `backend/pyproject.toml`, `backend/tests/test_ast_typescript.py`)
+- **Details**: Implemented deterministic Tree-sitter AST parsing for TypeScript, TSX, JavaScript, and JSX using `tree_sitter_typescript.language_tsx()`. Extracted typed functions, async functions, arrow functions in variable declarators (React functional components), classes with `extends` and `implements`, decorators, class member methods, and interfaces with exact 1-indexed line boundaries. Built JSDoc comment extraction and delimiter cleaning. Registered TypeScript and JavaScript in `_PARSER_REGISTRY` and exposed `extract_and_persist_file_symbols`. Integrated the symbol extraction pipeline directly into the ARQ clone background worker (`backend/app/workers/cloner.py`), cataloging all code symbols into PostgreSQL 17 upon cloning and tracking symbol metrics in `RepositorySnapshot.summary`. Verified 100% via 8 unit/integration tests and 55/55 full backend test suite passing. Concludes Milestone 1.7 (AST Parsing & Symbol Extraction).
+- **Key Files**: `backend/app/analyzers/ast/typescript.py`, `backend/app/analyzers/ast/__init__.py`, `backend/app/analyzers/__init__.py`, `backend/app/workers/cloner.py`, `backend/pyproject.toml`, `backend/tests/test_ast_typescript.py`, `docs/specs/step-1-7b-ast-typescript-parser.md`
 
 ### [2026-10-26] — Step 1.7a: Tree-sitter Base Engine & Python AST Symbol Extractor
 - **Scope / Module**: AST Parsing & Symbol Extraction (`backend/app/analyzers/ast/base.py`, `backend/app/analyzers/ast/python.py`, `backend/app/analyzers/ast/__init__.py`, `backend/pyproject.toml`, `backend/tests/test_ast_python.py`)
