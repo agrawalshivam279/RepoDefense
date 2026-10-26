@@ -117,6 +117,11 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 
 ## 4. Chronological Activity & Change Log
 
+### [2026-10-26] — Step 1.5a: Untrusted Code Sanitizer, Path Traversal Defense & Secret Scanner
+- **Scope / Module**: Static Security Engine (`backend/app/security/traversal.py`, `backend/app/security/secrets.py`, `backend/app/security/sanitizer.py`, `backend/tests/test_sanitizer.py`)
+- **Details**: Built the security engine enforcing untrusted codebase protection. Implemented `validate_safe_path` using `Path.is_relative_to()` to prevent directory escapes and outbound symlink attacks. Built credential regex scanner and redactor (`redact_secrets`) replacing sensitive tokens with `[REDACTED_SECRET]`. Created `sanitize_workspace` enforcing 500 MB max repo size, 10,000 max file count, and 10 MB single-file caps while ignoring noisy build directories and binary payloads. Verified 100% across 23 backend tests and Next.js production build.
+- **Key Files**: `backend/app/security/__init__.py`, `backend/app/security/traversal.py`, `backend/app/security/secrets.py`, `backend/app/security/sanitizer.py`, `backend/tests/test_sanitizer.py`, `docs/specs/step-1-5a-security-sanitizer-scanner.md`
+
 ### [2026-10-26] — Step 1.4b: Next.js 15 Project Dashboard & Add Repository Form
 - **Scope / Module**: Frontend Dashboard & Repository Ingestion (`frontend/src/types/project.ts`, `frontend/src/components/domain/ProjectCard.tsx`, `frontend/src/components/domain/AddProjectModal.tsx`, `frontend/src/app/dashboard/page.tsx`, `frontend/src/components/domain/AuthStatus.tsx`)
 - **Details**: Implemented full repository project management on the frontend in Next.js 15 App Router. Created `ProjectCard` component with real-time status badges, branch labels, and deletion callbacks. Designed `AddProjectModal` dialog with live GitHub URL format validation, repository slug preview, and API integration with the FastAPI backend using the Supabase JWT Bearer token. Implemented protected `/dashboard` route with authentication session verification, responsive project grid, and empty state fallback. Full Next.js production build (`next build`) and typecheck verified. Concludes Milestone 1.4 (Project Creation & GitHub URL Input).
