@@ -8,7 +8,11 @@ from typing import Any
 import structlog
 from sqlalchemy import select
 
-from app.analyzers import persist_analyzed_files, scan_workspace_files
+from app.analyzers import (
+    extract_and_persist_file_symbols,
+    persist_analyzed_files,
+    scan_workspace_files,
+)
 from app.core.database import AsyncSessionLocal
 from app.models.project import Project, RepositorySnapshot
 from app.security.sanitizer import sanitize_workspace
@@ -145,20 +149,29 @@ async def clone_and_sanitize_repository(ctx: dict[str, Any], project_id: str) ->
 
                 top_langs = sorted(lang_counts.items(), key=lambda x: x[1], reverse=True)[:3]
                 top_langs_str = ", ".join(f"{lang} ({cnt})" for lang, cnt in top_langs)
-                summary_text = (
-                    f"Cloned commit {commit_hash[:7]} with {len(files_meta)} files "
-                    f"({total_lines} lines, {size_mb:.2f} MB). Languages: {top_langs_str}."
-                )
 
                 snapshot = RepositorySnapshot(
                     id=uuid.uuid4(),
                     project_id=project.id,
                     commit_hash=commit_hash,
-                    summary=summary_text,
+                    summary="Processing snapshot files and code symbols...",
                 )
                 session.add(snapshot)
-                await persist_analyzed_files(session, snapshot.id, files_meta)
+                created_files = await persist_analyzed_files(session, snapshot.id, files_meta)
 
+                total_symbols = 0
+                for af in created_files:
+                    full_path = temp_dir / af.path
+                    if full_path.is_file():
+                        syms = await extract_and_persist_file_symbols(session, af, full_path)
+                        total_symbols += len(syms)
+
+                summary_text = (
+                    f"Cloned commit {commit_hash[:7]} with {len(files_meta)} files "
+                    f"({total_lines} lines, {size_mb:.2f} MB, {total_symbols} symbols). "
+                    f"Languages: {top_langs_str}."
+                )
+                snapshot.summary = summary_text
                 project.status = "cloned"
                 await session.commit()
 
@@ -168,6 +181,7 @@ async def clone_and_sanitize_repository(ctx: dict[str, Any], project_id: str) ->
                 commit_hash=commit_hash,
                 valid_file_count=len(files_meta),
                 total_lines=total_lines,
+                symbol_count=total_symbols,
             )
             return {
                 "status": "cloned",
@@ -175,6 +189,7 @@ async def clone_and_sanitize_repository(ctx: dict[str, Any], project_id: str) ->
                 "file_count": len(files_meta),
                 "total_lines": total_lines,
                 "total_bytes": sanitization.total_bytes,
+                "symbol_count": total_symbols,
             }
 
         except Exception as exc:

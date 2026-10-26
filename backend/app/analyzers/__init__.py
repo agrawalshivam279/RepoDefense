@@ -1,5 +1,11 @@
 """Repository analyzers: language classification, workspace scanning, and AST extraction."""
 
+from app.analyzers.ast import (
+    SymbolMetadata,
+    extract_and_persist_file_symbols,
+    extract_code_symbols,
+    persist_code_symbols,
+)
 from app.analyzers.languages import detect_language
 from app.analyzers.scanner import (
     FileMetadata,
@@ -14,4 +20,8 @@ __all__ = [
     "scan_workspace_files",
     "persist_analyzed_files",
     "FileMetadata",
+    "SymbolMetadata",
+    "extract_code_symbols",
+    "persist_code_symbols",
+    "extract_and_persist_file_symbols",
 ]
