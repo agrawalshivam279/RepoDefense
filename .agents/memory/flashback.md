@@ -21,7 +21,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **Background Queue** | ARQ (asyncio + Upstash Redis) | 🟢 Milestone 1.5 Complete |
 | **Static Code Ingestion & Cataloging** | Shallow Git Clone + Security Filter + File Scanner | 🟢 Milestone 1.5 & 1.6 Complete |
 | **AST Analysis** | Tree-sitter (Python, TS/JS, Go, Java) | 🟢 Milestone 1.7 Complete (Tree-sitter Python, TS, TSX, JS) |
-| **Dependency Extraction** | Python & Node.js Manifest Parsers | 🟡 Step 1.8a Complete (Step 1.8b in progress) |
+| **Dependency Extraction** | Python, Node.js, Docker, Compose & CI/CD Parsers | 🟢 Milestone 1.8 Complete |
 | **Embeddings & RAG** | `all-MiniLM-L6-v2` via sentence-transformers (Local) | ⚪ Phase 2 Planned (Milestone 1.8) |
 | **AI LLM Routing** | LiteLLM (OpenAI-compatible, FreeLLMAPI primary) | ⚪ Phase 3 Planned (Milestone 1.9) |
 | **Defense State Machine** | Deterministic Python FSM (`backend/app/ai/fsm.py`) | ⚪ Phase 3 Planned (Milestone 1.10) |
@@ -117,6 +117,11 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-10-27] — Step 1.8b: Container, Infrastructure & CI/CD Config Extraction & Cloner Worker Pipeline
+- **Scope / Module**: Container & Infrastructure Dependency Parsers (`backend/app/analyzers/dependencies/infra.py`, `backend/app/analyzers/dependencies/__init__.py`, `backend/app/workers/cloner.py`, `backend/pyproject.toml`, `backend/tests/test_infra_dependencies.py`)
+- **Details**: Built production-grade static configuration extractors for containers and CI/CD pipelines under strict zero code execution invariants. Added `pyyaml>=6.0.0` parsing YAML configurations safely via `yaml.safe_load`. Implemented `parse_dockerfile` with multi-stage build support (`FROM <image> AS <stage>`), classifying intermediate build stages (e.g. `builder`, `dev`, `lint`) as `is_dev=True` and runtime images as `is_dev=False`. Implemented `parse_docker_compose` extracting service images, pinned tags, and local build paths. Implemented `parse_github_actions_workflow` extracting action names, versions/tags from `uses:` directives, and setting `is_dev=True`. Registered Dockerfiles, docker-compose files, and GitHub Actions workflows in `_DEPENDENCY_PARSERS`. Integrated dependency extraction directly into the ARQ clone background worker (`backend/app/workers/cloner.py`), cataloging all dependencies in PostgreSQL 17 upon cloning and tracking `dependency_count` in `RepositorySnapshot.summary`. Verified 100% via 6 unit/integration tests and 68/68 full backend test suite passing. Concludes Milestone 1.8 (Dependency & Config Extraction).
+- **Key Files**: `backend/app/analyzers/dependencies/infra.py`, `backend/app/analyzers/dependencies/__init__.py`, `backend/app/workers/cloner.py`, `backend/pyproject.toml`, `backend/tests/test_infra_dependencies.py`, `docs/specs/step-1-8b-infra-dependencies-worker.md`
 
 ### [2026-10-26] — Step 1.8a: Python & Node.js Manifest Parsers & Database Persistence
 - **Scope / Module**: Dependency Manifest Parsers & Database Persistence (`backend/app/analyzers/dependencies/base.py`, `backend/app/analyzers/dependencies/python.py`, `backend/app/analyzers/dependencies/node.py`, `backend/app/analyzers/dependencies/__init__.py`, `backend/app/analyzers/__init__.py`, `backend/tests/test_dependencies.py`)
