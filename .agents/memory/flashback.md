@@ -117,6 +117,11 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 
 ## 4. Chronological Activity & Change Log
 
+### [2026-10-26] — Step 1.4a: FastAPI Projects API & GitHub URL Validation
+- **Scope / Module**: Backend Project API & Repository Ingestion Validation (`backend/app/schemas/project.py`, `backend/app/api/v1/projects.py`, `backend/app/main.py`, `backend/tests/test_projects.py`)
+- **Details**: Implemented parameterized GitHub repository URL validation with regex pattern matching, automatic `.git` trimming, and repository slug name normalization (`ProjectCreate`). Created CRUD endpoints for `POST /api/v1/projects` (with 409 Conflict duplicate checks), `GET /api/v1/projects` (with multi-tenant isolation), `GET /api/v1/projects/{id}`, and `DELETE /api/v1/projects/{id}` with cascading cleanup. Verified 100% across 18 backend tests and Next.js 15 production build.
+- **Key Files**: `backend/app/schemas/project.py`, `backend/app/api/v1/projects.py`, `backend/app/main.py`, `backend/app/core/security.py`, `backend/tests/test_projects.py`, `docs/specs/step-1-4a-fastapi-projects-api.md`
+
 ### [2026-10-26] — Step 1.3b: Next.js 15 Supabase Auth Client, Auth Pages & Session State
 - **Scope / Module**: Frontend Authentication & UI (`frontend/src/lib/supabase.ts`, `frontend/src/app/(auth)/login/page.tsx`, `frontend/src/app/(auth)/signup/page.tsx`, `frontend/src/components/domain/AuthStatus.tsx`, `frontend/src/app/layout.tsx`, `frontend/src/app/page.tsx`)
 - **Details**: Installed `@supabase/supabase-js` and configured an SSG-safe browser client in `frontend/src/lib/supabase.ts`. Implemented accessible, dark-themed sign-in and sign-up interfaces supporting Email/Password and GitHub OAuth with client-side validation and confirmation states. Created real-time reactive `AuthStatus` component embedded in global navigation header with Sign Out capability. Full Next.js production build (`next build`) and typecheck verified. Concludes Milestone 1.3 (Authentication).
