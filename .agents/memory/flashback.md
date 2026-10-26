@@ -19,7 +19,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **Database & Vectors** | PostgreSQL 17 + pgvector (Supabase) + SQLAlchemy asyncpg | 🟢 Milestone 1.2 Complete |
 | **Authentication** | Supabase Auth (GitHub OAuth + Email/Password) | 🟢 Milestone 1.3 Complete |
 | **Background Queue** | ARQ (asyncio + Upstash Redis) | 🟡 Phase 1 Planned (Milestone 1.5) |
-| **Static Code Ingestion** | Shallow Git Clone + Security Filter (No Code Exec) | 🟡 Phase 1 Planned (Milestone 1.5) |
+| **Static Code Ingestion** | Shallow Git Clone + Security Filter (No Code Exec) | 🟡 Step 1.5a Complete (Step 1.5b in progress) |
 | **AST Analysis** | Tree-sitter (Python, TS/JS, Go, Java) | ⚪ Phase 2 Planned (Milestone 1.7) |
 | **Embeddings & RAG** | `all-MiniLM-L6-v2` via sentence-transformers (Local) | ⚪ Phase 2 Planned (Milestone 1.8) |
 | **AI LLM Routing** | LiteLLM (OpenAI-compatible, FreeLLMAPI primary) | ⚪ Phase 3 Planned (Milestone 1.9) |
@@ -121,6 +121,11 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 - **Scope / Module**: Static Security Engine (`backend/app/security/traversal.py`, `backend/app/security/secrets.py`, `backend/app/security/sanitizer.py`, `backend/tests/test_sanitizer.py`)
 - **Details**: Built the security engine enforcing untrusted codebase protection. Implemented `validate_safe_path` using `Path.is_relative_to()` to prevent directory escapes and outbound symlink attacks. Built credential regex scanner and redactor (`redact_secrets`) replacing sensitive tokens with `[REDACTED_SECRET]`. Created `sanitize_workspace` enforcing 500 MB max repo size, 10,000 max file count, and 10 MB single-file caps while ignoring noisy build directories and binary payloads. Verified 100% across 23 backend tests and Next.js production build.
 - **Key Files**: `backend/app/security/__init__.py`, `backend/app/security/traversal.py`, `backend/app/security/secrets.py`, `backend/app/security/sanitizer.py`, `backend/tests/test_sanitizer.py`, `docs/specs/step-1-5a-security-sanitizer-scanner.md`
+
+### [2026-10-26] — Step 1.5a: Untrusted Code Sanitizer, Path Traversal Defense & Secret Scanner
+- **Scope / Module**: Ingestion Security & Static Code Filter (`backend/app/security/traversal.py`, `backend/app/security/secrets.py`, `backend/app/security/sanitizer.py`, `backend/tests/test_sanitizer.py`)
+- **Details**: Built production-grade untrusted repository sanitization and security inspection pipeline under strict zero arbitrary code execution invariants. Implemented `validate_safe_path` using canonical `Path.resolve()` and `Path.is_relative_to()` protecting against directory traversal attacks (`../`) and external symlink escapes. Created `scan_for_secrets` and `redact_secrets` detecting AWS access keys, GitHub personal access tokens, and private keys. Developed `sanitize_workspace` enforcing 500 MB max repo size, 10,000 max file count, and 10 MB single-file limits while excluding noisy/build directories (`.git`, `node_modules`, `venv`, `__pycache__`) and binary content (`is_binary_content`). Verified 100% via 5 hermetic unit tests in `test_sanitizer.py` and 23/23 backend test suite passing.
+- **Key Files**: `backend/app/security/traversal.py`, `backend/app/security/secrets.py`, `backend/app/security/sanitizer.py`, `backend/app/security/__init__.py`, `backend/tests/test_sanitizer.py`, `docs/specs/step-1-5a-security-sanitizer-scanner.md`
 
 ### [2026-10-26] — Step 1.4b: Next.js 15 Project Dashboard & Add Repository Form
 - **Scope / Module**: Frontend Dashboard & Repository Ingestion (`frontend/src/types/project.ts`, `frontend/src/components/domain/ProjectCard.tsx`, `frontend/src/components/domain/AddProjectModal.tsx`, `frontend/src/app/dashboard/page.tsx`, `frontend/src/components/domain/AuthStatus.tsx`)
