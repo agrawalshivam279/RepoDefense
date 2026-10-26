@@ -97,7 +97,7 @@ gantt
 - **Goal:** User can sign up and sign in.
 - **Sub-tasks:**
   - [x] **Step 1.3a: FastAPI Supabase JWT Auth Dependency & Protected Current User Route** (security.py, get_current_user, TokenPayload, UserResponse, GET /api/v1/auth/me)
-  - [ ] **Step 1.3b: Next.js 15 Supabase Auth Client, Auth Pages & Session State** (Next.js Supabase auth client, login/signup forms, session state, protected route redirect)
+  - [x] **Step 1.3b: Next.js 15 Supabase Auth Client, Auth Pages & Session State** (Next.js Supabase auth client, login/signup forms, session state, protected route redirect)
 - **Components:**
   - Supabase Auth integration (backend JWT verification).
   - Frontend auth flow (sign up, sign in, sign out).

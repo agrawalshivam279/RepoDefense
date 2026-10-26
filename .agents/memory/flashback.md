@@ -17,7 +17,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **Frontend Core** | Next.js 15 (App Router) + TypeScript + Tailwind + shadcn/ui | 🟢 Milestone 1.1 Complete |
 | **Backend API** | FastAPI (Python 3.12+) + Pydantic v2 + structlog | 🟢 Milestone 1.1 Complete |
 | **Database & Vectors** | PostgreSQL 17 + pgvector (Supabase) + SQLAlchemy asyncpg | 🟢 Milestone 1.2 Complete |
-| **Authentication** | Supabase Auth (GitHub OAuth + Email/Password) | 🟡 Milestone 1.3 in Progress (Step 1.3a Complete) |
+| **Authentication** | Supabase Auth (GitHub OAuth + Email/Password) | 🟢 Milestone 1.3 Complete |
 | **Background Queue** | ARQ (asyncio + Upstash Redis) | 🟡 Phase 1 Planned (Milestone 1.5) |
 | **Static Code Ingestion** | Shallow Git Clone + Security Filter (No Code Exec) | 🟡 Phase 1 Planned (Milestone 1.5) |
 | **AST Analysis** | Tree-sitter (Python, TS/JS, Go, Java) | ⚪ Phase 2 Planned (Milestone 1.7) |
@@ -116,6 +116,11 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-10-26] — Step 1.3b: Next.js 15 Supabase Auth Client, Auth Pages & Session State
+- **Scope / Module**: Frontend Authentication & UI (`frontend/src/lib/supabase.ts`, `frontend/src/app/(auth)/login/page.tsx`, `frontend/src/app/(auth)/signup/page.tsx`, `frontend/src/components/domain/AuthStatus.tsx`, `frontend/src/app/layout.tsx`, `frontend/src/app/page.tsx`)
+- **Details**: Installed `@supabase/supabase-js` and configured an SSG-safe browser client in `frontend/src/lib/supabase.ts`. Implemented accessible, dark-themed sign-in and sign-up interfaces supporting Email/Password and GitHub OAuth with client-side validation and confirmation states. Created real-time reactive `AuthStatus` component embedded in global navigation header with Sign Out capability. Full Next.js production build (`next build`) and typecheck verified. Concludes Milestone 1.3 (Authentication).
+- **Key Files**: `frontend/package.json`, `frontend/src/lib/supabase.ts`, `frontend/src/app/(auth)/login/page.tsx`, `frontend/src/app/(auth)/signup/page.tsx`, `frontend/src/components/domain/AuthStatus.tsx`, `frontend/src/app/layout.tsx`, `frontend/src/app/page.tsx`, `docs/specs/step-1-3b-nextjs-supabase-auth-pages.md`
 
 ### [2026-10-26] — Step 1.3a: FastAPI Supabase JWT Auth Dependency & Protected Current User Route
 - **Scope / Module**: Authentication & API Security (`backend/app/core/config.py`, `backend/app/schemas/auth.py`, `backend/app/core/security.py`, `backend/app/api/v1/auth.py`, `backend/tests/test_auth.py`)

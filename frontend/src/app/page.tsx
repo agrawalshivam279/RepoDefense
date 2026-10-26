@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   ShieldCheck,
   Cpu,
@@ -96,7 +97,7 @@ export default function Home() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24 space-y-24">
       {/* Hero Section */}
       <section className="text-center space-y-8 max-w-3xl mx-auto">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-blue-500/30 bg-blue-500/10 text-xs font-semibold text-blue-400">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-xs font-semibold text-emerald-400">
           <Sparkles className="w-3.5 h-3.5" />
           Evidence-Grounded Architectural Stress-Testing
         </div>
@@ -136,12 +137,12 @@ export default function Home() {
         </div>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-          <button
-            type="button"
-            className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 font-semibold text-white shadow-lg shadow-blue-600/25 transition-all flex items-center justify-center gap-2"
+          <Link
+            href="/signup"
+            className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 font-semibold text-slate-950 shadow-lg shadow-emerald-500/25 transition-all flex items-center justify-center gap-2"
           >
             Start Defense <ArrowRight className="w-4 h-4" />
-          </button>
+          </Link>
           <a
             href="#core-loop"
             className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 font-semibold text-slate-200 transition-all text-center"
@@ -169,19 +170,23 @@ export default function Home() {
             return (
               <div
                 key={item.step}
-                className={`p-6 rounded-2xl border bg-gradient-to-b ${item.color} backdrop-blur-sm space-y-4 flex flex-col justify-between hover:scale-[1.02] transition-transform`}
+                className={`p-6 rounded-2xl bg-gradient-to-b ${item.color} bg-slate-900/60 backdrop-blur-sm border flex flex-col justify-between space-y-4 hover:border-slate-700 transition-all`}
               >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-mono font-bold text-slate-400 tracking-wider">
-                    STAGE {item.step}
-                  </span>
-                  <div className="p-2 rounded-lg bg-slate-900/60 border border-slate-800 text-blue-400">
-                    <Icon className="w-4 h-4" />
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-xs font-bold text-slate-500">
+                      STAGE {item.step}
+                    </span>
+                    <div className="p-2 rounded-lg bg-slate-800/80 border border-slate-700/50">
+                      <Icon className="w-4 h-4 text-slate-300" />
+                    </div>
                   </div>
-                </div>
-                <div className="space-y-2">
-                  <h3 className="text-lg font-bold text-white">{item.title}</h3>
-                  <p className="text-xs text-slate-400 leading-relaxed">{item.desc}</p>
+                  <h3 className="text-base font-bold text-white tracking-tight">
+                    {item.title}
+                  </h3>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    {item.desc}
+                  </p>
                 </div>
               </div>
             );
