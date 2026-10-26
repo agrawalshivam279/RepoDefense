@@ -216,7 +216,9 @@ gantt
 - **AI Coding Prompt:** "Create a LiteLLM wrapper in Python. Write a prompt that takes the list of dependencies, file summaries, and top contributors, and asks the LLM to output a Pydantic model representing a high-level project summary. Save this summary to `RepositorySnapshot`."
 
 ### Milestone 1.11: Evidence Extraction
-- **Goal:** Extract structured evidence items from analysis results.
+- **Goal:** [x] Extract structured evidence items from analysis results.
+- **Sub-tasks:**
+  - [x] **Step 1.11: Deterministic Evidence Extractor & Worker Pipeline** (evidence.py schemas & analyzer, framework/database/auth/endpoint/queue/infra rules, cloner worker integration, 83/83 tests passing)
 - **Components:**
   - Evidence extraction rules (deterministic).
   - Store `Evidence` records with source file references.

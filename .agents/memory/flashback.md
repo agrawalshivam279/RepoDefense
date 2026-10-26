@@ -23,6 +23,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **AST Analysis** | Tree-sitter (Python, TS/JS, Go, Java) | 🟢 Milestone 1.7 Complete (Tree-sitter Python, TS, TSX, JS) |
 | **Dependency Extraction** | Python, Node.js, Docker, Compose & CI/CD Parsers | 🟢 Milestone 1.8 Complete |
 | **Git History & Ownership** | Deterministic `git log` Parser & Contributor Stats | 🟢 Milestone 1.9 Complete |
+| **Evidence Extraction** | Deterministic Architectural Rule Engine & Persistence | 🟢 Milestone 1.11 Complete |
 | **Embeddings & RAG** | `all-MiniLM-L6-v2` via sentence-transformers (Local) | ⚪ Phase 2 Planned (Milestone 1.8) |
 | **AI LLM Routing** | LiteLLM (OpenAI-compatible, FreeLLMAPI primary) | ⚪ Phase 3 Planned (Milestone 1.9) |
 | **Defense State Machine** | Deterministic Python FSM (`backend/app/ai/fsm.py`) | ⚪ Phase 3 Planned (Milestone 1.10) |
@@ -118,6 +119,11 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-10-27] — Step 1.11: Deterministic Evidence Extractor & Worker Pipeline
+- **Scope / Module**: Architectural Evidence Extraction & Worker Integration (`backend/app/schemas/evidence.py`, `backend/app/schemas/__init__.py`, `backend/app/analyzers/evidence.py`, `backend/app/analyzers/__init__.py`, `backend/app/workers/cloner.py`, `backend/tests/test_evidence.py`)
+- **Details**: Built the deterministic architectural evidence extractor establishing mathematically grounded code anchors for interview defense under zero arbitrary code execution invariants. Defined Pydantic models `EvidenceType` (framework, database, auth, api_endpoint, queue, infrastructure, architecture), `EvidenceBase`, `EvidenceCreate`, and `EvidenceResponse`. Developed `extract_evidence` evaluating known framework packages (FastAPI, Next.js, Django, Express, NestJS), database ORMs and drivers (SQLAlchemy, pgvector, Prisma, Redis), authentication guards (Supabase Auth, JWT verification, access control decorators), API endpoints with exact line ranges, background queues (ARQ, Celery, BullMQ), and infrastructure files (Dockerfile, Compose, GitHub Actions CI workflows). Implemented idempotent `extract_and_persist_evidence` clearing prior project evidence and bulk-persisting `Evidence` ORM records into PostgreSQL 17. Integrated evidence extraction directly into the ARQ clone worker (`backend/app/workers/cloner.py`) as Stage 4, updating `RepositorySnapshot.summary` and returning `evidence_count`. Verified 100% via 8 hermetic unit/integration tests and 83/83 full backend test suite passing. Concludes Milestone 1.11 (Evidence Extraction).
+- **Key Files**: `backend/app/schemas/evidence.py`, `backend/app/schemas/__init__.py`, `backend/app/analyzers/evidence.py`, `backend/app/analyzers/__init__.py`, `backend/app/workers/cloner.py`, `backend/tests/test_evidence.py`, `docs/specs/step-1-11-evidence-extractor.md`
 
 ### [2026-10-27] — Step 1.9: Git Commit & Contributor History Analyzer
 - **Scope / Module**: Git History Analysis & Contributor Aggregation (`backend/app/analyzers/git.py`, `backend/app/analyzers/__init__.py`, `backend/app/workers/cloner.py`, `backend/tests/test_git_history.py`)
