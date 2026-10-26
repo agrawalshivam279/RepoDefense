@@ -21,6 +21,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **Background Queue** | ARQ (asyncio + Upstash Redis) | 🟢 Milestone 1.5 Complete |
 | **Static Code Ingestion & Cataloging** | Shallow Git Clone + Security Filter + File Scanner | 🟢 Milestone 1.5 & 1.6 Complete |
 | **AST Analysis** | Tree-sitter (Python, TS/JS, Go, Java) | 🟢 Milestone 1.7 Complete (Tree-sitter Python, TS, TSX, JS) |
+| **Dependency Extraction** | Python & Node.js Manifest Parsers | 🟡 Step 1.8a Complete (Step 1.8b in progress) |
 | **Embeddings & RAG** | `all-MiniLM-L6-v2` via sentence-transformers (Local) | ⚪ Phase 2 Planned (Milestone 1.8) |
 | **AI LLM Routing** | LiteLLM (OpenAI-compatible, FreeLLMAPI primary) | ⚪ Phase 3 Planned (Milestone 1.9) |
 | **Defense State Machine** | Deterministic Python FSM (`backend/app/ai/fsm.py`) | ⚪ Phase 3 Planned (Milestone 1.10) |
@@ -116,6 +117,11 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-10-26] — Step 1.8a: Python & Node.js Manifest Parsers & Database Persistence
+- **Scope / Module**: Dependency Manifest Parsers & Database Persistence (`backend/app/analyzers/dependencies/base.py`, `backend/app/analyzers/dependencies/python.py`, `backend/app/analyzers/dependencies/node.py`, `backend/app/analyzers/dependencies/__init__.py`, `backend/app/analyzers/__init__.py`, `backend/tests/test_dependencies.py`)
+- **Details**: Implemented modular dependency manifest extraction for Python and Node.js codebases under strict zero code execution invariants. Defined `DependencyMetadata` schema and `BaseDependencyParser`. Developed `PythonDependencyParser` extracting pinned, ranged, and unpinned packages from `requirements.txt` (handling extras, comments, pip directives, and dev file detection) and `pyproject.toml` (PEP 621 `[project.dependencies]`, optional dependencies, and Poetry groups via standard library `tomllib`). Developed `NodeDependencyParser` parsing `dependencies`, `devDependencies`, and `peerDependencies` from `package.json` using standard library `json`. Built central router `extract_file_dependencies` and `persist_dependencies` batch-persisting `Dependency` records into PostgreSQL 17 linked to `Project` with cascading foreign keys. Verified 100% via 7 unit/integration tests and 62/62 full backend test suite passing.
+- **Key Files**: `backend/app/analyzers/dependencies/base.py`, `backend/app/analyzers/dependencies/python.py`, `backend/app/analyzers/dependencies/node.py`, `backend/app/analyzers/dependencies/__init__.py`, `backend/app/analyzers/__init__.py`, `backend/tests/test_dependencies.py`, `docs/specs/step-1-8a-dependency-manifest-parsers.md`
 
 ### [2026-10-26] — Step 1.7b: TypeScript/JavaScript AST Parser & Cloner Worker Pipeline
 - **Scope / Module**: AST Parsing & Cloner Pipeline (`backend/app/analyzers/ast/typescript.py`, `backend/app/analyzers/ast/__init__.py`, `backend/app/analyzers/__init__.py`, `backend/app/workers/cloner.py`, `backend/pyproject.toml`, `backend/tests/test_ast_typescript.py`)
