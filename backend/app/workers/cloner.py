@@ -8,6 +8,7 @@ from typing import Any
 import structlog
 from sqlalchemy import select
 
+from app.analyzers import persist_analyzed_files, scan_workspace_files
 from app.core.database import AsyncSessionLocal
 from app.models.project import Project, RepositorySnapshot
 from app.security.sanitizer import sanitize_workspace
@@ -129,15 +130,24 @@ async def clone_and_sanitize_repository(ctx: dict[str, Any], project_id: str) ->
         try:
             commit_hash = await run_git_shallow_clone(github_url, branch, temp_dir)
             sanitization = sanitize_workspace(temp_dir)
+            files_meta = scan_workspace_files(temp_dir, sanitization.valid_files)
 
             async with AsyncSessionLocal() as session:
                 stmt = select(Project).where(Project.id == project_uuid)
                 project = (await session.execute(stmt)).scalar_one()
 
                 size_mb = sanitization.total_bytes / (1024 * 1024)
+                lang_counts: dict[str, int] = {}
+                total_lines = 0
+                for f in files_meta:
+                    lang_counts[f.language] = lang_counts.get(f.language, 0) + 1
+                    total_lines += f.total_lines
+
+                top_langs = sorted(lang_counts.items(), key=lambda x: x[1], reverse=True)[:3]
+                top_langs_str = ", ".join(f"{lang} ({cnt})" for lang, cnt in top_langs)
                 summary_text = (
-                    f"Cloned commit {commit_hash[:7]} with {sanitization.valid_file_count} "
-                    f"files ({size_mb:.2f} MB)."
+                    f"Cloned commit {commit_hash[:7]} with {len(files_meta)} files "
+                    f"({total_lines} lines, {size_mb:.2f} MB). Languages: {top_langs_str}."
                 )
 
                 snapshot = RepositorySnapshot(
@@ -147,6 +157,8 @@ async def clone_and_sanitize_repository(ctx: dict[str, Any], project_id: str) ->
                     summary=summary_text,
                 )
                 session.add(snapshot)
+                await persist_analyzed_files(session, snapshot.id, files_meta)
+
                 project.status = "cloned"
                 await session.commit()
 
@@ -154,12 +166,14 @@ async def clone_and_sanitize_repository(ctx: dict[str, Any], project_id: str) ->
                 "clone_and_sanitize_completed",
                 project_id=project_id,
                 commit_hash=commit_hash,
-                valid_file_count=sanitization.valid_file_count,
+                valid_file_count=len(files_meta),
+                total_lines=total_lines,
             )
             return {
                 "status": "cloned",
                 "commit_hash": commit_hash,
-                "file_count": sanitization.valid_file_count,
+                "file_count": len(files_meta),
+                "total_lines": total_lines,
                 "total_bytes": sanitization.total_bytes,
             }
 
