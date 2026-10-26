@@ -144,7 +144,7 @@ gantt
 - **AI Coding Prompt:** "Implement an ARQ background task in Python to clone a GitHub repository securely. Use a shallow clone. Enforce limits: 500MB max size, 10,000 files max. Add filtering to ignore binary files, enforce an extension whitelist, and run basic regex checks for secrets. Return the path to the sanitized workspace."
 
 ### Milestone 1.6: File Scanning & Language Detection
-- **Goal:** Scan cloned repo, detect languages, extract file metadata.
+- **Goal:** [x] Scan cloned repo, detect languages, extract file metadata, persist `AnalyzedFile` records.
 - **Components:**
   - Directory tree walker.
   - Language detection (file extension mapping + linguist-like detection).

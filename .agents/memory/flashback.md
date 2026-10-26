@@ -19,7 +19,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **Database & Vectors** | PostgreSQL 17 + pgvector (Supabase) + SQLAlchemy asyncpg | 🟢 Milestone 1.2 Complete |
 | **Authentication** | Supabase Auth (GitHub OAuth + Email/Password) | 🟢 Milestone 1.3 Complete |
 | **Background Queue** | ARQ (asyncio + Upstash Redis) | 🟢 Milestone 1.5 Complete |
-| **Static Code Ingestion** | Shallow Git Clone + Security Filter (No Code Exec) | 🟢 Milestone 1.5 Complete |
+| **Static Code Ingestion & Cataloging** | Shallow Git Clone + Security Filter + File Scanner | 🟢 Milestone 1.5 & 1.6 Complete |
 | **AST Analysis** | Tree-sitter (Python, TS/JS, Go, Java) | ⚪ Phase 2 Planned (Milestone 1.7) |
 | **Embeddings & RAG** | `all-MiniLM-L6-v2` via sentence-transformers (Local) | ⚪ Phase 2 Planned (Milestone 1.8) |
 | **AI LLM Routing** | LiteLLM (OpenAI-compatible, FreeLLMAPI primary) | ⚪ Phase 3 Planned (Milestone 1.9) |
@@ -116,6 +116,11 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-10-26] — Milestone 1.6: File Scanning & Language Detection Engine
+- **Scope / Module**: Codebase Cataloging & Language Classification (`backend/app/analyzers/languages.py`, `backend/app/analyzers/scanner.py`, `backend/app/analyzers/__init__.py`, `backend/app/workers/cloner.py`, `backend/tests/test_file_scanner.py`)
+- **Details**: Built the automated codebase file scanner and canonical language classification engine. Implemented `detect_language` in `backend/app/analyzers/languages.py` mapping standard extensions and special filenames (`Dockerfile`, `Makefile`, `Gemfile`, `Procfile`) to languages. Developed `extract_file_metadata` and `scan_workspace_files` in `backend/app/analyzers/scanner.py` with safe UTF-8 decoding fallback, line counting, byte sizing, and POSIX relative path calculation. Created `persist_analyzed_files` batch-inserting `AnalyzedFile` rows in PostgreSQL 17 linked to `RepositorySnapshot`. Connected scanning into the ARQ clone background worker (`backend/app/workers/cloner.py`) to append language distribution metrics to snapshots. Verified 100% via 8 unit/integration tests and 41/41 full backend test suite passing. Concludes Milestone 1.6 (File Scanning & Language Detection).
+- **Key Files**: `backend/app/analyzers/languages.py`, `backend/app/analyzers/scanner.py`, `backend/app/analyzers/__init__.py`, `backend/app/workers/cloner.py`, `backend/tests/test_file_scanner.py`, `docs/specs/milestone-1-6-file-scanner.md`
 
 ### [2026-10-26] — Step 1.5b: ARQ Background Worker & Git Shallow Clone Pipeline
 - **Scope / Module**: Asynchronous Ingestion & Background Worker (`backend/app/core/redis.py`, `backend/app/workers/cloner.py`, `backend/app/workers/main.py`, `backend/app/api/v1/projects.py`, `backend/tests/test_cloner_worker.py`)
