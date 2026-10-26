@@ -1,5 +1,6 @@
 import uuid
 from enum import Enum
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -19,8 +20,8 @@ class EvidenceBase(BaseModel):
     """Base payload for architectural evidence."""
 
     evidence_type: EvidenceType = Field(..., description="Classification category")
-    title: str = Field(..., max_length=255, description="Concise human-readable evidence title")
-    description: str = Field(..., description="Detailed explanation of the architectural significance")
+    title: str = Field(..., max_length=255, description="Evidence title")
+    description: str = Field(..., description="Architectural significance explanation")
     file_path: str = Field(..., max_length=1000, description="Repository-relative file path")
     start_line: int = Field(..., ge=1, description="1-indexed starting line")
     end_line: int = Field(..., ge=1, description="1-indexed ending line")

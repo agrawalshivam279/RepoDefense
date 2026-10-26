@@ -1,4 +1,4 @@
-"""Repository analyzers: language classification, scanning, AST, dependencies, git history, and evidence."""
+"""Repository analyzers: scanning, AST, dependencies, git history, and evidence."""
 
 from app.analyzers.ast import (
     SymbolMetadata,

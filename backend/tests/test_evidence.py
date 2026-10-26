@@ -74,9 +74,9 @@ def test_extract_framework_and_database_dependencies():
     assert EvidenceType.FRAMEWORK in types
     assert EvidenceType.DATABASE in types
     titles = {item.title for item in items}
-    assert "FastAPI Web Framework" in titles
-    assert "SQLAlchemy Database ORM" in titles
-    assert "pgvector Vector Extension" in titles
+    assert "FastAPI Framework" in titles
+    assert "SQLAlchemy ORM" in titles
+    assert "pgvector Extension" in titles
 
 
 def test_extract_auth_and_queue_dependencies():
@@ -104,8 +104,8 @@ def test_extract_auth_and_queue_dependencies():
     items = extract_evidence(project_id, files=[], symbols=[], dependencies=deps)
     assert len(items) == 2
     type_map = {item.title: item.evidence_type for item in items}
-    assert type_map["Supabase JS Client & Auth"] == EvidenceType.AUTH
-    assert type_map["ARQ Asyncio Job Queue"] == EvidenceType.QUEUE
+    assert type_map["Supabase JS"] == EvidenceType.AUTH
+    assert type_map["ARQ Job Queue"] == EvidenceType.QUEUE
 
 
 def test_extract_ast_endpoints_and_models():

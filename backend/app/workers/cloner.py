@@ -199,13 +199,16 @@ async def clone_and_sanitize_repository(ctx: dict[str, Any], project_id: str) ->
                 )
 
                 # 4. Deterministic Architectural Evidence Extraction
-                evidence_items = await extract_and_persist_evidence(session, project.id, snapshot.id)
+                evidence_items = await extract_and_persist_evidence(
+                    session, project.id, snapshot.id
+                )
                 total_evidence = len(evidence_items)
 
                 summary_text = (
                     f"Cloned commit {commit_hash[:7]} with {len(files_meta)} files "
                     f"({total_lines} lines, {size_mb:.2f} MB, {total_symbols} symbols, "
-                    f"{total_deps} dependencies, {total_evidence} evidence items). Languages: {top_langs_str}. "
+                    f"{total_deps} dependencies, {total_evidence} evidence items). "
+                    f"Languages: {top_langs_str}. "
                     f"Contributors ({git_history.total_commits} commits): "
                     f"{contributors_str or 'None'}."
                 )
