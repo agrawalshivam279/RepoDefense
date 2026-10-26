@@ -10,6 +10,29 @@ jobs:
   backend:
     name: Backend Lint & Tests (Python 3.12)
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: repouser
+          POSTGRES_PASSWORD: repopassword
+          POSTGRES_DB: repodefense
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U repouser -d repodefense"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -37,7 +60,16 @@ jobs:
             echo "backend/app not initialized yet, skipping ruff"
           fi
 
+      - name: Run Database Migrations (alembic)
+        env:
+          DATABASE_URL: postgresql+asyncpg://repouser:repopassword@localhost:5432/repodefense
+        run: |
+          cd backend && alembic upgrade head
+
       - name: Backend Unit Tests (pytest)
+        env:
+          DATABASE_URL: postgresql+asyncpg://repouser:repopassword@localhost:5432/repodefense
+          REDIS_URL: redis://localhost:6379/0
         run: |
           if [ -d backend/tests ]; then
             pytest backend/tests/ -v --cov=backend/app
