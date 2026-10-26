@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { LogOut, User as UserIcon } from "lucide-react";
+import { LayoutDashboard, LogOut, User as UserIcon } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 
@@ -44,8 +44,15 @@ export function AuthStatus() {
   if (user) {
     return (
       <div className="flex items-center space-x-3">
+        <Link
+          href="/dashboard"
+          className="flex items-center space-x-1.5 px-2.5 py-1 text-xs font-semibold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-lg transition-colors"
+        >
+          <LayoutDashboard className="w-3.5 h-3.5" />
+          <span>Dashboard</span>
+        </Link>
         <div className="flex items-center space-x-2 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs font-mono text-slate-300">
-          <UserIcon className="w-3.5 h-3.5 text-emerald-400" />
+          <UserIcon className="w-3.5 h-3.5 text-slate-400" />
           <span className="max-w-[140px] truncate">{user.email}</span>
         </div>
         <button

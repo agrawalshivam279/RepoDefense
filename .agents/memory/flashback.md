@@ -117,6 +117,11 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 
 ## 4. Chronological Activity & Change Log
 
+### [2026-10-26] — Step 1.4b: Next.js 15 Project Dashboard & Add Repository Form
+- **Scope / Module**: Frontend Dashboard & Repository Ingestion (`frontend/src/types/project.ts`, `frontend/src/components/domain/ProjectCard.tsx`, `frontend/src/components/domain/AddProjectModal.tsx`, `frontend/src/app/dashboard/page.tsx`, `frontend/src/components/domain/AuthStatus.tsx`)
+- **Details**: Implemented full repository project management on the frontend in Next.js 15 App Router. Created `ProjectCard` component with real-time status badges, branch labels, and deletion callbacks. Designed `AddProjectModal` dialog with live GitHub URL format validation, repository slug preview, and API integration with the FastAPI backend using the Supabase JWT Bearer token. Implemented protected `/dashboard` route with authentication session verification, responsive project grid, and empty state fallback. Full Next.js production build (`next build`) and typecheck verified. Concludes Milestone 1.4 (Project Creation & GitHub URL Input).
+- **Key Files**: `frontend/src/types/project.ts`, `frontend/src/components/domain/ProjectCard.tsx`, `frontend/src/components/domain/AddProjectModal.tsx`, `frontend/src/app/dashboard/page.tsx`, `frontend/src/components/domain/AuthStatus.tsx`, `docs/specs/step-1-4b-nextjs-project-dashboard.md`
+
 ### [2026-10-26] — Step 1.4a: FastAPI Projects API & GitHub URL Validation
 - **Scope / Module**: Backend Project API & Repository Ingestion Validation (`backend/app/schemas/project.py`, `backend/app/api/v1/projects.py`, `backend/app/main.py`, `backend/tests/test_projects.py`)
 - **Details**: Implemented parameterized GitHub repository URL validation with regex pattern matching, automatic `.git` trimming, and repository slug name normalization (`ProjectCreate`). Created CRUD endpoints for `POST /api/v1/projects` (with 409 Conflict duplicate checks), `GET /api/v1/projects` (with multi-tenant isolation), `GET /api/v1/projects/{id}`, and `DELETE /api/v1/projects/{id}` with cascading cleanup. Verified 100% across 18 backend tests and Next.js 15 production build.
