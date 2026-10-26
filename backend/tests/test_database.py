@@ -5,19 +5,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.core.database import AsyncSessionLocal, engine
-from app.models.base import Base
 from app.models.project import Project, RepositorySnapshot, User
 
 
 @pytest.fixture(scope="module", autouse=True)
 async def setup_database():
-    """Ensure required tables exist in the database before running tests."""
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    """Ensure clean connection pool lifecycle across test modules."""
     yield
-    # Cleanup tables after test module completes
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+    await engine.dispose()
 
 
 @pytest.mark.anyio

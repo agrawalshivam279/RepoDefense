@@ -1,12 +1,15 @@
 import uuid
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 from sqlalchemy import DateTime, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin
+
+if TYPE_CHECKING:
+    from app.models.analysis import AnalyzedFile, Dependency, Evidence
 
 
 class User(Base, TimestampMixin):
@@ -81,6 +84,18 @@ class Project(Base, TimestampMixin):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+    dependencies: Mapped[List["Dependency"]] = relationship(
+        "Dependency",
+        back_populates="project",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    evidence: Mapped[List["Evidence"]] = relationship(
+        "Evidence",
+        back_populates="project",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
 
 
 class RepositorySnapshot(Base):
@@ -117,4 +132,10 @@ class RepositorySnapshot(Base):
     project: Mapped["Project"] = relationship(
         "Project",
         back_populates="snapshots",
+    )
+    files: Mapped[List["AnalyzedFile"]] = relationship(
+        "AnalyzedFile",
+        back_populates="snapshot",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
