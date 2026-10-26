@@ -88,10 +88,18 @@ async def get_current_user(
     user = result.scalar_one_or_none()
 
     if user is None:
-        user = User(id=token_payload.sub, email=token_payload.email)
-        db.add(user)
-        await db.commit()
-        await db.refresh(user)
+        # Check if record with this email already exists to handle email-matched identities
+        by_email_stmt = select(User).where(User.email == token_payload.email)
+        by_email_res = await db.execute(by_email_stmt)
+        existing_by_email = by_email_res.scalar_one_or_none()
+
+        if existing_by_email is not None:
+            user = existing_by_email
+        else:
+            user = User(id=token_payload.sub, email=token_payload.email)
+            db.add(user)
+            await db.commit()
+            await db.refresh(user)
     elif user.email != token_payload.email:
         user.email = token_payload.email
         await db.commit()
