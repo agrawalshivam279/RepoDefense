@@ -22,6 +22,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **Static Code Ingestion & Cataloging** | Shallow Git Clone + Security Filter + File Scanner | 🟢 Milestone 1.5 & 1.6 Complete |
 | **AST Analysis** | Tree-sitter (Python, TS/JS, Go, Java) | 🟢 Milestone 1.7 Complete (Tree-sitter Python, TS, TSX, JS) |
 | **Dependency Extraction** | Python, Node.js, Docker, Compose & CI/CD Parsers | 🟢 Milestone 1.8 Complete |
+| **Git History & Ownership** | Deterministic `git log` Parser & Contributor Stats | 🟢 Milestone 1.9 Complete |
 | **Embeddings & RAG** | `all-MiniLM-L6-v2` via sentence-transformers (Local) | ⚪ Phase 2 Planned (Milestone 1.8) |
 | **AI LLM Routing** | LiteLLM (OpenAI-compatible, FreeLLMAPI primary) | ⚪ Phase 3 Planned (Milestone 1.9) |
 | **Defense State Machine** | Deterministic Python FSM (`backend/app/ai/fsm.py`) | ⚪ Phase 3 Planned (Milestone 1.10) |
@@ -117,6 +118,11 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-10-27] — Step 1.9: Git Commit & Contributor History Analyzer
+- **Scope / Module**: Git History Analysis & Contributor Aggregation (`backend/app/analyzers/git.py`, `backend/app/analyzers/__init__.py`, `backend/app/workers/cloner.py`, `backend/tests/test_git_history.py`)
+- **Details**: Implemented deterministic git log commit and contributor analysis pipeline under strict zero arbitrary code execution invariants. Defined Pydantic schemas `GitCommitMetadata`, `ContributorStats`, and `GitHistorySummary`. Developed `extract_git_history` executing `git log` with unit separator delimiters (`%x1f`), extracting 40-char commit hashes, author names, author emails, ISO 8601 timestamps, commit subjects, and files changed. Built `_calculate_contributor_stats` aggregating author commit frequency, percentage attribution, touched file counts, and velocity date ranges. Updated shallow clone depth in `run_git_shallow_clone` to `--depth=100` ensuring commit history is available, and integrated history extraction directly into `clone_and_sanitize_repository` to append contributor metrics to `RepositorySnapshot.summary`. Verified 100% via 7 unit/integration tests and 75/75 full backend test suite passing. Concludes Milestone 1.9 (Git History Analysis).
+- **Key Files**: `backend/app/analyzers/git.py`, `backend/app/analyzers/__init__.py`, `backend/app/workers/cloner.py`, `backend/tests/test_git_history.py`, `docs/specs/step-1-9-git-history-analyzer.md`
 
 ### [2026-10-27] — Step 1.8b: Container, Infrastructure & CI/CD Config Extraction & Cloner Worker Pipeline
 - **Scope / Module**: Container & Infrastructure Dependency Parsers (`backend/app/analyzers/dependencies/infra.py`, `backend/app/analyzers/dependencies/__init__.py`, `backend/app/workers/cloner.py`, `backend/pyproject.toml`, `backend/tests/test_infra_dependencies.py`)

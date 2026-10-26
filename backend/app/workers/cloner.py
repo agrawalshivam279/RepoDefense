@@ -10,6 +10,7 @@ from sqlalchemy import select
 
 from app.analyzers import (
     extract_and_persist_file_symbols,
+    extract_git_history,
     persist_analyzed_files,
     scan_workspace_files,
 )
@@ -39,9 +40,9 @@ def sanitize_git_branch(branch: str) -> str:
     if not cleaned:
         raise ValueError("Branch name cannot be empty")
     if cleaned.startswith("-"):
-        raise ValueError(f"Dangerous branch name starts with dash: {branch}")
+        raise ValueError(f"Branch name cannot start with a dash: {branch}")
     if ".." in cleaned:
-        raise ValueError(f"Dangerous branch name contains path traversal: {branch}")
+        raise ValueError(f"Path traversal characters not allowed in branch name: {branch}")
     if not _SAFE_BRANCH_REGEX.match(cleaned):
         raise ValueError(f"Invalid characters in branch name: {branch}")
     return cleaned
@@ -51,6 +52,7 @@ async def run_git_shallow_clone(
     github_url: str,
     branch: str,
     target_dir: Path,
+    depth: int = 100,
     timeout: float = 120.0,
 ) -> str:
     """Performs a shallow git clone of the target repository and returns HEAD commit hash.
@@ -59,6 +61,7 @@ async def run_git_shallow_clone(
         github_url: Validated GitHub repository URL.
         branch: Target branch name.
         target_dir: Directory where the repository should be cloned.
+        depth: Commit history depth to fetch (defaults to 100 for history analysis).
         timeout: Subprocess execution timeout in seconds.
 
     Returns:
@@ -72,7 +75,7 @@ async def run_git_shallow_clone(
     clone_cmd = [
         "git",
         "clone",
-        "--depth=1",
+        f"--depth={depth}",
         "--single-branch",
         "--branch",
         safe_branch,
@@ -99,28 +102,33 @@ async def run_git_shallow_clone(
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
-    rev_out, rev_err = await asyncio.wait_for(proc_rev.communicate(), timeout=15.0)
+    stdout_rev, stderr_rev = await asyncio.wait_for(proc_rev.communicate(), timeout=10.0)
     if proc_rev.returncode != 0:
-        err_msg = rev_err.decode(errors="replace").strip()
-        logger.error("git_rev_parse_failed", returncode=proc_rev.returncode, stderr=err_msg)
+        err_msg = stderr_rev.decode(errors="replace").strip()
         raise RuntimeError(f"git rev-parse HEAD failed: {err_msg}")
 
-    commit_hash = rev_out.decode().strip()
-    logger.info("git_clone_success", commit_hash=commit_hash)
+    commit_hash = stdout_rev.decode().strip()
+    logger.info("git_clone_success", commit_hash=commit_hash, target=str(target_dir))
     return commit_hash
 
 
 async def clone_and_sanitize_repository(ctx: dict[str, Any], project_id: str) -> dict[str, Any]:
-    """ARQ background worker job to clone, sanitize, and snapshot a GitHub repository.
+    """Background ARQ job that clones, sanitizes, and analyzes a GitHub repository.
 
-    Args:
-        ctx: ARQ worker context dictionary.
-        project_id: UUID string of the project to process.
-
-    Returns:
-        Dictionary reporting execution status, commit hash, and file metrics.
+    Flow:
+        1. Look up project in DB and verify existence.
+        2. Set project status to 'cloning'.
+        3. Shallow clone repo into isolated tempdir using run_git_shallow_clone.
+        4. Run sanitize_workspace to enforce quotas, strip secrets, and remove binary files.
+        5. Scan workspace files and detect programming languages.
+        6. Persist AnalyzedFile records to DB linked to a new RepositorySnapshot.
+        7. Deterministically extract and persist CodeSymbol AST records via Tree-sitter.
+        8. Extract and persist third-party dependencies and container/CI configs.
+        9. Extract recent git commit history and aggregate contributor ownership.
+        10. Update snapshot summary and set project status to 'cloned'.
     """
     project_uuid = uuid.UUID(project_id)
+    logger.info("starting_clone_job", project_id=project_id)
 
     async with AsyncSessionLocal() as session:
         stmt = select(Project).where(Project.id == project_uuid)
@@ -159,7 +167,7 @@ async def clone_and_sanitize_repository(ctx: dict[str, Any], project_id: str) ->
                     id=uuid.uuid4(),
                     project_id=project.id,
                     commit_hash=commit_hash,
-                    summary="Processing snapshot files, symbols, and dependencies...",
+                    summary="Processing snapshot files, symbols, dependencies, and git history...",
                 )
                 session.add(snapshot)
                 created_files = await persist_analyzed_files(session, snapshot.id, files_meta)
@@ -182,10 +190,19 @@ async def clone_and_sanitize_repository(ctx: dict[str, Any], project_id: str) ->
                             await persist_dependencies(session, project.id, deps)
                             total_deps += len(deps)
 
+                # 3. Git History & Contributor Extraction
+                git_history = await extract_git_history(temp_dir, max_commits=100)
+                contributors_str = ", ".join(
+                    f"{c.name} ({c.percentage}%, {c.commit_count} commits)"
+                    for c in git_history.contributors[:3]
+                )
+
                 summary_text = (
                     f"Cloned commit {commit_hash[:7]} with {len(files_meta)} files "
                     f"({total_lines} lines, {size_mb:.2f} MB, {total_symbols} symbols, "
-                    f"{total_deps} dependencies). Languages: {top_langs_str}."
+                    f"{total_deps} dependencies). Languages: {top_langs_str}. "
+                    f"Contributors ({git_history.total_commits} commits): "
+                    f"{contributors_str or 'None'}."
                 )
                 snapshot.summary = summary_text
                 project.status = "cloned"
@@ -199,6 +216,9 @@ async def clone_and_sanitize_repository(ctx: dict[str, Any], project_id: str) ->
                 total_lines=total_lines,
                 symbol_count=total_symbols,
                 dependency_count=total_deps,
+                total_commits=git_history.total_commits,
+                contributor_count=len(git_history.contributors),
+                top_contributor=git_history.primary_author,
             )
             return {
                 "status": "cloned",
@@ -208,6 +228,9 @@ async def clone_and_sanitize_repository(ctx: dict[str, Any], project_id: str) ->
                 "total_bytes": sanitization.total_bytes,
                 "symbol_count": total_symbols,
                 "dependency_count": total_deps,
+                "total_commits": git_history.total_commits,
+                "contributor_count": len(git_history.contributors),
+                "top_contributor": git_history.primary_author,
             }
 
         except Exception as exc:

@@ -190,7 +190,9 @@ gantt
 - **AI Coding Prompt:** "Write a Python parser that reads `package.json` and `requirements.txt` from a directory. Extract package names and versions, and save them as `Dependency` database records associated with the project."
 
 ### Milestone 1.9: Git History Analysis
-- **Goal:** Extract commit history and contributor data.
+- **Goal:** [x] Extract commit history and contributor data.
+- **Sub-tasks:**
+  - [x] **Step 1.9: Git Commit & Contributor History Analyzer** (git.py, DELIMITER unit separator, ContributorStats, clone depth=100, cloner worker integration)
 - **Components:**
   - Git log parsing (commit hash, author, date, message, files changed).
   - Contributor extraction (unique authors, commit counts).
