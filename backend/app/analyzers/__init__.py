@@ -1,4 +1,4 @@
-"""Repository analyzers: scanning, AST, dependencies, git history, evidence, and chunking."""
+"""Repository analyzers: scanning, AST, dependencies, history, evidence, and embeddings."""
 
 from app.analyzers.ast import (
     SymbolMetadata,
@@ -14,6 +14,15 @@ from app.analyzers.dependencies import (
     DependencyMetadata,
     extract_file_dependencies,
     persist_dependencies,
+)
+from app.analyzers.embeddings import (
+    DEFAULT_MODEL_NAME,
+    EMBEDDING_DIM,
+    embed_and_persist_workspace_chunks,
+    generate_embeddings,
+    get_embedding_model,
+    retrieve_relevant_chunks,
+    set_embedding_model,
 )
 from app.analyzers.evidence import (
     extract_and_persist_evidence,
@@ -52,6 +61,13 @@ __all__ = [
     "extract_git_history",
     "extract_evidence",
     "extract_and_persist_evidence",
-    "estimate_token_count",
     "chunk_analyzed_file",
+    "estimate_token_count",
+    "DEFAULT_MODEL_NAME",
+    "EMBEDDING_DIM",
+    "get_embedding_model",
+    "set_embedding_model",
+    "generate_embeddings",
+    "embed_and_persist_workspace_chunks",
+    "retrieve_relevant_chunks",
 ]

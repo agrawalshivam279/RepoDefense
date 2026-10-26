@@ -228,10 +228,10 @@ gantt
 - **AI Coding Prompt:** "Write a Python script that iterates over `AnalyzedFile`, `Dependency`, and `CodeSymbol` records to generate `Evidence` records. For example, if 'express' is a dependency, generate a 'Framework' evidence record pointing to `package.json`."
 
 ### Milestone 1.12: Embedding Generation & RAG Setup
-- **Goal:** Generate embeddings and set up retrieval pipeline.
+- **Goal:** [x] Generate embeddings and set up retrieval pipeline.
 - **Sub-tasks:**
   - [x] **Step 1.12a: AST-Aware Code Chunking Engine** (chunk.py schemas & chunker.py analyzer, Tree-sitter boundary alignment, module header isolation, oversized sliding-window subchunking, 7/7 tests)
-  - [ ] **Step 1.12b: Local Embeddings & pgvector Retrieval Pipeline** (sentence-transformers all-MiniLM-L6-v2, CodeEmbedding models, pgvector cosine distance search, ARQ worker integration)
+  - [x] **Step 1.12b: Local Embeddings & pgvector Retrieval Pipeline** (sentence-transformers all-MiniLM-L6-v2, CodeEmbedding models, pgvector cosine distance search, ARQ worker integration, 6/6 tests)
 - **Components:**
   - `sentence-transformers` integration (`all-MiniLM-L6-v2`).
   - Code-aware chunking (function/class boundaries).
