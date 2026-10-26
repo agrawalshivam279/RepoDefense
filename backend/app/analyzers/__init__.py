@@ -1,4 +1,4 @@
-"""Repository analyzers: language classification, workspace scanning, and dependencies."""
+"""Repository analyzers: language classification, scanning, AST, dependencies, and git history."""
 
 from app.analyzers.ast import (
     SymbolMetadata,
@@ -10,6 +10,12 @@ from app.analyzers.dependencies import (
     DependencyMetadata,
     extract_file_dependencies,
     persist_dependencies,
+)
+from app.analyzers.git import (
+    ContributorStats,
+    GitCommitMetadata,
+    GitHistorySummary,
+    extract_git_history,
 )
 from app.analyzers.languages import detect_language
 from app.analyzers.scanner import (
@@ -32,4 +38,8 @@ __all__ = [
     "extract_and_persist_file_symbols",
     "extract_file_dependencies",
     "persist_dependencies",
+    "GitCommitMetadata",
+    "ContributorStats",
+    "GitHistorySummary",
+    "extract_git_history",
 ]
