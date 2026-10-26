@@ -4,6 +4,10 @@ from app.schemas.chunk import (
     ChunkType,
     CodeChunk,
 )
+from app.schemas.embedding import (
+    RetrievalQuery,
+    RetrievedChunk,
+)
 from app.schemas.evidence import (
     EvidenceBase,
     EvidenceCreate,
@@ -18,4 +22,6 @@ __all__ = [
     "EvidenceCreate",
     "EvidenceResponse",
     "EvidenceType",
+    "RetrievalQuery",
+    "RetrievedChunk",
 ]
