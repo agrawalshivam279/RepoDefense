@@ -16,7 +16,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | :--- | :--- | :--- |
 | **Frontend Core** | Next.js 15 (App Router) + TypeScript + Tailwind + shadcn/ui | 🟢 Milestone 1.1 Complete |
 | **Backend API** | FastAPI (Python 3.12+) + Pydantic v2 + structlog | 🟢 Milestone 1.1 Complete |
-| **Database & Vectors** | PostgreSQL 17 + pgvector (Supabase) + SQLAlchemy asyncpg | 🟡 Phase 1 Planned (Milestone 1.2) |
+| **Database & Vectors** | PostgreSQL 17 + pgvector (Supabase) + SQLAlchemy asyncpg | 🟢 Milestone 1.2 Complete |
 | **Authentication** | Supabase Auth (GitHub OAuth + Email/Password) | 🟡 Phase 1 Planned (Milestone 1.3) |
 | **Background Queue** | ARQ (asyncio + Upstash Redis) | 🟡 Phase 1 Planned (Milestone 1.5) |
 | **Static Code Ingestion** | Shallow Git Clone + Security Filter (No Code Exec) | 🟡 Phase 1 Planned (Milestone 1.5) |
@@ -116,6 +116,11 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-10-26] — Step 1.2b: Code Analysis & pgvector Vector Models + Alembic Migrations
+- **Scope / Module**: Database & Vector Architecture (`backend/app/models/analysis.py`, `backend/app/models/project.py`, `backend/alembic/`, `backend/tests/test_analysis_models.py`)
+- **Details**: Created SQLAlchemy 2.0 async models for repository code inspection: `AnalyzedFile`, `CodeSymbol`, `Dependency`, `Evidence`, and `CodeEmbedding` with `Vector(384)` and HNSW cosine distance index `idx_code_embeddings_hnsw` (`m=16, ef_construction=64`). Initialized Alembic async migration suite with auto-escaping for URL special characters (`%%`), generated initial migration `16d48d0545e1_create_initial_schema.py`, and applied to Supabase PostgreSQL 17. Validated 100% via pgvector cosine distance queries and full 9/9 test suite. Completes Milestone 1.2 (Database Models & Migrations).
+- **Key Files**: `backend/app/models/analysis.py`, `backend/app/models/project.py`, `backend/app/models/__init__.py`, `backend/alembic/versions/16d48d0545e1_create_initial_schema.py`, `backend/tests/test_analysis_models.py`, `docs/specs/step-1-2b-code-analysis-pgvector-models.md`
 
 ### [2026-10-26] — Step 1.2a: SQLAlchemy 2.0 Async Engine & Core Tenancy Models
 - **Scope / Module**: Database & Core Models (`backend/app/core/database.py`, `backend/app/models/base.py`, `backend/app/models/project.py`, `backend/tests/test_database.py`)

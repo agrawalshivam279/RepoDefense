@@ -1,12 +1,17 @@
+from pathlib import Path
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Resolve project root where .env is stored
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
 class Settings(BaseSettings):
     """Core application settings loaded from environment variables or defaults."""
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=[".env", str(PROJECT_ROOT / ".env")],
         env_file_encoding="utf-8",
         case_sensitive=True,
         extra="ignore",
