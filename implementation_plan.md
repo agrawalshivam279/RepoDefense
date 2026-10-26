@@ -174,6 +174,9 @@ gantt
 
 ### Milestone 1.8: Dependency & Config Extraction
 - **Goal:** Parse dependency files and configuration.
+- **Sub-tasks:**
+  - [x] **Step 1.8a: Python & Node.js Manifest Parsers & Database Persistence** (base.py, python.py, node.py, DependencyMetadata, Dependency persistence)
+  - [ ] **Step 1.8b: Container, Infrastructure & CI/CD Config Extraction & Cloner Worker Pipeline** (Dockerfile, docker-compose.yml, CI workflows, cloner worker integration)
 - **Components:**
   - `requirements.txt`, `Pipfile`, `pyproject.toml` parsing.
   - `package.json` parsing.
