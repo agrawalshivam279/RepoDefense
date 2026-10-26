@@ -9,6 +9,7 @@ import structlog
 from sqlalchemy import select
 
 from app.analyzers import (
+    extract_and_persist_evidence,
     extract_and_persist_file_symbols,
     extract_git_history,
     persist_analyzed_files,
@@ -197,10 +198,17 @@ async def clone_and_sanitize_repository(ctx: dict[str, Any], project_id: str) ->
                     for c in git_history.contributors[:3]
                 )
 
+                # 4. Deterministic Architectural Evidence Extraction
+                evidence_items = await extract_and_persist_evidence(
+                    session, project.id, snapshot.id
+                )
+                total_evidence = len(evidence_items)
+
                 summary_text = (
                     f"Cloned commit {commit_hash[:7]} with {len(files_meta)} files "
                     f"({total_lines} lines, {size_mb:.2f} MB, {total_symbols} symbols, "
-                    f"{total_deps} dependencies). Languages: {top_langs_str}. "
+                    f"{total_deps} dependencies, {total_evidence} evidence items). "
+                    f"Languages: {top_langs_str}. "
                     f"Contributors ({git_history.total_commits} commits): "
                     f"{contributors_str or 'None'}."
                 )
@@ -216,6 +224,7 @@ async def clone_and_sanitize_repository(ctx: dict[str, Any], project_id: str) ->
                 total_lines=total_lines,
                 symbol_count=total_symbols,
                 dependency_count=total_deps,
+                evidence_count=total_evidence,
                 total_commits=git_history.total_commits,
                 contributor_count=len(git_history.contributors),
                 top_contributor=git_history.primary_author,
@@ -228,6 +237,7 @@ async def clone_and_sanitize_repository(ctx: dict[str, Any], project_id: str) ->
                 "total_bytes": sanitization.total_bytes,
                 "symbol_count": total_symbols,
                 "dependency_count": total_deps,
+                "evidence_count": total_evidence,
                 "total_commits": git_history.total_commits,
                 "contributor_count": len(git_history.contributors),
                 "top_contributor": git_history.primary_author,

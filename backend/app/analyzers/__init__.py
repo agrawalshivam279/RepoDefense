@@ -1,4 +1,4 @@
-"""Repository analyzers: language classification, scanning, AST, dependencies, and git history."""
+"""Repository analyzers: scanning, AST, dependencies, git history, and evidence."""
 
 from app.analyzers.ast import (
     SymbolMetadata,
@@ -10,6 +10,10 @@ from app.analyzers.dependencies import (
     DependencyMetadata,
     extract_file_dependencies,
     persist_dependencies,
+)
+from app.analyzers.evidence import (
+    extract_and_persist_evidence,
+    extract_evidence,
 )
 from app.analyzers.git import (
     ContributorStats,
@@ -42,4 +46,6 @@ __all__ = [
     "ContributorStats",
     "GitHistorySummary",
     "extract_git_history",
+    "extract_evidence",
+    "extract_and_persist_evidence",
 ]
