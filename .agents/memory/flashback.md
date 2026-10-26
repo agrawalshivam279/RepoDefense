@@ -17,7 +17,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **Frontend Core** | Next.js 15 (App Router) + TypeScript + Tailwind + shadcn/ui | 🟢 Milestone 1.1 Complete |
 | **Backend API** | FastAPI (Python 3.12+) + Pydantic v2 + structlog | 🟢 Milestone 1.1 Complete |
 | **Database & Vectors** | PostgreSQL 17 + pgvector (Supabase) + SQLAlchemy asyncpg | 🟢 Milestone 1.2 Complete |
-| **Authentication** | Supabase Auth (GitHub OAuth + Email/Password) | 🟡 Phase 1 Planned (Milestone 1.3) |
+| **Authentication** | Supabase Auth (GitHub OAuth + Email/Password) | 🟡 Milestone 1.3 in Progress (Step 1.3a Complete) |
 | **Background Queue** | ARQ (asyncio + Upstash Redis) | 🟡 Phase 1 Planned (Milestone 1.5) |
 | **Static Code Ingestion** | Shallow Git Clone + Security Filter (No Code Exec) | 🟡 Phase 1 Planned (Milestone 1.5) |
 | **AST Analysis** | Tree-sitter (Python, TS/JS, Go, Java) | ⚪ Phase 2 Planned (Milestone 1.7) |
@@ -116,6 +116,11 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-10-26] — Step 1.3a: FastAPI Supabase JWT Auth Dependency & Protected Current User Route
+- **Scope / Module**: Authentication & API Security (`backend/app/core/config.py`, `backend/app/schemas/auth.py`, `backend/app/core/security.py`, `backend/app/api/v1/auth.py`, `backend/tests/test_auth.py`)
+- **Details**: Implemented stateless cryptographic verification of Supabase-issued JWT Bearer tokens with audience verification (`aud="authenticated"`) and algorithm checking (`HS256`). Created `get_current_user` FastAPI dependency resolving user identities from local PostgreSQL 17 or auto-provisioning new user records upon initial authentication. Exposed protected `GET /api/v1/auth/me` endpoint. Verified 100% via hermetic test suite covering unauthenticated rejection (401), invalid/expired token handling, and database synchronization.
+- **Key Files**: `backend/app/core/config.py`, `backend/app/schemas/auth.py`, `backend/app/core/security.py`, `backend/app/api/v1/auth.py`, `backend/app/main.py`, `backend/tests/test_auth.py`, `docs/specs/step-1-3a-fastapi-supabase-jwt-auth.md`
 
 ### [2026-10-26] — Step 1.2b: Code Analysis & pgvector Vector Models + Alembic Migrations
 - **Scope / Module**: Database & Vector Architecture (`backend/app/models/analysis.py`, `backend/app/models/project.py`, `backend/alembic/`, `backend/tests/test_analysis_models.py`)

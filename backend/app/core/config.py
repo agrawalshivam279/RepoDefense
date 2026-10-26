@@ -33,6 +33,22 @@ class Settings(BaseSettings):
         default="redis://localhost:6379/0",
         description="Redis connection URL",
     )
+    SUPABASE_URL: str = Field(
+        default="https://localhost.supabase.co",
+        description="Supabase project URL",
+    )
+    SUPABASE_ANON_KEY: str = Field(
+        default="anon-key-placeholder",
+        description="Supabase anon public API key",
+    )
+    SUPABASE_JWT_SECRET: str = Field(
+        default="development-supabase-jwt-secret-min-32-chars-long",
+        description="Supabase JWT secret for validating user tokens",
+    )
+    JWT_ALGORITHM: str = Field(
+        default="HS256",
+        description="Algorithm used for verifying Supabase JWT tokens",
+    )
 
 
 settings = Settings()
