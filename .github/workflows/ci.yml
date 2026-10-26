@@ -62,14 +62,15 @@ jobs:
 
       - name: Run Database Migrations (alembic)
         env:
-          DATABASE_URL: postgresql+asyncpg://repouser:repopassword@localhost:5432/repodefense
+          DATABASE_URL: postgresql+asyncpg://repouser:repopassword@127.0.0.1:5432/repodefense
         run: |
-          cd backend && alembic upgrade head
+          cd backend
+          python -m alembic upgrade head
 
       - name: Backend Unit Tests (pytest)
         env:
-          DATABASE_URL: postgresql+asyncpg://repouser:repopassword@localhost:5432/repodefense
-          REDIS_URL: redis://localhost:6379/0
+          DATABASE_URL: postgresql+asyncpg://repouser:repopassword@127.0.0.1:5432/repodefense
+          REDIS_URL: redis://127.0.0.1:6379/0
         run: |
           if [ -d backend/tests ]; then
             pytest backend/tests/ -v --cov=backend/app
