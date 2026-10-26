@@ -13,6 +13,11 @@ from app.analyzers import (
     persist_analyzed_files,
     scan_workspace_files,
 )
+from app.analyzers.dependencies import (
+    extract_file_dependencies,
+    get_dependency_parser,
+    persist_dependencies,
+)
 from app.core.database import AsyncSessionLocal
 from app.models.project import Project, RepositorySnapshot
 from app.security.sanitizer import sanitize_workspace
@@ -154,11 +159,12 @@ async def clone_and_sanitize_repository(ctx: dict[str, Any], project_id: str) ->
                     id=uuid.uuid4(),
                     project_id=project.id,
                     commit_hash=commit_hash,
-                    summary="Processing snapshot files and code symbols...",
+                    summary="Processing snapshot files, symbols, and dependencies...",
                 )
                 session.add(snapshot)
                 created_files = await persist_analyzed_files(session, snapshot.id, files_meta)
 
+                # 1. AST Symbol Extraction
                 total_symbols = 0
                 for af in created_files:
                     full_path = temp_dir / af.path
@@ -166,10 +172,20 @@ async def clone_and_sanitize_repository(ctx: dict[str, Any], project_id: str) ->
                         syms = await extract_and_persist_file_symbols(session, af, full_path)
                         total_symbols += len(syms)
 
+                # 2. Dependency Manifest & Infrastructure Config Extraction
+                total_deps = 0
+                for af in created_files:
+                    full_path = temp_dir / af.path
+                    if full_path.is_file() and get_dependency_parser(af.path):
+                        deps = extract_file_dependencies(af.path, full_path.read_bytes())
+                        if deps:
+                            await persist_dependencies(session, project.id, deps)
+                            total_deps += len(deps)
+
                 summary_text = (
                     f"Cloned commit {commit_hash[:7]} with {len(files_meta)} files "
-                    f"({total_lines} lines, {size_mb:.2f} MB, {total_symbols} symbols). "
-                    f"Languages: {top_langs_str}."
+                    f"({total_lines} lines, {size_mb:.2f} MB, {total_symbols} symbols, "
+                    f"{total_deps} dependencies). Languages: {top_langs_str}."
                 )
                 snapshot.summary = summary_text
                 project.status = "cloned"
@@ -182,6 +198,7 @@ async def clone_and_sanitize_repository(ctx: dict[str, Any], project_id: str) ->
                 valid_file_count=len(files_meta),
                 total_lines=total_lines,
                 symbol_count=total_symbols,
+                dependency_count=total_deps,
             )
             return {
                 "status": "cloned",
@@ -190,6 +207,7 @@ async def clone_and_sanitize_repository(ctx: dict[str, Any], project_id: str) ->
                 "total_lines": total_lines,
                 "total_bytes": sanitization.total_bytes,
                 "symbol_count": total_symbols,
+                "dependency_count": total_deps,
             }
 
         except Exception as exc:

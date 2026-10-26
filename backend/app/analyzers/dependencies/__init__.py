@@ -6,19 +6,33 @@ import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.analyzers.dependencies.base import BaseDependencyParser, DependencyMetadata
-from app.analyzers.dependencies.node import NodeDependencyParser
-from app.analyzers.dependencies.python import PythonDependencyParser
+from app.analyzers.dependencies.infra import (
+    InfraDependencyParser,
+    parse_docker_compose,
+    parse_dockerfile,
+    parse_github_actions_workflow,
+)
+from app.analyzers.dependencies.node import NodeDependencyParser, parse_package_json
+from app.analyzers.dependencies.python import (
+    PythonDependencyParser,
+    parse_pyproject_toml,
+    parse_requirements_txt,
+)
 from app.models.analysis import Dependency
 
 logger = structlog.get_logger(__name__)
 
 _PYTHON_PARSER = PythonDependencyParser()
 _NODE_PARSER = NodeDependencyParser()
+_INFRA_PARSER = InfraDependencyParser()
 
 
-def get_dependency_parser(file_name: str) -> Optional[BaseDependencyParser]:
-    """Resolves the manifest parser based on the filename convention."""
-    lower_name = file_name.lower()
+def get_dependency_parser(file_path: Union[Path, str]) -> Optional[BaseDependencyParser]:
+    """Resolves the manifest parser based on the filename or path convention."""
+    path_obj = Path(file_path) if isinstance(file_path, str) else file_path
+    lower_name = path_obj.name.lower()
+    lower_path = path_obj.as_posix().lower()
+
     if lower_name == "pyproject.toml":
         return _PYTHON_PARSER
     if lower_name.startswith("requirements") and lower_name.endswith(".txt"):
@@ -27,6 +41,12 @@ def get_dependency_parser(file_name: str) -> Optional[BaseDependencyParser]:
         return _PYTHON_PARSER
     if lower_name == "package.json":
         return _NODE_PARSER
+    if lower_name.startswith(("dockerfile", "containerfile")):
+        return _INFRA_PARSER
+    if "compose" in lower_name and lower_name.endswith((".yml", ".yaml")):
+        return _INFRA_PARSER
+    if "workflows" in lower_path and lower_path.endswith((".yml", ".yaml")):
+        return _INFRA_PARSER
     return None
 
 
@@ -36,7 +56,7 @@ def extract_file_dependencies(
 ) -> list[DependencyMetadata]:
     """Extracts structured dependency records from manifest bytes if parser is registered."""
     path_obj = Path(file_path) if isinstance(file_path, str) else file_path
-    parser = get_dependency_parser(path_obj.name)
+    parser = get_dependency_parser(path_obj)
     if not parser:
         return []
 
@@ -90,6 +110,13 @@ __all__ = [
     "DependencyMetadata",
     "PythonDependencyParser",
     "NodeDependencyParser",
+    "InfraDependencyParser",
+    "parse_requirements_txt",
+    "parse_pyproject_toml",
+    "parse_package_json",
+    "parse_dockerfile",
+    "parse_docker_compose",
+    "parse_github_actions_workflow",
     "get_dependency_parser",
     "extract_file_dependencies",
     "persist_dependencies",
