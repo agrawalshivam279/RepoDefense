@@ -229,6 +229,9 @@ gantt
 
 ### Milestone 1.12: Embedding Generation & RAG Setup
 - **Goal:** Generate embeddings and set up retrieval pipeline.
+- **Sub-tasks:**
+  - [x] **Step 1.12a: AST-Aware Code Chunking Engine** (chunk.py schemas & chunker.py analyzer, Tree-sitter boundary alignment, module header isolation, oversized sliding-window subchunking, 7/7 tests)
+  - [ ] **Step 1.12b: Local Embeddings & pgvector Retrieval Pipeline** (sentence-transformers all-MiniLM-L6-v2, CodeEmbedding models, pgvector cosine distance search, ARQ worker integration)
 - **Components:**
   - `sentence-transformers` integration (`all-MiniLM-L6-v2`).
   - Code-aware chunking (function/class boundaries).
