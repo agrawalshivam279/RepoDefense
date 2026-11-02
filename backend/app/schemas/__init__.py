@@ -14,6 +14,10 @@ from app.schemas.evidence import (
     EvidenceResponse,
     EvidenceType,
 )
+from app.schemas.summary import (
+    ProjectSummary,
+    ProjectSummaryInput,
+)
 
 __all__ = [
     "ChunkType",
@@ -22,6 +26,8 @@ __all__ = [
     "EvidenceCreate",
     "EvidenceResponse",
     "EvidenceType",
+    "ProjectSummary",
+    "ProjectSummaryInput",
     "RetrievalQuery",
     "RetrievedChunk",
 ]

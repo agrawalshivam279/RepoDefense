@@ -50,5 +50,27 @@ class Settings(BaseSettings):
         description="Algorithm used for verifying Supabase JWT tokens",
     )
 
+    # LLM Settings (LiteLLM with FreeLLMAPI)
+    FREELLMAPI_BASE_URL: str = Field(
+        default="http://127.0.0.1:31415/v1",
+        description="FreeLLMAPI or OpenAI-compatible base URL",
+    )
+    FREELLMAPI_API_KEY: str = Field(
+        default="",
+        description="API key for FreeLLMAPI / OpenAI-compatible endpoint",
+    )
+    LLM_MODEL: str = Field(
+        default="openai/auto",
+        description="LiteLLM model identifier",
+    )
+    LLM_TIMEOUT_SECONDS: float = Field(
+        default=30.0,
+        description="Timeout in seconds for LLM generation requests",
+    )
+    LLM_MAX_RETRIES: int = Field(
+        default=2,
+        description="Maximum retry attempts on transient LLM failures",
+    )
+
 
 settings = Settings()
