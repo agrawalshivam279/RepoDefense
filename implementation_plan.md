@@ -203,7 +203,9 @@ gantt
 - **AI Coding Prompt:** "Using standard Python libraries or running the `git` CLI via subprocess, extract the last 100 commits from a local git repository. Parse the hash, author name, date, and commit message. Calculate commit counts per author."
 
 ### Milestone 1.10: LLM Integration & Project Summary
-- **Goal:** Generate AI-powered project summary using analyzed data.
+- **Goal:** [x] Generate AI-powered project summary using analyzed data.
+- **Sub-tasks:**
+  - [x] **Step 1.10: LiteLLM Client Wrapper & AI Project Summary Generator** (Pydantic ProjectSummary schemas, LiteLLM wrapper with retries/timeouts/fallbacks, FreeLLMAPI local integration, Principal Engineer prompt templates with XML delimiter isolation, ARQ cloner pipeline integration, 9/9 tests passing)
 - **Components:**
   - LiteLLM client wrapper (retries, timeouts).
   - LLM provider configuration (FreeLLMAPI).

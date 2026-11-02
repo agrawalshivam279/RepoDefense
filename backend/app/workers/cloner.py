@@ -8,6 +8,7 @@ from typing import Any
 import structlog
 from sqlalchemy import select
 
+from app.ai import generate_project_summary
 from app.analyzers import (
     embed_and_persist_workspace_chunks,
     extract_and_persist_evidence,
@@ -23,6 +24,7 @@ from app.analyzers.dependencies import (
 )
 from app.core.database import AsyncSessionLocal
 from app.models.project import Project, RepositorySnapshot
+from app.schemas.summary import ProjectSummaryInput
 from app.security.sanitizer import sanitize_workspace
 
 logger = structlog.get_logger(__name__)
@@ -127,7 +129,9 @@ async def clone_and_sanitize_repository(ctx: dict[str, Any], project_id: str) ->
         7. Deterministically extract and persist CodeSymbol AST records via Tree-sitter.
         8. Extract and persist third-party dependencies and container/CI configs.
         9. Extract recent git commit history and aggregate contributor ownership.
-        10. Update snapshot summary and set project status to 'cloned'.
+        10. Extract deterministic architectural evidence items.
+        11. Generate local vector embeddings and store in pgvector.
+        12. Synthesize structured AI project summary and update snapshot.
     """
     project_uuid = uuid.UUID(project_id)
     logger.info("starting_clone_job", project_id=project_id)
@@ -155,7 +159,6 @@ async def clone_and_sanitize_repository(ctx: dict[str, Any], project_id: str) ->
                 stmt = select(Project).where(Project.id == project_uuid)
                 project = (await session.execute(stmt)).scalar_one()
 
-                size_mb = sanitization.total_bytes / (1024 * 1024)
                 lang_counts: dict[str, int] = {}
                 total_lines = 0
                 for f in files_meta:
@@ -163,13 +166,12 @@ async def clone_and_sanitize_repository(ctx: dict[str, Any], project_id: str) ->
                     total_lines += f.total_lines
 
                 top_langs = sorted(lang_counts.items(), key=lambda x: x[1], reverse=True)[:3]
-                top_langs_str = ", ".join(f"{lang} ({cnt})" for lang, cnt in top_langs)
 
                 snapshot = RepositorySnapshot(
                     id=uuid.uuid4(),
                     project_id=project.id,
                     commit_hash=commit_hash,
-                    summary="Processing snapshot files, symbols, dependencies, and git history...",
+                    summary="Processing snapshot files, symbols, dependencies, and evidence...",
                 )
                 session.add(snapshot)
                 created_files = await persist_analyzed_files(session, snapshot.id, files_meta)
@@ -184,6 +186,7 @@ async def clone_and_sanitize_repository(ctx: dict[str, Any], project_id: str) ->
 
                 # 2. Dependency Manifest & Infrastructure Config Extraction
                 total_deps = 0
+                all_dep_names: list[str] = []
                 for af in created_files:
                     full_path = temp_dir / af.path
                     if full_path.is_file() and get_dependency_parser(af.path):
@@ -191,13 +194,10 @@ async def clone_and_sanitize_repository(ctx: dict[str, Any], project_id: str) ->
                         if deps:
                             await persist_dependencies(session, project.id, deps)
                             total_deps += len(deps)
+                            all_dep_names.extend(d.name for d in deps)
 
                 # 3. Git History & Contributor Extraction
                 git_history = await extract_git_history(temp_dir, max_commits=100)
-                contributors_str = ", ".join(
-                    f"{c.name} ({c.percentage}%, {c.commit_count} commits)"
-                    for c in git_history.contributors[:3]
-                )
 
                 # 4. Deterministic Architectural Evidence Extraction
                 evidence_items = await extract_and_persist_evidence(
@@ -210,16 +210,25 @@ async def clone_and_sanitize_repository(ctx: dict[str, Any], project_id: str) ->
                     session, temp_dir, created_files
                 )
 
-                summary_text = (
-                    f"Cloned commit {commit_hash[:7]} with {len(files_meta)} files "
-                    f"({total_lines} lines, {size_mb:.2f} MB, {total_symbols} symbols, "
-                    f"{total_deps} dependencies, {total_evidence} evidence items, "
-                    f"{total_chunks} embeddings). "
-                    f"Languages: {top_langs_str}. "
-                    f"Contributors ({git_history.total_commits} commits): "
-                    f"{contributors_str or 'None'}."
+                # 6. AI-Powered Project Summary Generation
+                evidence_tags = [
+                    f"{e.evidence_type.value}: {e.label}" for e in evidence_items[:30]
+                ]
+                summary_input = ProjectSummaryInput(
+                    project_name=project.name,
+                    commit_hash=commit_hash[:7],
+                    total_files=len(files_meta),
+                    total_lines=total_lines,
+                    top_languages=[f"{lang} ({cnt})" for lang, cnt in top_langs],
+                    dependencies=all_dep_names[:30],
+                    evidence_tags=evidence_tags,
+                    top_contributors=[
+                        f"{c.name} ({c.commit_count} commits)"
+                        for c in git_history.contributors[:5]
+                    ],
                 )
-                snapshot.summary = summary_text
+                ai_summary = await generate_project_summary(summary_input)
+                snapshot.summary = ai_summary.model_dump_json()
                 project.status = "cloned"
                 await session.commit()
 
@@ -235,6 +244,7 @@ async def clone_and_sanitize_repository(ctx: dict[str, Any], project_id: str) ->
                 total_commits=git_history.total_commits,
                 contributor_count=len(git_history.contributors),
                 top_contributor=git_history.primary_author,
+                summary_title=ai_summary.title,
             )
             return {
                 "status": "cloned",
@@ -249,6 +259,7 @@ async def clone_and_sanitize_repository(ctx: dict[str, Any], project_id: str) ->
                 "total_commits": git_history.total_commits,
                 "contributor_count": len(git_history.contributors),
                 "top_contributor": git_history.primary_author,
+                "summary_title": ai_summary.title,
             }
 
         except Exception as exc:

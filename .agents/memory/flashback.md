@@ -25,7 +25,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **Git History & Ownership** | Deterministic `git log` Parser & Contributor Stats | 🟢 Milestone 1.9 Complete |
 | **Evidence Extraction** | Deterministic Architectural Rule Engine & Persistence | 🟢 Milestone 1.11 Complete |
 | **Embeddings & RAG** | `all-MiniLM-L6-v2` via sentence-transformers (Local) | ⚪ Phase 2 Planned (Milestone 1.8) |
-| **AI LLM Routing** | LiteLLM (OpenAI-compatible, FreeLLMAPI primary) | ⚪ Phase 3 Planned (Milestone 1.9) |
+| **AI LLM Routing** | LiteLLM (OpenAI-compatible, FreeLLMAPI primary) | 🟢 Milestone 1.10 Complete |
 | **Defense State Machine** | Deterministic Python FSM (`backend/app/ai/fsm.py`) | ⚪ Phase 3 Planned (Milestone 1.10) |
 | **IDE Code Viewer** | Monaco / Prism code viewer with AST evidence highlights | ⚪ Phase 4 Planned |
 | **Evaluation & Export** | Rubric generator + PDF transcript export | ⚪ Phase 5 Planned |
@@ -119,6 +119,11 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-11-03] — Step 1.10: LiteLLM Client Wrapper & AI Project Summary Generator
+- **Scope / Module**: LLM Abstraction & Project Summary Generation (ackend/app/core/config.py, ackend/app/schemas/summary.py, ackend/app/ai/prompts.py, ackend/app/ai/llm.py, ackend/app/workers/cloner.py, ackend/pyproject.toml, ackend/tests/test_llm_summary.py)
+- **Details**: Built the foundational AI LLM routing layer for RepoDefense leveraging LiteLLM and FreeLLMAPI (OpenAI-compatible local gateway at http://127.0.0.1:31415/v1). Created Pydantic v2 schemas ProjectSummary and ProjectSummaryInput. Built centralized prompt engine in pp/ai/prompts.py enforcing the rigorous Principal Engineer persona with XML boundary isolation against prompt injection. Implemented resilient async LiteLLM client wrapper in pp/ai/llm.py with exponential backoff retries, timeouts, markdown code block stripping, and deterministic fallback generation. Integrated summary synthesis into the ARQ clone worker (ackend/app/workers/cloner.py), persisting structured JSON summaries into RepositorySnapshot.summary. Verified 100% via live FreeLLMAPI generation and 9/9 unit/integration tests. Concludes Milestone 1.10 (LLM Integration & Project Summary).
+- **Key Files**: ackend/app/core/config.py, ackend/app/schemas/summary.py, ackend/app/ai/prompts.py, ackend/app/ai/llm.py, ackend/app/workers/cloner.py, ackend/tests/test_llm_summary.py, docs/specs/step-1-10-llm-project-summary.md
 
 ### [2026-10-27] — Step 1.12b: Local all-MiniLM-L6-v2 Embeddings & pgvector HNSW Retrieval Pipeline
 - **Scope / Module**: Vector Embeddings & pgvector Cosine Retrieval (ackend/app/schemas/embedding.py, ackend/app/analyzers/embeddings.py, ackend/app/schemas/__init__.py, ackend/app/analyzers/__init__.py, ackend/app/workers/cloner.py, ackend/tests/test_embeddings.py)
