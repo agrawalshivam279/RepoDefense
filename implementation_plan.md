@@ -246,7 +246,9 @@ gantt
 - **AI Coding Prompt:** "Use `sentence-transformers` with the `all-MiniLM-L6-v2` model to generate embeddings for chunks of source code. Store the vector data in the `CodeEmbedding` table using pgvector. Write a retrieval function that takes a string query, embeds it, and returns the top 5 most similar code chunks."
 
 ### Milestone 1.13: Question Generation
-- **Goal:** Generate evidence-grounded questions about the repository.
+- **Goal:** [x] Generate evidence-grounded questions about the repository.
+- **Sub-tasks:**
+  - [x] **Step 1.13: Evidence-Grounded Question Generation Engine & REST API** (question.py schemas, prompts.py Principal Engineer templates with XML isolation, llm.py generator & fallbacks.py, questions.py FastAPI router, 18/18 tests passing)
 - **Components:**
   - Question generation prompt template.
   - Evidence-based question generation.

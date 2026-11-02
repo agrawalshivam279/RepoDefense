@@ -14,6 +14,13 @@ from app.schemas.evidence import (
     EvidenceResponse,
     EvidenceType,
 )
+from app.schemas.question import (
+    EvidenceRef,
+    GroundedQuestion,
+    QuestionCategory,
+    QuestionGenerationInput,
+    QuestionGenerationResponse,
+)
 from app.schemas.summary import (
     ProjectSummary,
     ProjectSummaryInput,
@@ -24,10 +31,15 @@ __all__ = [
     "CodeChunk",
     "EvidenceBase",
     "EvidenceCreate",
+    "EvidenceRef",
     "EvidenceResponse",
     "EvidenceType",
+    "GroundedQuestion",
     "ProjectSummary",
     "ProjectSummaryInput",
+    "QuestionCategory",
+    "QuestionGenerationInput",
+    "QuestionGenerationResponse",
     "RetrievalQuery",
     "RetrievedChunk",
 ]
