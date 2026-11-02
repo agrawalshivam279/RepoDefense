@@ -4,7 +4,7 @@ import asyncio
 import json
 import os
 import re
-from typing import Optional
+from typing import List, Optional
 
 import structlog
 
@@ -15,11 +15,21 @@ import litellm  # noqa: E402
 litellm.telemetry = False
 litellm.drop_params = True
 
+from app.ai.fallbacks import (  # noqa: E402
+    build_deterministic_fallback_questions,
+    build_deterministic_fallback_summary,
+)
 from app.ai.prompts import (  # noqa: E402
     PROJECT_SUMMARY_SYSTEM_PROMPT,
+    QUESTION_GENERATION_SYSTEM_PROMPT,
     format_project_summary_user_prompt,
+    format_question_generation_user_prompt,
 )
 from app.core.config import settings  # noqa: E402
+from app.schemas.question import (  # noqa: E402
+    GroundedQuestion,
+    QuestionGenerationInput,
+)
 from app.schemas.summary import ProjectSummary, ProjectSummaryInput  # noqa: E402
 
 logger = structlog.get_logger(__name__)
@@ -34,62 +44,6 @@ def clean_json_response(raw_text: str) -> str:
     if match:
         return match.group(1).strip()
     return text
-
-
-def build_deterministic_fallback_summary(meta: ProjectSummaryInput) -> ProjectSummary:
-    """Constructs a deterministic, evidence-grounded summary when LLM is unavailable."""
-    primary_lang = "Unknown"
-    if meta.top_languages:
-        # e.g., "Python (15)" -> "Python"
-        primary_lang = meta.top_languages[0].split("(")[0].strip()
-
-    title = f"{meta.project_name} Codebase Overview"
-    tagline = f"Software project in {primary_lang} with {meta.total_files} analyzed files."
-
-    style = "Modular Application"
-    dep_text = " ".join(d.lower() for d in meta.dependencies)
-    if any(k in dep_text for k in ["fastapi", "express", "flask"]):
-        style = "REST API Service"
-    elif any(k in dep_text for k in ["next", "react"]):
-        style = "Full-Stack Web Application"
-
-    known_frameworks = ["fastapi", "flask", "django", "next", "react", "express", "torch"]
-    frameworks = [
-        dep for dep in meta.dependencies
-        if any(fw in dep.lower() for fw in known_frameworks)
-    ][:5]
-
-    components = meta.evidence_tags[:5] if meta.evidence_tags else ["Core Application Logic"]
-    sample_deps = ", ".join(meta.dependencies[:3]) if meta.dependencies else primary_lang
-
-    defense_topics = [
-        f"Scalability and dependency lifecycle for primary packages ({sample_deps})",
-        "Error handling, input validation, and boundary exception safety across modules",
-    ]
-
-    top_authors = (
-        ", ".join(meta.top_contributors[:2])
-        if meta.top_contributors
-        else "the project team"
-    )
-
-    narrative = (
-        f"{meta.project_name} contains {meta.total_files} source files totaling "
-        f"{meta.total_lines} lines of code. The primary language is {primary_lang}. "
-        f"Key detected architectural components include: {', '.join(components)}. "
-        f"Recent contributions reflect active development led by {top_authors}."
-    )
-
-    return ProjectSummary(
-        title=title,
-        tagline=tagline,
-        primary_language=primary_lang,
-        detected_frameworks=frameworks,
-        architectural_style=style,
-        key_components=components,
-        potential_defense_topics=defense_topics,
-        narrative=narrative,
-    )
 
 
 async def generate_project_summary(
@@ -178,3 +132,101 @@ async def generate_project_summary(
                 return build_deterministic_fallback_summary(meta)
 
     return build_deterministic_fallback_summary(meta)
+
+
+async def generate_grounded_questions(
+    input_data: QuestionGenerationInput,
+    model: Optional[str] = None,
+    api_key: Optional[str] = None,
+    base_url: Optional[str] = None,
+    timeout_seconds: Optional[float] = None,
+    max_retries: Optional[int] = None,
+) -> List[GroundedQuestion]:
+    """Generates evidence-grounded interview questions via LiteLLM with retries and fallback."""
+    effective_model = model if model is not None else settings.LLM_MODEL
+    effective_key = api_key if api_key is not None else settings.FREELLMAPI_API_KEY
+    effective_base_url = base_url if base_url is not None else settings.FREELLMAPI_BASE_URL
+    timeout = timeout_seconds or settings.LLM_TIMEOUT_SECONDS
+    retries = max_retries if max_retries is not None else settings.LLM_MAX_RETRIES
+
+    if not effective_key:
+        logger.warning("llm_api_key_not_configured_for_questions", project=input_data.project_name)
+        return build_deterministic_fallback_questions(input_data)
+
+    user_prompt = format_question_generation_user_prompt(input_data)
+    messages = [
+        {"role": "system", "content": QUESTION_GENERATION_SYSTEM_PROMPT},
+        {"role": "user", "content": user_prompt},
+    ]
+
+    backoff = 1.0
+    for attempt in range(1, retries + 2):
+        try:
+            logger.info(
+                "calling_litellm_question_generation",
+                model=effective_model,
+                attempt=attempt,
+                project=input_data.project_name,
+            )
+
+            kwargs = {
+                "model": effective_model,
+                "messages": messages,
+                "temperature": 0.3,
+                "timeout": timeout,
+                "api_key": effective_key,
+            }
+            if effective_base_url:
+                kwargs["api_base"] = effective_base_url
+
+            response = await litellm.acompletion(**kwargs)
+            raw_content = response.choices[0].message.content or ""
+            cleaned = clean_json_response(raw_content)
+
+            try:
+                data = json.loads(cleaned)
+                if isinstance(data, dict) and "questions" in data:
+                    data = data["questions"]
+                if not isinstance(data, list):
+                    raise ValueError("Expected JSON array of question objects")
+
+                parsed_questions: list[GroundedQuestion] = []
+                for item in data:
+                    q = GroundedQuestion.model_validate(item)
+                    parsed_questions.append(q)
+
+                if parsed_questions:
+                    logger.info(
+                        "llm_question_generation_success",
+                        project=input_data.project_name,
+                        count=len(parsed_questions),
+                        attempt=attempt,
+                    )
+                    return parsed_questions[:input_data.requested_count]
+
+            except Exception as parse_err:
+                logger.warning(
+                    "llm_question_generation_parse_error",
+                    error=str(parse_err),
+                    raw_content=raw_content[:200],
+                )
+
+        except Exception as exc:
+            logger.warning(
+                "llm_question_generation_attempt_failed",
+                attempt=attempt,
+                max_retries=retries,
+                error=str(exc),
+            )
+            if attempt <= retries:
+                await asyncio.sleep(backoff)
+                backoff *= 2.0
+            else:
+                logger.error(
+                    "llm_question_generation_all_attempts_failed",
+                    project=input_data.project_name,
+                    error=str(exc),
+                )
+                return build_deterministic_fallback_questions(input_data)
+
+    return build_deterministic_fallback_questions(input_data)
