@@ -26,7 +26,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **Evidence Extraction** | Deterministic Architectural Rule Engine & Persistence | 🟢 Milestone 1.11 Complete |
 | **Embeddings & RAG** | `all-MiniLM-L6-v2` via sentence-transformers (Local) | ⚪ Phase 2 Planned (Milestone 1.8) |
 | **AI LLM Routing** | LiteLLM (OpenAI-compatible, FreeLLMAPI primary) | 🟢 Milestone 1.10 Complete |
-| **Defense State Machine** | Deterministic Python FSM (`backend/app/ai/fsm.py`) | 🟢 Step 1.14a Complete |
+| **Defense Session & FSM** | Interactive Next.js 15 UI + Python FSM | 🟢 Milestone 1.14 Complete |
 | **IDE Code Viewer** | Monaco / Prism code viewer with AST evidence highlights | ⚪ Phase 4 Planned |
 | **Evaluation & Export** | Rubric generator + PDF transcript export | ⚪ Phase 5 Planned |
 
@@ -119,6 +119,11 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-11-04] — Step 1.14b: Next.js 15 Interactive Defense Session UI & Turn Exchange
+- **Scope / Module**: Frontend Interview UI (`frontend/src/types/defense.ts`, `frontend/src/lib/defenseApi.ts`, `frontend/src/components/domain/DefenseTurnBubble.tsx`, `frontend/src/app/interview/[id]/page.tsx`, `frontend/src/components/domain/ProjectCard.tsx`)
+- **Details**: Built the interactive defense interview page in Next.js 15 App Router (`/interview/[id]`). Created TypeScript definitions mirroring backend defense schemas (`DefenseSessionState`, `DefenseTurn`, `GroundedQuestion`). Implemented typed REST API client in `defenseApi.ts` connecting to FastAPI defense session endpoints with Supabase JWT bearer authentication. Created `DefenseTurnBubble` presenting structured dialogue turns with avatars and distinct styles for normal interviewer questions, production stress tests (amber alert), mentor guidance (indigo card), and score badges. Developed the full responsive interview page with question anchor card, scrollable transcript with auto-scroll, character counter (min 5, max 5000), loading spinners, and completion scorecard with overall defense score. Verified 100% via Next.js production build (`next build`), TypeScript check (`tsc --noEmit`), and all files strictly <= 300 LOC. Concludes Milestone 1.14 (Defense Session — Core Loop).
+- **Key Files**: `frontend/src/types/defense.ts`, `frontend/src/lib/defenseApi.ts`, `frontend/src/components/domain/DefenseTurnBubble.tsx`, `frontend/src/app/interview/[id]/page.tsx`, `docs/specs/step-1-14b-defense-session-ui.md`
 
 ### [2026-11-04] — Step 1.14a: Defense Session FSM State Machine, Answer Evaluation & REST API
 - **Scope / Module**: Defense Session & FSM Engine (`backend/app/schemas/defense.py`, `backend/app/schemas/__init__.py`, `backend/app/ai/prompts.py`, `backend/app/ai/fallbacks.py`, `backend/app/ai/evaluator.py`, `backend/app/ai/fsm.py`, `backend/app/ai/__init__.py`, `backend/app/api/v1/defense.py`, `backend/app/main.py`, `backend/tests/test_defense_session.py`)
