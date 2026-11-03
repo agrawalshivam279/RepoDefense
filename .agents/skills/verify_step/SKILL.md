@@ -1,10 +1,10 @@
 ---
 name: verify_step
-version: '2.0'
+version: '2.1'
 description: >-
   Automated Quality Gate & Verification Pipeline for RepoDefense. Sequentially chains compiler & lint checks (Stage 0),
-  schema & contract validation (Stage 0.5), test_writer (Stage 1A), test_runner (Stage 1B),
-  and code_reviewer (Stage 2) to provide total quality verification before code is merged.
+  specialized domain skill contract validation (Stage 0.5: security_auditor, ast_inspector, db_migrator, eval_rag, eval_persona),
+  test_writer (Stage 1A), test_runner (Stage 1B), and code_reviewer (Stage 2) to provide total quality verification before code is merged.
   Enforces strict failure halts, incremental test execution, and precision fix prompts.
   Use whenever code implementation is finished, before shipping, or calling /verify_step.
 ---
@@ -22,11 +22,11 @@ flowchart TD
     A["Trigger /verify_step (Feature / Active Files)"] --> S0["⚡ Stage 0: Pre-flight Compiler & Lint Gate<br/>(ruff check, pytest --collect-only, tsc --noEmit) [Max 30s]"]
     S0 --> S0Check{"Syntax / Types Valid?"}
     S0Check -- "❌ Errors" --> S0Fail["🛑 FAST FAIL: Return Diagnostics + Instant Fix Prompt"]
-    S0Check -- "✅ Clean" --> S05{"Feature Touches Schemas, Parsers or Models?"}
+    S0Check -- "✅ Clean" --> S05{"Feature Touches Schemas, Parsers or Domain Skills?"}
 
-    S05 -- "Yes" --> S05Val["🔍 Stage 0.5: Schema & Contract Validator<br/>(Pydantic v2, Tree-sitter AST, Safe Path Checks) [Max 15s]"]
-    S05Val --> S05Check{"Contracts Valid?"}
-    S05Check -- "❌ Schema Drift" --> S05Fail["🛑 STOP: Return Schema Drift Details + Fix Prompt"]
+    S05 -- "Yes" --> S05Val["🔍 Stage 0.5: Specialized Domain Skill & Contract Validator<br/>(security_auditor, ast_inspector, db_migrator, eval_rag, eval_persona) [Max 20s]"]
+    S05Val --> S05Check{"Contracts & Invariants Valid?"}
+    S05Check -- "❌ Invariant Broken" --> S05Fail["🛑 STOP: Return Invariant Details + Fix Prompt"]
     S05Check -- "✅ Valid" --> B["✍️ Stage 1A: test_writer (Spec-driven test authoring) [Max 120s]"]
     S05 -- "No" --> B
 
@@ -54,20 +54,6 @@ flowchart TD
 
 ---
 
-## ⏱️ Timeout & Budget Guardrails
-
-To prevent hangs or infinite loops during verification:
-
-| Stage | Operation | Max Wall-Clock Time | Failure Action |
-| :--- | :--- | :--- | :--- |
-| **Stage 0** | Compiler & Lint Check | **30s** | Kill process, output type/lint errors |
-| **Stage 0.5** | Schema & Contract Validation | **15s** | Halt on schema drift or security flaw |
-| **Stage 1A** | `test_writer` Authoring | **120s** | Check syntax, verify test file exists |
-| **Stage 1B** | `test_runner` Execution | **60s** per test file | Terminate hung test, diagnose async lock |
-| **Stage 2** | `code_reviewer` Review | **90s** | Generate actionable fix prompt |
-
----
-
 ## 🔒 Automated Execution Stages
 
 ### Stage 0: Pre-flight Compiler & Lint Gate
@@ -76,7 +62,7 @@ Before invoking testing subagents, execute a fast static compilation sweep:
 
 1. **Backend Python Lint & Syntax Check**:
    ```bash
-   ruff check backend/app
+   ruff check backend/app backend/tests
    pytest backend/tests/ --collect-only
    ```
 2. **Frontend TypeScript & Next.js Lint**:
@@ -89,18 +75,19 @@ Before invoking testing subagents, execute a fast static compilation sweep:
 
 ---
 
-### Stage 0.5: Schema & Contract Validator
+### Stage 0.5: Specialized Domain Skill & Contract Validator
 
-_(Triggered conditionally when the feature touches schemas, analyzers, models, or security)_
+_(Triggered conditionally when the milestone touches schemas, analyzers, models, AI prompts, or security)_
 
-1. **Target Files**: `backend/app/schemas/`, `backend/app/models/`, `backend/app/analyzers/`, `backend/app/security/`.
-2. **Contract Invariants Verified**:
-   - **Zero Code Execution & Sanitization**: Validated by [`security_auditor`](file:///d:/RepoDefense/.agents/skills/security_auditor/SKILL.md) (zero eval/exec, path traversal containment via `is_relative_to`, secret redaction).
-   - **AST Parsing Precision**: Validated by [`ast_inspector`](file:///d:/RepoDefense/.agents/skills/ast_inspector/SKILL.md) (Tree-sitter symbol boundaries preserved without mid-statement splits).
-   - **Database & Vector Schemas**: Validated by [`db_migrator`](file:///d:/RepoDefense/.agents/skills/db_migrator/SKILL.md) and [`eval_rag`](file:///d:/RepoDefense/.agents/skills/eval_rag/SKILL.md) (Vector(384) columns, HNSW index with vector_cosine_ops, Alembic migrations).
-   - **Evidence Grounding**: LLM prompt schemas require valid AST symbol and line range arguments.
-   - **Pydantic v2 Schema Conformance**: Request and response schemas cleanly validate.
-   - **File Length $\le 300$ Lines**: Verified using line counts.
+1. **Target Modules Audited**:
+   - `backend/app/schemas/`, `backend/app/models/`, `backend/app/analyzers/`, `backend/app/security/`, `backend/app/ai/`.
+2. **Domain Skill Invariants Enforced**:
+   - **`security_auditor`**: Asserts strict zero dynamic code execution (`eval/exec`), path traversal containment (`Path.is_relative_to`), and secret redactions.
+   - **`ast_inspector`**: Asserts Tree-sitter AST symbol boundaries preserved without mid-statement splits and exact 1-indexed line spans.
+   - **`db_migrator`**: Asserts PostgreSQL 17 + `Vector(384)` schema conformity, HNSW cosine distance index parameter integrity, and asyncpg transaction handling.
+   - **`eval_rag`**: Asserts token budgeting on chunks (~500 max tokens) and pgvector cosine distance `<=>` search ranking accuracy.
+   - **`eval_persona`**: Asserts Principal Engineer persona calibration, XML boundary sanitization against prompt injection, and Pydantic v2 structured output conformance.
+   - **File Length Gate**: Strictly $\le 300$ LOC per file across all application and test modules.
 3. If contract drift or security vulnerabilities are detected, **HALT IMMEDIATELY** and report the discrepancy before authoring tests.
 
 ---
@@ -147,13 +134,14 @@ _(Triggered only after all tests pass 100%)_
 
 ### ⚡ Stage 0 — Pre-flight Compilation & Lint
 
-- **Commands**: `ruff check backend/app`, `pytest --collect-only`
+- **Commands**: `ruff check backend/app`, `pytest --collect-only`, `npx tsc --noEmit`
 - **Status**: `✅ 0 type errors, 0 lint errors`
 
 ---
 
-### 🔍 Stage 0.5 — Schema & Contract Validation
+### 🔍 Stage 0.5 — Specialized Domain Skill & Contract Validation
 
+- **Active Skill Checks**: `[security_auditor | ast_inspector | db_migrator | eval_rag | eval_persona | doctor]`
 - **Status**: `✅ Pydantic schemas validated, zero code execution verified, <= 300 LOC verified`
 
 ---
@@ -162,29 +150,12 @@ _(Triggered only after all tests pass 100%)_
 
 - **Stage 1A (Authoring)**: `test_writer` generated `[backend/tests/test_feature.py](file:///d:/RepoDefense/backend/tests/test_feature.py)`
 - **Stage 1B (Execution)**: `pytest backend/tests/test_feature.py -v`
-- **Status**: `✅ 5 passed, 0 failed`
+- **Status**: `✅ X passed, 0 failed`
 - **Coverage**: `Line: 89%, Branch: 81%`
 
 ---
 
-### 🚨 Test Failure Diagnosis _(Only if tests fail)_
-
-- **Failed Assertion**: `test_path_traversal_rejection`
-- **Classification**: `SECURITY_FILTER_BYPASS`
-- **Location**: `[backend/app/services/cloner.py:42](file:///d:/RepoDefense/backend/app/services/cloner.py#L42)`
-- **Expected**: `SecurityException` raised for paths escaping sandbox.
-- **Root Cause**: Missing boundary check.
-- **⚡ Curated Auto-Fix Prompt**:
-
-> ```text
-> Update cloner.py to assert path.is_relative_to(safe_root).
-> ```
-
----
-
 ### 🕵️ Stage 2 — Static Architecture & Security Review
-
-_(Only displayed if tests pass)_
 
 #### 🛡️ Architecture & Invariants Audit
 - [x] Zero code execution (Static analysis only): `PASSED`
@@ -193,22 +164,11 @@ _(Only displayed if tests pass)_
 - [x] Evidence grounding intact: `PASSED`
 - [x] Parameterized SQL queries: `PASSED`
 
-#### 💡 Worth Improving
-
-- **[Finding Title]**: `[backend/app/services/parser.py:55](file:///d:/RepoDefense/backend/app/services/parser.py#L55)`
-- **Observation**: Missing type annotation on helper return value.
-- **Recommended Fix**:
-
-```python
-# Proposed snippet
-```
-
 ---
 
 ### 🚦 Final Quality Gate Verdict
 
 - [ ] ❌ **BLOCKED**: Compilation, contracts, or tests failed. Run the curated fix prompt above.
-- [ ] 🟡 **PASSED WITH POLISH**: Tests pass, but review suggestions are recommended.
 - [ ] 🟢 **100% READY TO SHIP**: All tests passed, contracts verified, security checks passed, and code is clean. Ready for `/ship_step`.
 ````
 

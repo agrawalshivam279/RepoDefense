@@ -7,7 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.redis import enqueue_clone_job
 from app.core.security import get_current_user
+from app.models.analysis import Evidence
 from app.models.project import Project, User
+from app.schemas.evidence import EvidenceResponse
 from app.schemas.project import ProjectCreate, ProjectResponse
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
@@ -135,3 +137,38 @@ async def delete_project(
     await db.delete(project)
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get(
+    "/{project_id}/evidence",
+    response_model=list[EvidenceResponse],
+    summary="List all load-bearing architectural evidence for a project",
+    description=(
+        "Retrieves extracted architectural evidence records (frameworks, database models, "
+        "auth guards, endpoints, queues) anchored in the codebase, enforcing tenant isolation."
+    ),
+)
+async def list_project_evidence(
+    project_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[EvidenceResponse]:
+    """Retrieves all architectural evidence records for the specified project."""
+    stmt_proj = select(Project).where(
+        Project.id == project_id,
+        Project.user_id == current_user.id,
+    )
+    project = (await db.execute(stmt_proj)).scalar_one_or_none()
+    if project is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found",
+        )
+
+    stmt_ev = (
+        select(Evidence)
+        .where(Evidence.project_id == project_id)
+        .order_by(Evidence.start_line, Evidence.id)
+    )
+    evidence_rows = (await db.execute(stmt_ev)).scalars().all()
+    return [EvidenceResponse.model_validate(e) for e in evidence_rows]

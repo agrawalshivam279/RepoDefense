@@ -277,7 +277,9 @@ gantt
 - **AI Coding Prompt:** "Build the Next.js UI for a chat-like defense session. Implement the FastAPI endpoints to start a session, get the next question, submit an answer, and return the LLM's evaluation and score for that answer."
 
 ### Milestone 1.15: Evidence Display
-- **Goal:** Show evidence behind each question.
+- **Goal:** [x] Show evidence behind each question.
+- **Sub-tasks:**
+  - [x] **Step 1.15: Evidence Display Panel & Grounding Inspector** (GET /projects/{project_id}/evidence endpoint, EvidenceItem types, EvidencePanel slide-over drawer with filtering and cited anchor highlights, integrated into interview UI, 35/35 tests passing)
 - **Components:**
   - Evidence panel in defense session UI.
   - File references with paths and line numbers.
