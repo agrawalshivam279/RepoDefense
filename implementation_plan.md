@@ -261,6 +261,9 @@ gantt
 
 ### Milestone 1.14: Defense Session — Core Loop
 - **Goal:** User can start a defense session and answer questions.
+- **Sub-tasks:**
+  - [x] **Step 1.14a: Defense Session FSM State Machine, Answer Evaluation & REST API** (defense.py schemas, prompts.py Principal Engineer templates, fsm.py state machine, evaluator.py LiteLLM/fallback, defense.py FastAPI endpoints, 9/9 tests)
+  - [ ] **Step 1.14b: Next.js 15 Interactive Defense Session UI & Turn Exchange** (interview chat view, turn progression, real-time response submission, score & feedback display)
 - **Components:**
   - Defense session creation (`POST /projects/{id}/defense/start`).
   - Interview state machine.

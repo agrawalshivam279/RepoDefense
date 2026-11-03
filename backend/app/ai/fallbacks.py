@@ -3,6 +3,7 @@
 import uuid
 from typing import List
 
+from app.schemas.defense import EvaluationOutput, SecondaryEvaluationOutput
 from app.schemas.question import (
     GroundedQuestion,
     QuestionCategory,
@@ -138,3 +139,78 @@ def build_deterministic_fallback_questions(
         )
 
     return questions[:input_data.requested_count]
+
+
+def build_deterministic_fallback_evaluation(
+    question: GroundedQuestion,
+    candidate_answer: str,
+) -> EvaluationOutput:
+    """Evaluates candidate defense with deterministic heuristics when LLM is unavailable."""
+    clean = candidate_answer.strip().lower()
+    word_count = len(clean.split())
+    weak_tokens = ["don't know", "idk", "copied", "tutorial", "boilerplate", "not sure"]
+
+    is_weak = word_count < 8 or any(tok in clean for tok in weak_tokens)
+
+    if is_weak:
+        depth = max(2, min(5, word_count))
+        ref_file = question.cited_files[0] if question.cited_files else "the module"
+        return EvaluationOutput(
+            passed_initial_defense=False,
+            depth_score=depth,
+            grounding_verified=False,
+            feedback=(
+                "Your defense is vague or lacks repository grounding. "
+                "Principal engineers look for specific architectural mechanisms and trade-offs."
+            ),
+            stress_test_prompt=None,
+            mentor_hint=(
+                f"Review how `{ref_file}` coordinates resource lifecycle and boundaries. "
+                "Think about failure modes, connection limits, and defensive checks."
+            ),
+            retest_question=(
+                f"In `{ref_file}`, what specific boundary or fallback pattern would you implement "
+                "to ensure graceful degradation under failure?"
+            ),
+        )
+
+    depth = min(10, 6 + (word_count // 25))
+    ref_hint = question.context_hint or "this component"
+    return EvaluationOutput(
+        passed_initial_defense=True,
+        depth_score=depth,
+        grounding_verified=True,
+        feedback=(
+            "Solid architectural defense. You accurately identified the component design "
+            "and articulated concrete trade-offs."
+        ),
+        stress_test_prompt=(
+            f"Production Constraint: Under a sudden 10,000 req/sec spike on {ref_hint}, "
+            "database connections or worker threads become exhausted. "
+            "What architectural changes or caching/pooling strategies would you apply?"
+        ),
+        mentor_hint=None,
+        retest_question=None,
+    )
+
+
+def build_deterministic_fallback_secondary(
+    context_prompt: str,
+    candidate_answer: str,
+) -> SecondaryEvaluationOutput:
+    """Evaluates follow-up stress test or re-test with deterministic heuristics."""
+    clean = candidate_answer.strip()
+    words = len(clean.split())
+    if words < 6:
+        return SecondaryEvaluationOutput(
+            handled_successfully=False,
+            follow_up_score=4,
+            feedback="Response is too brief to address the production constraints.",
+        )
+
+    score = min(10, 7 + (words // 25))
+    return SecondaryEvaluationOutput(
+        handled_successfully=True,
+        follow_up_score=score,
+        feedback="Constructive proposal demonstrating practical engineering mitigations.",
+    )

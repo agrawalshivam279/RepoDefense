@@ -1,8 +1,6 @@
 import uuid
 from unittest.mock import AsyncMock, MagicMock
 
-import pytest
-
 from app.analyzers.evidence import extract_and_persist_evidence, extract_evidence
 from app.models.analysis import AnalyzedFile, CodeSymbol, Dependency, Evidence
 from app.schemas.evidence import EvidenceCreate, EvidenceResponse, EvidenceType
@@ -229,8 +227,20 @@ def test_extract_evidence_deduplication():
     """Verifies duplicate dependencies do not produce duplicate evidence."""
     project_id = uuid.uuid4()
     deps = [
-        Dependency(id=uuid.uuid4(), project_id=project_id, name="fastapi", version="0.115.0", source_file="pyproject.toml"),
-        Dependency(id=uuid.uuid4(), project_id=project_id, name="fastapi", version="0.115.0", source_file="pyproject.toml"),
+        Dependency(
+            id=uuid.uuid4(),
+            project_id=project_id,
+            name="fastapi",
+            version="0.115.0",
+            source_file="pyproject.toml",
+        ),
+        Dependency(
+            id=uuid.uuid4(),
+            project_id=project_id,
+            name="fastapi",
+            version="0.115.0",
+            source_file="pyproject.toml",
+        ),
     ]
     items = extract_evidence(project_id, files=[], symbols=[], dependencies=deps)
     assert len(items) == 1
@@ -242,13 +252,38 @@ def test_extract_and_persist_evidence_db():
 
     async def _run():
         project_id, snapshot_id, file_id = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
-        af = AnalyzedFile(id=file_id, snapshot_id=snapshot_id, path="app/main.py", language="python", total_lines=50, size_bytes=1200)
-        sym = CodeSymbol(id=uuid.uuid4(), file_id=file_id, name="root_health", symbol_type="endpoint", start_line=15, end_line=25, signature="@app.get('/health')")
-        dep = Dependency(id=uuid.uuid4(), project_id=project_id, name="fastapi", version="0.115.0", source_file="requirements.txt")
+        af = AnalyzedFile(
+            id=file_id,
+            snapshot_id=snapshot_id,
+            path="app/main.py",
+            language="python",
+            total_lines=50,
+            size_bytes=1200,
+        )
+        sym = CodeSymbol(
+            id=uuid.uuid4(),
+            file_id=file_id,
+            name="root_health",
+            symbol_type="endpoint",
+            start_line=15,
+            end_line=25,
+            signature="@app.get('/health')",
+        )
+        dep = Dependency(
+            id=uuid.uuid4(),
+            project_id=project_id,
+            name="fastapi",
+            version="0.115.0",
+            source_file="requirements.txt",
+        )
 
         mock_session = AsyncMock()
         mock_session.add = MagicMock()
-        mock_result_files, mock_result_syms, mock_result_deps = MagicMock(), MagicMock(), MagicMock()
+        mock_result_files, mock_result_syms, mock_result_deps = (
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+        )
         mock_result_files.scalars.return_value.all.return_value = [af]
         mock_result_syms.scalars.return_value.all.return_value = [sym]
         mock_result_deps.scalars.return_value.all.return_value = [dep]

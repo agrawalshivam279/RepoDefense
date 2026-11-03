@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.auth import router as auth_router
+from app.api.v1.defense import router as defense_router
 from app.api.v1.projects import router as projects_router
 from app.api.v1.questions import router as questions_router
 from app.core.config import settings
@@ -44,6 +45,7 @@ app.add_middleware(
 app.include_router(auth_router, prefix=f"{settings.API_V1_STR}/v1")
 app.include_router(projects_router, prefix=f"{settings.API_V1_STR}/v1")
 app.include_router(questions_router, prefix=f"{settings.API_V1_STR}/v1")
+app.include_router(defense_router, prefix=f"{settings.API_V1_STR}/v1")
 
 
 @app.get("/", tags=["System"])

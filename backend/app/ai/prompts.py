@@ -67,16 +67,62 @@ Required JSON Schema:
 ]
 """
 
+DEFENSE_EVALUATION_SYSTEM_PROMPT = """You are a rigorous Principal Software Engineer conducting \
+an architectural defense interview at RepoDefense.
+Your task is to critically evaluate a candidate's defense of a specific architectural choice in \
+their codebase, grounded in repository evidence.
+
+Evaluation Rubric:
+1. Grounding & Truth: Does the answer accurately reflect the repository architecture?
+2. Depth Score (1 to 10):
+   - 1-5 (Failed Initial Defense): Superficial, hand-wavy, inaccurate, or tutorial-level buzzwords.
+   - 6-10 (Passed Initial Defense): Clear grasp of trade-offs, constraints, failure modes, and code.
+3. Branching Logic:
+   - If depth_score >= 6 (passed_initial_defense = true): Inject an incisive `stress_test_prompt` \
+introducing a real-world production constraint (e.g. 10k req/s spike, DB connection exhaustion, \
+cache stampede, partition failure). Set `mentor_hint` and `retest_question` to null.
+   - If depth_score < 6 (passed_initial_defense = false): Provide a constructive `mentor_hint` \
+explaining the architectural principle without giving the direct answer, and ask a guided \
+`retest_question`. Set `stress_test_prompt` to null.
+4. Format: Strictly return a single JSON object conforming to the schema. No markdown fences.
+
+Required JSON Schema:
+{
+  "passed_initial_defense": true,
+  "depth_score": 7,
+  "grounding_verified": true,
+  "feedback": "<Direct, constructive Principal Engineer feedback>",
+  "stress_test_prompt": "<Constraint scenario if passed, else null>",
+  "mentor_hint": "<Guiding explanation if failed, else null>",
+  "retest_question": "<Follow-up variant question if failed, else null>"
+}
+"""
+
+SECONDARY_EVALUATION_SYSTEM_PROMPT = """You are a Principal Software Engineer \
+evaluating a candidate's response to a production stress-test or a guided mentor re-test \
+at RepoDefense.
+Assess whether the candidate proposed viable mitigations (e.g., connection pooling, caching, \
+idempotency keys, circuit breakers) or addressed the architectural blind spot.
+
+Required JSON Schema:
+{
+  "handled_successfully": true,
+  "follow_up_score": 8,
+  "feedback": "<Concise feedback on the candidate's proposed solution>"
+}
+"""
+
 
 def _sanitize_meta_str(val: str) -> str:
     """Escapes user-supplied metadata strings to mitigate prompt injection."""
     clean = html.escape(val.strip())
-    # Strip any attempt to close XML boundary tags
     clean = (
         clean.replace("</repository_metadata>", "")
         .replace("<repository_metadata>", "")
         .replace("</evidence_catalog>", "")
         .replace("<evidence_catalog>", "")
+        .replace("</candidate_defense>", "")
+        .replace("<candidate_defense>", "")
     )
     return clean
 
@@ -161,4 +207,43 @@ def format_question_generation_user_prompt(input_data: QuestionGenerationInput) 
 
 Generate exactly {input_data.requested_count} challenging, evidence-grounded interview questions \
 as a strict JSON array adhering to the required schema.
+"""
+
+
+def format_defense_evaluation_user_prompt(
+    question_text: str,
+    context_hint: str,
+    cited_files: list[str],
+    candidate_answer: str,
+) -> str:
+    """Formats question context and candidate's defense into XML-delimited evaluation prompt."""
+    files_str = ", ".join(_sanitize_meta_str(f) for f in cited_files) or "codebase"
+    return f"""<question_context>
+  <question>{_sanitize_meta_str(question_text)}</question>
+  <context_hint>{_sanitize_meta_str(context_hint)}</context_hint>
+  <cited_files>{files_str}</cited_files>
+</question_context>
+
+<candidate_defense>
+{_sanitize_meta_str(candidate_answer)}
+</candidate_defense>
+
+Evaluate candidate defense against repository context and output EvaluationOutput JSON.
+"""
+
+
+def format_secondary_evaluation_user_prompt(
+    context_prompt: str,
+    candidate_answer: str,
+) -> str:
+    """Formats secondary follow-up response into XML-delimited evaluation prompt."""
+    return f"""<follow_up_prompt>
+{_sanitize_meta_str(context_prompt)}
+</follow_up_prompt>
+
+<candidate_defense>
+{_sanitize_meta_str(candidate_answer)}
+</candidate_defense>
+
+Evaluate whether the candidate handled this follow-up and output the SecondaryEvaluationOutput JSON.
 """

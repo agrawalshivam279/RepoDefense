@@ -4,6 +4,17 @@ from app.schemas.chunk import (
     ChunkType,
     CodeChunk,
 )
+from app.schemas.defense import (
+    DefenseQuestionProgress,
+    DefenseSessionState,
+    DefenseStage,
+    DefenseTurn,
+    EvaluationOutput,
+    SecondaryEvaluationOutput,
+    StartDefenseRequest,
+    SubmitAnswerRequest,
+    TurnRole,
+)
 from app.schemas.embedding import (
     RetrievalQuery,
     RetrievedChunk,
@@ -29,6 +40,11 @@ from app.schemas.summary import (
 __all__ = [
     "ChunkType",
     "CodeChunk",
+    "DefenseQuestionProgress",
+    "DefenseSessionState",
+    "DefenseStage",
+    "DefenseTurn",
+    "EvaluationOutput",
     "EvidenceBase",
     "EvidenceCreate",
     "EvidenceRef",
@@ -42,4 +58,8 @@ __all__ = [
     "QuestionGenerationResponse",
     "RetrievalQuery",
     "RetrievedChunk",
+    "SecondaryEvaluationOutput",
+    "StartDefenseRequest",
+    "SubmitAnswerRequest",
+    "TurnRole",
 ]

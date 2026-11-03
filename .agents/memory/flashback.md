@@ -26,7 +26,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **Evidence Extraction** | Deterministic Architectural Rule Engine & Persistence | 🟢 Milestone 1.11 Complete |
 | **Embeddings & RAG** | `all-MiniLM-L6-v2` via sentence-transformers (Local) | ⚪ Phase 2 Planned (Milestone 1.8) |
 | **AI LLM Routing** | LiteLLM (OpenAI-compatible, FreeLLMAPI primary) | 🟢 Milestone 1.10 Complete |
-| **Defense State Machine** | Deterministic Python FSM (`backend/app/ai/fsm.py`) | ⚪ Phase 3 Planned (Milestone 1.10) |
+| **Defense State Machine** | Deterministic Python FSM (`backend/app/ai/fsm.py`) | 🟢 Step 1.14a Complete |
 | **IDE Code Viewer** | Monaco / Prism code viewer with AST evidence highlights | ⚪ Phase 4 Planned |
 | **Evaluation & Export** | Rubric generator + PDF transcript export | ⚪ Phase 5 Planned |
 
@@ -119,6 +119,11 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-11-04] — Step 1.14a: Defense Session FSM State Machine, Answer Evaluation & REST API
+- **Scope / Module**: Defense Session & FSM Engine (`backend/app/schemas/defense.py`, `backend/app/schemas/__init__.py`, `backend/app/ai/prompts.py`, `backend/app/ai/fallbacks.py`, `backend/app/ai/evaluator.py`, `backend/app/ai/fsm.py`, `backend/app/ai/__init__.py`, `backend/app/api/v1/defense.py`, `backend/app/main.py`, `backend/tests/test_defense_session.py`)
+- **Details**: Built the complete backend foundation for interactive architectural defense sessions. Defined Pydantic v2 data contracts for defense stages (`INITIALIZING`, `QUESTION_ACTIVE`, `EVALUATING_DEFENSE`, `STRESS_TEST_ACTIVE`, `MENTOR_ACTIVE`, `QUESTION_COMPLETED`, `SESSION_COMPLETED`), dialogue turns, and evaluation schemas. Implemented Principal Engineer evaluation prompts with XML delimiter boundary isolation. Created LiteLLM evaluator with timeout, retries, and offline deterministic fallback evaluators. Implemented the deterministic interview state machine (`backend/app/ai/fsm.py`) enforcing the canonical loop ($\text{Evidence} \rightarrow \text{Claim} \rightarrow \text{Defense} \rightarrow \text{Stress Test} \rightarrow \text{Evaluation} \rightarrow \text{Mentor} \rightarrow \text{Re-test}$), turn logging, scoring aggregation, and in-memory `DefenseSessionStore`. Exposed REST endpoints `POST /api/v1/projects/{project_id}/defense/start`, `POST /api/v1/defense/sessions/{session_id}/answer`, and `GET /api/v1/defense/sessions/{session_id}`. Verified 100% via 9/9 unit and integration tests, 0 ruff errors, and strict <= 300 LOC limit across all files. Concludes Step 1.14a.
+- **Key Files**: `backend/app/schemas/defense.py`, `backend/app/ai/prompts.py`, `backend/app/ai/fallbacks.py`, `backend/app/ai/evaluator.py`, `backend/app/ai/fsm.py`, `backend/app/api/v1/defense.py`, `backend/tests/test_defense_session.py`, `docs/specs/step-1-14a-defense-session-fsm.md`
 
 ### [2026-11-03] — Step 1.13: Evidence-Grounded Question Generation Engine & REST API
 - **Scope / Module**: Question Generation & Defense API (`backend/app/schemas/question.py`, `backend/app/schemas/__init__.py`, `backend/app/ai/prompts.py`, `backend/app/ai/fallbacks.py`, `backend/app/ai/llm.py`, `backend/app/ai/__init__.py`, `backend/app/api/v1/questions.py`, `backend/app/main.py`, `backend/tests/test_question_generation.py`)
