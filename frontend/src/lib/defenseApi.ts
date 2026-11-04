@@ -1,5 +1,6 @@
 import type { DefenseSessionState } from "@/types/defense";
 import type { EvidenceItem } from "@/types/evidence";
+import type { DefenseReportResponse } from "@/types/report";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -92,7 +93,6 @@ export async function getDefenseSession(
   return response.json();
 }
 
-
 /**
  * Retrieves all load-bearing architectural evidence items for a project.
  */
@@ -109,6 +109,28 @@ export async function getProjectEvidence(
 
   if (!response.ok) {
     const message = await parseApiError(response, "Failed to retrieve project evidence");
+    throw new Error(message);
+  }
+
+  return response.json();
+}
+
+/**
+ * Fetches the synthesized evaluation report for a completed defense session.
+ */
+export async function getDefenseReport(
+  sessionId: string,
+  token: string
+): Promise<DefenseReportResponse> {
+  const response = await fetch(`${API_BASE}/api/v1/defense/sessions/${sessionId}/report`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const message = await parseApiError(response, "Failed to retrieve defense report");
     throw new Error(message);
   }
 

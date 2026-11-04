@@ -202,11 +202,21 @@ export default function DefenseInterviewPage() {
           </div>
           <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-900 border border-emerald-500/30 text-emerald-400 font-mono text-base font-bold shadow-md">
             <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-            <span>Overall Score: {session?.overall_score ?? "8.0"} / 10.0</span>
+            <span>Overall Score: {session?.overall_score?.toFixed(1) ?? "8.0"} / 10.0</span>
           </div>
-          <div className="pt-2">
-            <Link href="/dashboard" className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs font-mono transition-colors">
-              Return to Project Dashboard
+          <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
+            <Link
+              href={`/report/${session?.session_id}`}
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs font-mono transition-colors shadow-md"
+            >
+              <span>View Comprehensive Defense Report</span>
+              <Award className="w-4 h-4" />
+            </Link>
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-mono border border-slate-700 transition-colors"
+            >
+              Dashboard
             </Link>
           </div>
         </div>

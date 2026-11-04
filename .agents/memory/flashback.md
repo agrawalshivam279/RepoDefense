@@ -27,6 +27,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **Embeddings & RAG** | `all-MiniLM-L6-v2` via sentence-transformers (Local) | ⚪ Phase 2 Planned (Milestone 1.8) |
 | **AI LLM Routing** | LiteLLM (OpenAI-compatible, FreeLLMAPI primary) | 🟢 Milestone 1.10 Complete |
 | **Defense Session & FSM** | Interactive Next.js 15 UI + Python FSM | 🟢 Milestone 1.14 Complete |
+| **Defense Evaluation & Report** | LiteLLM Principal Engineer Synthesis + Next.js 15 Report UI | 🟢 Milestone 1.16 Complete |
 | **IDE Code Viewer** | Monaco / Prism code viewer with AST evidence highlights | ⚪ Phase 4 Planned |
 | **Evaluation & Export** | Rubric generator + PDF transcript export | ⚪ Phase 5 Planned |
 
@@ -119,6 +120,11 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-11-05] — Step 1.16b: Next.js 15 Comprehensive Defense Report Page
+- **Scope / Module**: Frontend UI & Defense Reporting (`frontend/src/types/report.ts`, `frontend/src/lib/defenseApi.ts`, `frontend/src/components/domain/CategoryScorecard.tsx`, `frontend/src/app/report/[id]/page.tsx`, `frontend/src/app/interview/[id]/page.tsx`, `docs/specs/step-1-16b-defense-report-ui.md`)
+- **Details**: Built the complete user-facing architectural defense report page in Next.js 15 App Router (`/report/[id]`). Created TypeScript data contracts (`CategoryScore`, `DefenseReportResponse`) and added `getDefenseReport` API client method. Developed modular `CategoryScorecard` component featuring score progress bars, status badges (`Passed`, `Needs Work`, `Remediated`), category metadata icons, and qualitative summaries. Built comprehensive report page with executive verdict banner color-coded by Principal Engineer tier (*Certified Principal Defense*, *Solid Architectural Defense*, *Architectural Remediation Required*), overall score circle (0.0 to 10.0), domain performance grid, two-column breakdown of *Key Architectural Strengths* and *Critical Blind Spots Uncovered*, and numbered actionable engineering mitigations. Integrated primary navigation CTA into completed defense sessions in `interview/[id]/page.tsx`. Verified 100% via `tsc --noEmit` (0 errors), Next.js 15 production build (`next build` across all 7 routes), ruff lint (0 errors), 8/8 backend report tests passing, and all files strictly <= 300 LOC. Concludes Milestone 1.16 (Basic Defense Report).
+- **Key Files**: `frontend/src/types/report.ts`, `frontend/src/lib/defenseApi.ts`, `frontend/src/components/domain/CategoryScorecard.tsx`, `frontend/src/app/report/[id]/page.tsx`, `frontend/src/app/interview/[id]/page.tsx`, `docs/specs/step-1-16b-defense-report-ui.md`
 
 ### [2026-11-05] — Step 1.16a: Backend Defense Report Schemas, LiteLLM Synthesis & REST API
 - **Scope / Module**: Backend Evaluation & Reporting (`backend/app/schemas/report.py`, `backend/app/schemas/__init__.py`, `backend/app/ai/prompts.py`, `backend/app/ai/report_generator.py`, `backend/app/ai/__init__.py`, `backend/app/api/v1/defense.py`, `backend/tests/test_defense_report.py`)
