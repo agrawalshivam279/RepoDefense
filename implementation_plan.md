@@ -321,7 +321,10 @@ gantt
 - **AI Coding Prompt:** "Build a Next.js Project Overview page. Fetch project metadata, the AI-generated summary, a list of dependencies, and contributors from the FastAPI backend. Include a prominent 'Start Defense' button."
 
 ### Milestone 1.18: MVP Polish & Deploy
-- **Goal:** Deploy MVP to production.
+- **Goal:** Deploy MVP to production and verify full-stack CI/CD and user flow polish.
+- **Sub-tasks:**
+  - [x] **Step 1.18a: GitHub Actions CI/CD Pipeline & Production Readiness Suite** (.github/workflows/ci.yml, pyproject.toml, package.json, doctor preflight, production build verification)
+  - [ ] **Step 1.18b: Landing Page Showcase & End-to-End UX Polish** (landing page polish, global navigation, production health checks, live demo flow)
 - **Components:**
   - Supabase project setup (production).
   - Vercel deployment (frontend).
