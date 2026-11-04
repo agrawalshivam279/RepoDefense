@@ -33,9 +33,10 @@ export function ProjectCard({ project, onDelete }: ProjectCardProps) {
   const getStatusBadge = (status: Project["status"]) => {
     switch (status) {
       case "analyzed":
+      case "cloned":
         return (
           <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-            ● Analyzed
+            ● Ready
           </span>
         );
       case "analyzing":
@@ -69,9 +70,12 @@ export function ProjectCard({ project, onDelete }: ProjectCardProps) {
             <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center flex-shrink-0">
               <Shield className="w-4 h-4 text-emerald-400" />
             </div>
-            <h3 className="text-base font-bold text-white tracking-tight truncate group-hover:text-emerald-400 transition-colors">
+            <Link
+              href={`/projects/${project.id}`}
+              className="text-base font-bold text-white tracking-tight truncate hover:text-emerald-400 transition-colors"
+            >
               {project.name}
-            </h3>
+            </Link>
           </div>
           {getStatusBadge(project.status)}
         </div>
@@ -98,10 +102,16 @@ export function ProjectCard({ project, onDelete }: ProjectCardProps) {
         </div>
       </div>
 
-      <div className="flex items-center justify-between gap-3 pt-5 mt-4 border-t border-slate-800/80">
+      <div className="flex items-center justify-between gap-2 pt-5 mt-4 border-t border-slate-800/80">
+        <Link
+          href={`/projects/${project.id}`}
+          className="flex-1 text-center py-2 px-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 font-semibold text-xs font-mono transition-colors"
+        >
+          Overview
+        </Link>
         <Link
           href={`/interview/${project.id}`}
-          className="flex-1 text-center py-2 px-3 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-semibold text-xs transition-colors"
+          className="flex-1 text-center py-2 px-2.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-semibold text-xs font-mono transition-colors"
         >
           Start Defense
         </Link>

@@ -308,7 +308,7 @@ gantt
 - **Goal:** Polished project overview showing analysis results.
 - **Sub-tasks:**
   - [x] **Step 1.17a: Backend Project Overview Aggregator & REST API** (schemas/project.py, GET /projects/{id}/overview, snapshot summary parsing, language metrics, dependencies, 4/4 tests passing)
-  - [ ] **Step 1.17b: Next.js 15 Project Overview Page & Tech Stack Visualizer** (project overview page, tech stack visualization, summary narrative, dependencies table, "Start Defense" button)
+  - [x] **Step 1.17b: Next.js 15 Project Overview Page & Tech Stack Visualizer** (project overview page, tech stack visualization, summary narrative, dependencies table, "Start Defense" button)
 - **Components:**
   - Project summary display.
   - Tech stack visualization.
