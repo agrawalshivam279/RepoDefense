@@ -2,7 +2,7 @@
 
 import json
 import uuid
-from typing import List, Optional
+from typing import Optional
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -11,16 +11,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.fsm import create_defense_session, defense_store, submit_defense_turn
 from app.ai.llm import generate_grounded_questions
+from app.ai.report_generator import generate_defense_report
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.analysis import Evidence
 from app.models.project import Project, RepositorySnapshot, User
 from app.schemas.defense import (
     DefenseSessionState,
+    DefenseStage,
     StartDefenseRequest,
     SubmitAnswerRequest,
 )
 from app.schemas.question import EvidenceRef, QuestionGenerationInput
+from app.schemas.report import DefenseReportResponse
 
 logger = structlog.get_logger(__name__)
 
@@ -43,89 +46,85 @@ async def start_defense_session(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> DefenseSessionState:
-    """Initiates an architectural defense session against repository evidence."""
-    request_data = payload or StartDefenseRequest()
-
-    # 1. Tenancy verification
-    stmt_proj = select(Project).where(
+    """Initiates an architectural defense session grounded in repository evidence."""
+    stmt = select(Project).where(
         Project.id == project_id,
         Project.user_id == current_user.id,
     )
-    project = (await db.execute(stmt_proj)).scalar_one_or_none()
+    project = (await db.execute(stmt)).scalar_one_or_none()
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Project not found",
         )
 
-    # 2. Retrieve snapshot narrative
-    stmt_snap = (
+    snap_stmt = (
         select(RepositorySnapshot)
         .where(RepositorySnapshot.project_id == project_id)
         .order_by(RepositorySnapshot.created_at.desc())
-        .limit(1)
     )
-    snapshot = (await db.execute(stmt_snap)).scalar_one_or_none()
-    narrative: Optional[str] = None
-    style: Optional[str] = None
-    if snapshot and snapshot.summary:
-        try:
-            summary_dict = json.loads(snapshot.summary)
-            if isinstance(summary_dict, dict):
-                narrative = summary_dict.get("narrative")
-                style = summary_dict.get("architectural_style")
-        except Exception:
-            narrative = snapshot.summary
+    snapshot = (await db.execute(snap_stmt)).scalars().first()
 
-    # 3. Retrieve evidence items
-    stmt_ev = (
+    ev_stmt = (
         select(Evidence)
         .where(Evidence.project_id == project_id)
-        .order_by(Evidence.id)
+        .order_by(Evidence.start_line)
     )
-    evidence_rows = (await db.execute(stmt_ev)).scalars().all()
-    evidence_refs: List[EvidenceRef] = [
+    evidence_rows = (await db.execute(ev_stmt)).scalars().all()
+
+    evidence_items = [
         EvidenceRef(
-            id=str(ev.id),
-            evidence_type=ev.evidence_type,
-            title=ev.title,
-            description=ev.description,
-            file_path=ev.file_path,
-            start_line=ev.start_line,
-            end_line=ev.end_line,
+            id=str(row.id),
+            evidence_type=row.evidence_type.value
+            if hasattr(row.evidence_type, "value")
+            else str(row.evidence_type),
+            title=row.title,
+            description=row.description,
+            file_path=row.file_path,
+            start_line=row.start_line,
+            end_line=row.end_line,
         )
-        for ev in evidence_rows
+        for row in evidence_rows
     ]
 
-    # 4. Generate grounded questions
-    gen_input = QuestionGenerationInput(
+    summary_narrative = None
+    architectural_style = None
+    if snapshot and snapshot.summary:
+        try:
+            summary_data = (
+                json.loads(snapshot.summary)
+                if isinstance(snapshot.summary, str)
+                else snapshot.summary
+            )
+            summary_narrative = summary_data.get("narrative")
+            architectural_style = summary_data.get("architectural_style")
+        except Exception:
+            pass
+
+    requested_count = payload.num_questions if payload else 3
+    q_input = QuestionGenerationInput(
         project_name=project.name,
-        summary_narrative=narrative,
-        architectural_style=style,
-        evidence_items=evidence_refs,
-        requested_count=request_data.num_questions,
+        commit_hash=snapshot.commit_hash if snapshot else "HEAD",
+        architectural_style=architectural_style,
+        summary_narrative=summary_narrative,
+        evidence_items=evidence_items,
+        requested_count=requested_count,
     )
-    questions = await generate_grounded_questions(gen_input)
 
-    # Filter by custom categories if specified
-    if request_data.custom_categories:
-        cats = {c.lower() for c in request_data.custom_categories}
-        filtered = [q for q in questions if q.category.value.lower() in cats]
-        if filtered:
-            questions = filtered
+    q_response = await generate_grounded_questions(q_input)
 
-    selected_questions = questions[: request_data.num_questions]
-    if not selected_questions:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Failed to formulate grounded defense questions for this project.",
-        )
-
-    # 5. Initialize FSM session
     session = await create_defense_session(
-        project_id=str(project.id),
-        questions=selected_questions,
+        project_id=str(project_id),
+        questions=q_response.questions,
     )
+
+    logger.info(
+        "defense_session_started",
+        session_id=session.session_id,
+        project_id=str(project_id),
+        question_count=len(session.questions),
+    )
+
     return session
 
 
@@ -133,10 +132,10 @@ async def start_defense_session(
     "/defense/sessions/{session_id}/answer",
     response_model=DefenseSessionState,
     status_code=status.HTTP_200_OK,
-    summary="Submit candidate answer or defense turn",
+    summary="Submit candidate response to current defense question or stress-test",
     description=(
-        "Submits candidate defense to the FSM. Depending on current stage, "
-        "evaluates depth, triggers stress test, provides mentor guidance, or advances question."
+        "Submits candidate defense, evaluates technical depth, and advances "
+        "the interview state machine through stress-test or mentor-guidance branches."
     ),
 )
 async def submit_defense_answer(
@@ -181,3 +180,43 @@ async def get_defense_session(
             detail=f"Defense session '{session_id}' not found.",
         )
     return session
+
+
+@router.get(
+    "/defense/sessions/{session_id}/report",
+    response_model=DefenseReportResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Generate and retrieve final architectural defense evaluation report",
+)
+async def get_defense_report(
+    session_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> DefenseReportResponse:
+    """Generates structured evaluation report for a completed defense session."""
+    session = await defense_store.get(session_id)
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Defense session '{session_id}' not found.",
+        )
+
+    # Multi-tenant isolation: verify user owns the project
+    proj_stmt = select(Project).where(
+        Project.id == uuid.UUID(session.project_id),
+        Project.user_id == current_user.id,
+    )
+    project = (await db.execute(proj_stmt)).scalar_one_or_none()
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found or unauthorized.",
+        )
+
+    if session.status != DefenseStage.SESSION_COMPLETED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Defense session must be completed before report generation.",
+        )
+
+    return await generate_defense_report(session)

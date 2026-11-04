@@ -23,23 +23,33 @@ from app.ai.llm import (
 )
 from app.ai.prompts import (
     DEFENSE_EVALUATION_SYSTEM_PROMPT,
+    DEFENSE_REPORT_SYSTEM_PROMPT,
     PROJECT_SUMMARY_SYSTEM_PROMPT,
     QUESTION_GENERATION_SYSTEM_PROMPT,
     SECONDARY_EVALUATION_SYSTEM_PROMPT,
     format_defense_evaluation_user_prompt,
+    format_defense_report_user_prompt,
     format_project_summary_user_prompt,
     format_question_generation_user_prompt,
     format_secondary_evaluation_user_prompt,
 )
+from app.ai.report_generator import (
+    aggregate_category_scores,
+    build_deterministic_fallback_report,
+    generate_defense_report,
+)
 
 __all__ = [
     "DEFENSE_EVALUATION_SYSTEM_PROMPT",
+    "DEFENSE_REPORT_SYSTEM_PROMPT",
     "DefenseSessionStore",
     "PROJECT_SUMMARY_SYSTEM_PROMPT",
     "QUESTION_GENERATION_SYSTEM_PROMPT",
     "SECONDARY_EVALUATION_SYSTEM_PROMPT",
+    "aggregate_category_scores",
     "build_deterministic_fallback_evaluation",
     "build_deterministic_fallback_questions",
+    "build_deterministic_fallback_report",
     "build_deterministic_fallback_secondary",
     "build_deterministic_fallback_summary",
     "clean_json_response",
@@ -48,9 +58,11 @@ __all__ = [
     "evaluate_candidate_defense",
     "evaluate_secondary_turn",
     "format_defense_evaluation_user_prompt",
+    "format_defense_report_user_prompt",
     "format_project_summary_user_prompt",
     "format_question_generation_user_prompt",
     "format_secondary_evaluation_user_prompt",
+    "generate_defense_report",
     "generate_grounded_questions",
     "generate_project_summary",
     "submit_defense_turn",

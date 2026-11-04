@@ -6,124 +6,77 @@ from app.schemas.question import QuestionGenerationInput
 from app.schemas.summary import ProjectSummaryInput
 
 PROJECT_SUMMARY_SYSTEM_PROMPT = """You are a rigorous Principal Software Engineer at RepoDefense.
-Your task is to analyze factual metadata extracted from a cloned and scanned git repository, \
-and produce a structured, evidence-grounded architectural summary of the codebase.
+Analyze metadata extracted from a cloned and scanned repository to produce a structured summary.
+Principles: 1. Ground claims in evidence. 2. Identify core purpose and architecture style. \
+3. Highlight load-bearing components and stress points. 4. Output strictly a single JSON object.
 
-Guiding Principles:
-1. Evidence over hallucination: Ground all claims in the provided programming languages, \
-dependencies, architectural evidence, and file metrics.
-2. Objective and incisive: Identify the core purpose of the system, its architecture style \
-(e.g., Modular Monolith, Microservices, Single Page Application + REST API, CLI tool), \
-and major components.
-3. Defense readiness: Highlight load-bearing components, technical trade-offs, and potential \
-stress points (e.g., concurrency, caching, schema bottlenecks, external dependencies) to seed \
-architectural interview questions.
-4. Formatting: Output strictly a single JSON object conforming to the required schema. \
-Do NOT include markdown fences, code blocks (such as ```json), or conversational filler.
-
-Required JSON Schema:
-{
-  "title": "<Concise descriptive title of the repository>",
-  "tagline": "<One-line elevator pitch explaining what the repository does>",
-  "primary_language": "<Dominant programming language>",
-  "detected_frameworks": ["<Framework 1>", "<Framework 2>"],
-  "architectural_style": "<e.g., Modular Monolith, Microservices, Event-Driven, CLI Tool>",
-  "key_components": ["<Component / Module 1>", "<Component / Module 2>"],
-  "potential_defense_topics": ["<Stress point or architectural decision to probe>"],
-  "narrative": "<2-3 paragraph deep-dive architectural narrative explaining the system design>"
-}
+Schema:
+{"title":"<str>","tagline":"<str>","primary_language":"<str>","detected_frameworks":["<str>"],\
+"architectural_style":"<str>","key_components":["<str>"],"potential_defense_topics":["<str>"],\
+"narrative":"<str>"}
 """
 
-QUESTION_GENERATION_SYSTEM_PROMPT = """You are a Principal Software Engineer conducting a \
-rigorous architectural defense interview at RepoDefense.
-Your goal is to authenticate that the candidate genuinely understands the software \
-in their repository, rather than having cloned a tutorial without understanding.
+QUESTION_GENERATION_SYSTEM_PROMPT = """You are a Principal Software Engineer conducting an \
+architectural defense interview at RepoDefense. Authenticate candidate understanding.
+Principles: 1. Strict evidence grounding (no generic questions). 2. Incisive stress-testing. \
+3. Categorize into architecture, scalability, reliability, security, tradeoffs. \
+4. Cite exact evidence_id and file_path. 5. Output strictly a JSON array without markdown fences.
 
-Guiding Principles for Question Generation:
-1. Strict Code Evidence Grounding: Every question MUST be anchored in specific evidence items \
-provided in the catalog (files, endpoints, schemas, database models, queues, auth mechanisms). \
-Never ask generic LeetCode or textbook questions.
-2. Incisive Stress-Testing: Probe edge cases, scalability limits, concurrent access, \
-failure modes, data consistency, caching strategies, and architectural trade-offs.
-3. Categorization: Categorize each question into one of:
-   - "architecture": High-level structure, component boundaries, patterns.
-   - "scalability": Load, bottleneck handling, concurrency, indexing.
-   - "reliability": Error handling, connection limits, fallback logic.
-   - "security": Authentication, input validation, permissions, secrets.
-   - "tradeoffs": Alternative design choices, rejected options, libraries.
-4. Citation Integrity: Each question must cite the exact `evidence_id` and `file_path`.
-5. Output Format: Output strictly a JSON array containing the requested question objects. \
-No markdown fences (such as ```json), no conversation before or after.
-
-Required JSON Schema:
-[
-  {
-    "category": "<architecture | scalability | reliability | security | tradeoffs>",
-    "question_text": "<Incisive question asking why a decision was made or how it handles stress>",
-    "context_hint": "<Factual context naming the specific file, class, method, or dependency>",
-    "cited_evidence_ids": ["<ID from evidence catalog>"],
-    "cited_files": ["<repository-relative file path>"]
-  }
-]
+Schema:
+[{"category":"<cat>","question_text":"<str>","context_hint":"<str>",\
+"cited_evidence_ids":["<id>"],"cited_files":["<path>"]}]
 """
 
-DEFENSE_EVALUATION_SYSTEM_PROMPT = """You are a rigorous Principal Software Engineer conducting \
-an architectural defense interview at RepoDefense.
-Your task is to critically evaluate a candidate's defense of a specific architectural choice in \
-their codebase, grounded in repository evidence.
+DEFENSE_EVALUATION_SYSTEM_PROMPT = """You are a Principal Software Engineer evaluating a \
+candidate's defense of their architectural choices at RepoDefense.
+Rubric:
+1. Grounding: Does the answer reflect the repository architecture?
+2. Depth Score (1-10): >=6 passes initial defense, <6 fails.
+3. Branching: If depth >=6, provide incisive stress_test_prompt with a production constraint. \
+If depth <6, provide mentor_hint explaining principle and a retest_question.
+4. Output strictly a single JSON object conforming to schema.
 
-Evaluation Rubric:
-1. Grounding & Truth: Does the answer accurately reflect the repository architecture?
-2. Depth Score (1 to 10):
-   - 1-5 (Failed Initial Defense): Superficial, hand-wavy, inaccurate, or tutorial-level buzzwords.
-   - 6-10 (Passed Initial Defense): Clear grasp of trade-offs, constraints, failure modes, and code.
-3. Branching Logic:
-   - If depth_score >= 6 (passed_initial_defense = true): Inject an incisive `stress_test_prompt` \
-introducing a real-world production constraint (e.g. 10k req/s spike, DB connection exhaustion, \
-cache stampede, partition failure). Set `mentor_hint` and `retest_question` to null.
-   - If depth_score < 6 (passed_initial_defense = false): Provide a constructive `mentor_hint` \
-explaining the architectural principle without giving the direct answer, and ask a guided \
-`retest_question`. Set `stress_test_prompt` to null.
-4. Format: Strictly return a single JSON object conforming to the schema. No markdown fences.
-
-Required JSON Schema:
-{
-  "passed_initial_defense": true,
-  "depth_score": 7,
-  "grounding_verified": true,
-  "feedback": "<Direct, constructive Principal Engineer feedback>",
-  "stress_test_prompt": "<Constraint scenario if passed, else null>",
-  "mentor_hint": "<Guiding explanation if failed, else null>",
-  "retest_question": "<Follow-up variant question if failed, else null>"
-}
+Schema:
+{"passed_initial_defense":true,"depth_score":7,"grounding_verified":true,\
+"feedback":"<str>","stress_test_prompt":"<str|null>","mentor_hint":"<str|null>",\
+"retest_question":"<str|null>"}
 """
 
-SECONDARY_EVALUATION_SYSTEM_PROMPT = """You are a Principal Software Engineer \
-evaluating a candidate's response to a production stress-test or a guided mentor re-test \
-at RepoDefense.
-Assess whether the candidate proposed viable mitigations (e.g., connection pooling, caching, \
-idempotency keys, circuit breakers) or addressed the architectural blind spot.
+SECONDARY_EVALUATION_SYSTEM_PROMPT = """You are a Principal Software Engineer evaluating a \
+candidate's response to a production stress-test or mentor re-test at RepoDefense.
+Assess whether the candidate proposed viable mitigations (pooling, caching, idempotency, fallbacks).
 
-Required JSON Schema:
-{
-  "handled_successfully": true,
-  "follow_up_score": 8,
-  "feedback": "<Concise feedback on the candidate's proposed solution>"
-}
+Schema:
+{"handled_successfully":true,"follow_up_score":8,"feedback":"<str>"}
+"""
+
+DEFENSE_REPORT_SYSTEM_PROMPT = """You are a rigorous Principal Software Engineer conducting an \
+executive architectural review at RepoDefense.
+Synthesize the completed interview dialogue and scores into an objective, evidence-grounded report.
+Principles:
+1. Verdict: "Certified Principal Defense", "Solid Architectural Defense", or "Remediation Required".
+2. Key Strengths: 2-4 concrete technical decisions where candidate demonstrated maturity.
+3. Critical Blind Spots: 2-4 failure modes or trade-offs candidate missed under stress.
+4. Actionable Recommendations: 2-4 pragmatic engineering mitigations (e.g. pooling, caching).
+5. Output strictly a single JSON object. No markdown fences.
+
+Schema:
+{"verdict":"<str>","summary":"<str>","key_strengths":["<str>"],\
+"critical_blind_spots":["<str>"],"actionable_recommendations":["<str>"]}
 """
 
 
 def _sanitize_meta_str(val: str) -> str:
     """Escapes user-supplied metadata strings to mitigate prompt injection."""
     clean = html.escape(val.strip())
-    clean = (
-        clean.replace("</repository_metadata>", "")
-        .replace("<repository_metadata>", "")
-        .replace("</evidence_catalog>", "")
-        .replace("<evidence_catalog>", "")
-        .replace("</candidate_defense>", "")
-        .replace("<candidate_defense>", "")
-    )
+    for tag in [
+        "repository_metadata",
+        "evidence_catalog",
+        "candidate_defense",
+        "candidate_transcript",
+        "interview_overview",
+    ]:
+        clean = clean.replace(f"</{tag}>", "").replace(f"<{tag}>", "")
     return clean
 
 
@@ -133,17 +86,14 @@ def format_project_summary_user_prompt(meta: ProjectSummaryInput) -> str:
         f"  <language>{_sanitize_meta_str(lang)}</language>"
         for lang in meta.top_languages
     ) or "  <language>None</language>"
-
     deps = "\n".join(
-        f"  <dependency>{_sanitize_meta_str(dep)}</dependency>"
-        for dep in meta.dependencies[:30]
+        f"  <dependency>{_sanitize_meta_str(d)}</dependency>"
+        for d in meta.dependencies[:30]
     ) or "  <dependency>None</dependency>"
-
     evidence = "\n".join(
         f"  <evidence_item>{_sanitize_meta_str(ev)}</evidence_item>"
         for ev in meta.evidence_tags[:30]
     ) or "  <evidence_item>None</evidence_item>"
-
     contribs = "\n".join(
         f"  <contributor>{_sanitize_meta_str(c)}</contributor>"
         for c in meta.top_contributors[:5]
@@ -154,59 +104,43 @@ def format_project_summary_user_prompt(meta: ProjectSummaryInput) -> str:
   <commit_hash>{_sanitize_meta_str(meta.commit_hash)}</commit_hash>
   <total_files>{meta.total_files}</total_files>
   <total_lines>{meta.total_lines}</total_lines>
-  <languages>
-{langs}
-  </languages>
-  <dependencies>
-{deps}
-  </dependencies>
-  <evidence>
-{evidence}
-  </evidence>
-  <contributors>
-{contribs}
-  </contributors>
+  <languages>\n{langs}\n  </languages>
+  <dependencies>\n{deps}\n  </dependencies>
+  <evidence>\n{evidence}\n  </evidence>
+  <contributors>\n{contribs}\n  </contributors>
 </repository_metadata>
 
-Analyze the repository evidence above and output the structured architectural ProjectSummary JSON.
+Analyze the repository evidence above and output structured ProjectSummary JSON.
 """
 
 
 def format_question_generation_user_prompt(input_data: QuestionGenerationInput) -> str:
     """Formats project evidence items into XML-delimited context for question synthesis."""
-    evidence_blocks: list[str] = []
-    for item in input_data.evidence_items:
-        block = (
-            f"  <evidence_item id=\"{_sanitize_meta_str(item.id)}\">\n"
-            f"    <type>{_sanitize_meta_str(item.evidence_type)}</type>\n"
-            f"    <title>{_sanitize_meta_str(item.title)}</title>\n"
-            f"    <description>{_sanitize_meta_str(item.description)}</description>\n"
-            f"    <file_path>{_sanitize_meta_str(item.file_path)}</file_path>\n"
-            f"    <lines>{item.start_line}-{item.end_line}</lines>\n"
-            f"  </evidence_item>"
-        )
-        evidence_blocks.append(block)
-
-    catalog_str = (
-        "\n".join(evidence_blocks)
-        if evidence_blocks
-        else "  <evidence_item>None</evidence_item>"
-    )
-    narrative_str = _sanitize_meta_str(input_data.summary_narrative or "Not available")
-    style_str = _sanitize_meta_str(input_data.architectural_style or "Modular Application")
+    blocks = [
+        f"  <evidence_item id=\"{_sanitize_meta_str(it.id)}\">\n"
+        f"    <type>{_sanitize_meta_str(it.evidence_type)}</type>\n"
+        f"    <title>{_sanitize_meta_str(it.title)}</title>\n"
+        f"    <description>{_sanitize_meta_str(it.description)}</description>\n"
+        f"    <file_path>{_sanitize_meta_str(it.file_path)}</file_path>\n"
+        f"    <lines>{it.start_line}-{it.end_line}</lines>\n"
+        f"  </evidence_item>"
+        for it in input_data.evidence_items
+    ]
+    catalog = "\n".join(blocks) if blocks else "  <evidence_item>None</evidence_item>"
+    narrative = _sanitize_meta_str(input_data.summary_narrative or "Not available")
+    style = _sanitize_meta_str(input_data.architectural_style or "Modular Application")
 
     return f"""<repository_context>
   <project_name>{_sanitize_meta_str(input_data.project_name)}</project_name>
-  <architectural_style>{style_str}</architectural_style>
-  <narrative>{narrative_str}</narrative>
+  <architectural_style>{style}</architectural_style>
+  <narrative>{narrative}</narrative>
 </repository_context>
 
 <evidence_catalog>
-{catalog_str}
+{catalog}
 </evidence_catalog>
 
-Generate exactly {input_data.requested_count} challenging, evidence-grounded interview questions \
-as a strict JSON array adhering to the required schema.
+Generate exactly {input_data.requested_count} questions as a strict JSON array.
 """
 
 
@@ -245,5 +179,22 @@ def format_secondary_evaluation_user_prompt(
 {_sanitize_meta_str(candidate_answer)}
 </candidate_defense>
 
-Evaluate whether the candidate handled this follow-up and output the SecondaryEvaluationOutput JSON.
+Evaluate whether the candidate handled this follow-up and output SecondaryEvaluationOutput JSON.
+"""
+
+
+def format_defense_report_user_prompt(
+    overview: str,
+    transcript: str,
+) -> str:
+    """Formats interview results into XML-delimited evaluation prompt."""
+    return f"""<interview_overview>
+{_sanitize_meta_str(overview)}
+</interview_overview>
+
+<candidate_transcript>
+{_sanitize_meta_str(transcript)}
+</candidate_transcript>
+
+Synthesize final architectural evaluation report and output JSON adhering to schema.
 """
