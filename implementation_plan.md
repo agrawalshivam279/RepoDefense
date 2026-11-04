@@ -291,6 +291,9 @@ gantt
 
 ### Milestone 1.16: Basic Defense Report
 - **Goal:** Generate a structured report after defense session.
+- **Sub-tasks:**
+  - [x] **Step 1.16a: Backend Defense Report Schemas, LiteLLM Synthesis & REST API** (report.py schemas, prompts.py Principal Engineer templates, report_generator.py score aggregation & fallbacks, GET /defense/sessions/{id}/report, 8/8 tests passing)
+  - [ ] **Step 1.16b: Next.js 15 Comprehensive Defense Report Page** (report page, category scorecards, strengths & blind spots callouts, actionable recommendations)
 - **Components:**
   - Report generation prompt template.
   - Score aggregation per topic.

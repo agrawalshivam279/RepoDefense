@@ -32,15 +32,22 @@ from app.schemas.question import (
     QuestionGenerationInput,
     QuestionGenerationResponse,
 )
+from app.schemas.report import (
+    CategoryScore,
+    DefenseReportResponse,
+    ReportSynthesisOutput,
+)
 from app.schemas.summary import (
     ProjectSummary,
     ProjectSummaryInput,
 )
 
 __all__ = [
+    "CategoryScore",
     "ChunkType",
     "CodeChunk",
     "DefenseQuestionProgress",
+    "DefenseReportResponse",
     "DefenseSessionState",
     "DefenseStage",
     "DefenseTurn",
@@ -56,6 +63,7 @@ __all__ = [
     "QuestionCategory",
     "QuestionGenerationInput",
     "QuestionGenerationResponse",
+    "ReportSynthesisOutput",
     "RetrievalQuery",
     "RetrievedChunk",
     "SecondaryEvaluationOutput",
