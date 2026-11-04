@@ -57,5 +57,9 @@ ignore = []
 
 [tool.pytest.ini_options]
 minversion = "8.0"
-testpaths = ["backend/tests"]
-pythonpath = ["backend"]
+testpaths = ["tests", "backend/tests"]
+pythonpath = [".", "backend"]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::UserWarning",
+]
