@@ -378,6 +378,8 @@ gantt
 
 ### Milestone 2.4: Adaptive Questioning State Machine
 - **Goal:** Questions change based on previous answers.
+- **Sub-tasks:**
+  - [x] **Step 2.4: Adaptive Questioning State Machine** (DifficultyLevel enum, adaptive.py topic confidence EMA, dynamic difficulty adjustment <50% / >=90%, fsm.py adaptive transition integration, 6/6 tests passing)
 - **Components:**
   - State machine tracking confidence per topic.
   - Dynamic difficulty adjustment.

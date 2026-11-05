@@ -1,5 +1,11 @@
 """AI module for LiteLLM routing, prompts, and defense state machine."""
 
+from app.ai.adaptive import (
+    adapt_question_for_difficulty,
+    apply_adaptive_session_progression,
+    calculate_topic_confidence,
+    determine_next_difficulty,
+)
 from app.ai.claim_extractor import (
     extract_technical_claims,
     extract_text_from_pdf,
@@ -60,15 +66,19 @@ __all__ = [
     "PROJECT_SUMMARY_SYSTEM_PROMPT",
     "QUESTION_GENERATION_SYSTEM_PROMPT",
     "SECONDARY_EVALUATION_SYSTEM_PROMPT",
+    "adapt_question_for_difficulty",
     "aggregate_category_scores",
+    "apply_adaptive_session_progression",
     "build_deterministic_fallback_evaluation",
     "build_deterministic_fallback_questions",
     "build_deterministic_fallback_report",
     "build_deterministic_fallback_secondary",
     "build_deterministic_fallback_summary",
+    "calculate_topic_confidence",
     "clean_json_response",
     "create_defense_session",
     "defense_store",
+    "determine_next_difficulty",
     "evaluate_candidate_defense",
     "evaluate_secondary_turn",
     "extract_technical_claims",

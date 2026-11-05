@@ -26,7 +26,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **Evidence Extraction** | Deterministic Architectural Rule Engine & Persistence | 🟢 Milestone 1.11 Complete |
 | **Embeddings & RAG** | `all-MiniLM-L6-v2` via sentence-transformers (Local) | ⚪ Phase 2 Planned (Milestone 1.8) |
 | **AI LLM Routing** | LiteLLM (OpenAI-compatible, FreeLLMAPI primary) | 🟢 Milestone 1.10 Complete |
-| **Defense Session & FSM** | Interactive Next.js 15 UI + Python FSM | 🟢 Milestone 1.14 Complete |
+| **Defense Session & FSM** | Interactive Next.js 15 UI + Adaptive FSM | 🟢 Milestone 1.14 & 2.4 Complete |
 | **Defense Evaluation & Report** | LiteLLM Principal Engineer Synthesis + Next.js 15 Report UI | 🟢 Milestone 1.16 Complete |
 | **Resume Claim Extraction** | pypdf + LiteLLM + Next.js 15 Dashboard | 🟢 Milestone 2.1 Complete (Steps 2.1a & 2.1b) |
 | **Claim Verification Engine** | pgvector RAG + LiteLLM + Deterministic Fallback | 🟢 Step 2.2a Complete |
@@ -115,7 +115,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | Phase | Description | Status |
 | :--- | :--- | :--- |
 | **Phase 1** | Ingestion & Core MVP (Scaffolding, Auth, Git Clone, Security Filter, Complete MVP) | 🟢 Complete |
-| **Phase 2** | Differentiation (Claims Extraction, Verification, Adaptive Questioning) | 🟡 In Progress (Milestones 2.1, 2.2, 2.3 Complete) |
+| **Phase 2** | Differentiation (Claims Extraction, Verification, Adaptive Questioning) | 🟡 In Progress (Milestones 2.1, 2.2, 2.3, 2.4 Complete) |
 | **Phase 3** | The State Machine (LiteLLM, Evidence Grounding, Principal Engineer FSM, Prompts) | ⚪ Planned |
 | **Phase 4** | Interactive Frontend (Next.js 15, SSE / WebSocket chat, Monaco/Prism Code Viewer) | ⚪ Planned |
 | **Phase 5** | Evaluation & Export (Rubric Scoring, Transcript Generation, PDF & Badge Export) | ⚪ Planned |
@@ -123,6 +123,11 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-11-06] — Step 2.4: Adaptive Questioning State Machine & Topic Confidence Engine
+- **Scope / Module**: Defense State Machine & Adaptive Questioning (ackend/app/schemas/defense.py, ackend/app/schemas/__init__.py, ackend/app/ai/adaptive.py, ackend/app/ai/fsm.py, ackend/app/ai/__init__.py, ackend/tests/test_adaptive_questioning.py, docs/specs/step-2-4-adaptive-questioning-fsm.md)
+- **Details**: Built the adaptive questioning engine and continuous topic confidence tracking system for RepoDefense defense sessions. Designed Pydantic v2 enum DifficultyLevel (foundational, intermediate, advanced) and extended DefenseQuestionProgress and DefenseSessionState with current_difficulty and topic_confidence. Implemented modular adaptive engine backend/app/ai/adaptive.py calculating exponential moving average topic confidence (alpha = 0.6) bounded in [0.05, 1.0], dynamic difficulty scaling rules (< 50% downgrades to foundational and drills down into core mechanics; >= 90% elevates to advanced and injects 10x traffic spike / partition constraints), and question difficulty adaptation. Refactored backend/app/ai/fsm.py to delegate progression to apply_adaptive_session_progression, reducing file size from 299 lines down to 288 LOC. Verified 100% via 6/6 new hermetic unit/integration tests passing in 6.20s, 9/9 baseline defense session tests passing in 8.92s, ruff check (0 errors), tsc --noEmit (0 errors), Next.js 15 production build (0 errors across 9 routes), and strict <= 300 LOC limit across all files (defense.py 218 LOC, schemas/__init__.py 111 LOC, adaptive.py 114 LOC, fsm.py 288 LOC, ai/__init__.py 99 LOC, test_adaptive_questioning.py 220 LOC). Concludes Milestone 2.4 (Adaptive Questioning State Machine).
+- **Key Files**: ackend/app/schemas/defense.py, ackend/app/schemas/__init__.py, ackend/app/ai/adaptive.py, ackend/app/ai/fsm.py, ackend/app/ai/__init__.py, ackend/tests/test_adaptive_questioning.py, docs/specs/step-2-4-adaptive-questioning-fsm.md
 
 ### [2026-11-06] — Step 2.3: Claim Verification UI (Evidence Graph View)
 - **Scope / Module**: Frontend Claim Verification UI & Evidence Graph (rontend/src/types/claim.ts, rontend/src/lib/claimApi.ts, rontend/src/components/domain/ClaimVerificationCard.tsx, rontend/src/app/projects/[id]/claims/page.tsx, rontend/src/app/projects/[id]/page.tsx, docs/specs/step-2-3-claim-verification-ui.md)
