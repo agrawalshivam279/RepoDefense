@@ -209,6 +209,7 @@ When using an AI (like Claude, ChatGPT, or GitHub Copilot) to build RepoDefense,
 5.  **Reviewing AI code:** Always check that AI-generated database queries use parameterized SQL or the chosen ORM correctly to prevent SQL injection. Ensure no arbitrary code execution is accidentally introduced.
 6.  **No rewriting working components:** If an AI suggests a sweeping refactor of a working module to implement a small feature, reject it. Keep changes scoped and isolated.
 7.  **The Anchor Document:** This document is the ultimate source of truth. If code contradicts this document, the code is wrong.
+8.  **Mandatory Verification Gate (`/verify_step`) Before Shipping:** The lifecycle sequence is strictly `Plan (/plan_step) ➔ Implement ➔ Verify (/verify_step) ➔ Ship (/ship_step)`. After writing code for any milestone or feature, NEVER jump directly to `/ship_step` or suggest shipping. The assistant MUST mandatorily execute and present the full `/verify_step` Quality Gate Report (Stage 0: Lint/Types, Stage 0.5: Domain Contracts, Stage 1: Dynamic Tests, Stage 2: Static Code Review & LOC Audit) and await developer approval before `/ship_step` is ever triggered or recommended.
 
 ---
 
