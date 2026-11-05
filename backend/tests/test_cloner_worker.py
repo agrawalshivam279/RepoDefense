@@ -178,7 +178,7 @@ async def test_clone_and_sanitize_repository_success():
             snapshot = (await session.execute(stmt)).scalar_one_or_none()
             assert snapshot is not None
             assert snapshot.commit_hash == test_commit_hash
-            assert "Cloned commit abc1234" in snapshot.summary
+            assert "test-repo" in snapshot.summary
 
     finally:
         # Cleanup

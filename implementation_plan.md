@@ -398,6 +398,9 @@ gantt
 
 ### Milestone 2.6: Coverage Tracking
 - **Goal:** Track which files/modules have been tested.
+- **Sub-tasks:**
+  - [x] **Step 2.6a: Backend Coverage Tracking & Module Heatmap API** (schemas/coverage.py, services/coverage.py, GET /api/v1/projects/{project_id}/coverage, blind spot heuristics)
+  - [ ] **Step 2.6b: Next.js 15 Repository Coverage Heatmap & Tested vs Untested Visualizer** (CoverageScorecard, ModuleHeatmapGrid, BlindSpotDrawer, /projects/[id]/coverage)
 - **Components:**
   - Database tracking of evidence used in sessions.
   - UI visualization of "Tested" vs "Untested" areas.

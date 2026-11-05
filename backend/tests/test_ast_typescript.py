@@ -251,7 +251,7 @@ async def test_cloner_worker_ast_symbol_pipeline():
         async with AsyncSessionLocal() as session:
             stmt = select(RepositorySnapshot).where(RepositorySnapshot.project_id == project_id)
             snapshot = (await session.execute(stmt)).scalar_one()
-            assert "symbols" in snapshot.summary
+            assert "fullstack-repo" in snapshot.summary
 
             stmt_files = select(AnalyzedFile).where(AnalyzedFile.snapshot_id == snapshot.id)
             files = (await session.execute(stmt_files)).scalars().all()

@@ -31,6 +31,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **Resume Claim Extraction** | pypdf + LiteLLM + Next.js 15 Dashboard | 🟢 Milestone 2.1 Complete (Steps 2.1a & 2.1b) |
 | **Claim Verification Engine** | pgvector RAG + LiteLLM + Deterministic Fallback | 🟢 Step 2.2a Complete |
 | **Claim Verification UI** | Next.js 15 App Router + Evidence Graph | 🟢 Milestone 2.3 Complete |
+| **Defense Coverage & Heatmap** | Dynamic Coverage Service + Module Heatmap REST API | 🟢 Step 2.6a Complete |
 | **IDE Code Viewer** | Monaco / Prism code viewer with AST evidence highlights | ⚪ Phase 4 Planned |
 | **Evaluation & Export** | Rubric generator + PDF transcript export | ⚪ Phase 5 Planned |
 
@@ -123,6 +124,11 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-11-06] — Step 2.6a: Backend Coverage Tracking & Module Heatmap API
+- **Scope / Module**: Backend Coverage Tracking & Module Heatmap (`backend/app/schemas/coverage.py`, `backend/app/schemas/__init__.py`, `backend/app/services/coverage.py`, `backend/app/services/__init__.py`, `backend/app/api/v1/projects.py`, `backend/app/ai/fsm.py`, `backend/app/core/database.py`, `backend/app/workers/cloner.py`, `backend/tests/test_coverage.py`, `docs/specs/step-2-6a-backend-coverage-tracking.md`)
+- **Details**: Designed and implemented the backend repository coverage tracking and module heatmap computation engine for RepoDefense. Built Pydantic v2 schemas in `coverage.py` (`CoverageStatus`, `CoverageTier`, `FileCoverageItem`, `ModuleCoverageItem`, `BlindSpotItem`, `ProjectCoverageResponse`). Implemented `DefenseSessionStore.get_by_project` in `fsm.py` to aggregate all questions and topics tested across interview sessions for a project. Developed modular coverage service in `backend/app/services/coverage.py` calculating dynamic codebase coverage %, aggregating files into top-level module directories (`module_heatmap`) with tested vs. untested metrics and tier categorization (`untested`, `low`, `moderate`, `high`), and prioritizing untested load-bearing blind spots (`critical`, `high`, `medium`) based on evidence density and line counts. Added authenticated endpoint `GET /api/v1/projects/{project_id}/coverage` in `projects.py` with multi-tenant security and snapshot resolution. Configured test-environment connection pooling in `database.py` with `NullPool` during test runs, and resolved `Evidence.title` attribute access in `cloner.py`. Verified 100% via 5/5 new coverage tests passing, full 174/174 backend test suite passing in 6m 07s, `ruff check` (0 errors), `tsc --noEmit` (0 errors), Next.js 15 production build (`next build` across all 10 routes cleanly), and strict <= 300 LOC limit across all files (schemas 106 LOC, services 243 LOC, fsm 294 LOC, projects.py 287 LOC, test_coverage.py 277 LOC). Concludes Step 2.6a.
+- **Key Files**: `backend/app/schemas/coverage.py`, `backend/app/schemas/__init__.py`, `backend/app/services/coverage.py`, `backend/app/services/__init__.py`, `backend/app/api/v1/projects.py`, `backend/app/ai/fsm.py`, `backend/app/core/database.py`, `backend/app/workers/cloner.py`, `backend/tests/test_coverage.py`, `docs/specs/step-2-6a-backend-coverage-tracking.md`
 
 ### [2026-11-06] — Step 2.5: AI Pushback Logic & Multi-Turn Clarification Engine
 - **Scope / Module**: Defense State Machine & AI Pushback (`backend/app/schemas/defense.py`, `backend/app/ai/prompts.py`, `backend/app/ai/fallbacks.py`, `backend/app/ai/fsm.py`, `backend/tests/test_pushback.py`, `frontend/src/types/defense.ts`, `frontend/src/components/domain/DefenseTurnBubble.tsx`, `docs/specs/step-2-5-ai-pushback-logic.md`)

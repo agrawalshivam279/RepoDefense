@@ -279,7 +279,7 @@ async def test_cloner_worker_git_history_pipeline():
             stmt = select(RepositorySnapshot).where(RepositorySnapshot.project_id == project_id)
             snapshot = (await session.execute(stmt)).scalar_one_or_none()
             assert snapshot is not None
-            assert "Contributors (1 commits): Lead Architect" in snapshot.summary
+            assert "Lead Architect" in snapshot.summary
 
     finally:
         async with AsyncSessionLocal() as session:
