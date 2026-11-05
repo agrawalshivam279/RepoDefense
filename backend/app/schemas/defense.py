@@ -16,6 +16,7 @@ class DefenseStage(str, Enum):
     INITIALIZING = "initializing"
     QUESTION_ACTIVE = "question_active"
     EVALUATING_DEFENSE = "evaluating_defense"
+    PUSHBACK_ACTIVE = "pushback_active"
     STRESS_TEST_ACTIVE = "stress_test_active"
     MENTOR_ACTIVE = "mentor_active"
     QUESTION_COMPLETED = "question_completed"
@@ -71,6 +72,9 @@ class DefenseQuestionProgress(BaseModel):
     )
     initial_defense: Optional[str] = None
     defense_score: Optional[int] = None
+    pushback_prompt: Optional[str] = None
+    pushback_response: Optional[str] = None
+    pushback_count: int = 0
     stress_test_prompt: Optional[str] = None
     stress_test_response: Optional[str] = None
     mentor_hint: Optional[str] = None
@@ -176,6 +180,14 @@ class EvaluationOutput(BaseModel):
     grounding_verified: bool = Field(
         ...,
         description="True if answer correctly reflects the actual codebase architecture",
+    )
+    is_vague: bool = Field(
+        default=False,
+        description="True if defense is generic, superficial, or evades code specifics",
+    )
+    pushback_prompt: Optional[str] = Field(
+        None,
+        description="Direct Principal Engineer pushback demanding concrete implementation evidence",
     )
     feedback: str = Field(
         ...,

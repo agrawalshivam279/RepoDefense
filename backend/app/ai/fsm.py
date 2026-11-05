@@ -14,6 +14,7 @@ from app.schemas.defense import (
     DefenseStage,
     DefenseTurn,
     DifficultyLevel,
+    EvaluationOutput,
     TurnRole,
 )
 from app.schemas.question import GroundedQuestion
@@ -53,11 +54,7 @@ defense_store = DefenseSessionStore()
 def _format_question_turn_content(index: int, total: int, question: GroundedQuestion) -> str:
     """Formats the interviewer's presentation of a grounded question."""
     files = ", ".join(question.cited_files) if question.cited_files else "codebase"
-    cat_val = (
-        question.category.value
-        if hasattr(question.category, "value")
-        else str(question.category)
-    )
+    cat_val = getattr(question.category, "value", str(question.category))
     return (
         f"Question {index + 1}/{total} [{cat_val.upper()}]:\n\n"
         f"{question.question_text}\n\nContext: {question.context_hint} (Files: {files})"
@@ -82,25 +79,8 @@ async def create_defense_session(
         )
         for i, q in enumerate(questions)
     ]
-
     first_q = questions[0]
-    cat_val = (
-        first_q.category.value
-        if hasattr(first_q.category, "value")
-        else str(first_q.category)
-    )
-    initial_turn = DefenseTurn(
-        role=TurnRole.INTERVIEWER,
-        content=_format_question_turn_content(0, len(questions), first_q),
-        stage=DefenseStage.QUESTION_ACTIVE,
-        metadata={
-            "question_id": first_q.id,
-            "category": cat_val,
-            "difficulty": DifficultyLevel.INTERMEDIATE.value,
-            "cited_files": first_q.cited_files,
-        },
-    )
-
+    cat_val = getattr(first_q.category, "value", str(first_q.category))
     session = DefenseSessionState(
         project_id=project_id,
         status=DefenseStage.QUESTION_ACTIVE,
@@ -109,7 +89,19 @@ async def create_defense_session(
         topic_confidence={},
         total_questions=len(questions),
         questions=q_progress,
-        turns=[initial_turn],
+        turns=[
+            DefenseTurn(
+                role=TurnRole.INTERVIEWER,
+                content=_format_question_turn_content(0, len(questions), first_q),
+                stage=DefenseStage.QUESTION_ACTIVE,
+                metadata={
+                    "question_id": first_q.id,
+                    "category": cat_val,
+                    "difficulty": DifficultyLevel.INTERMEDIATE.value,
+                    "cited_files": first_q.cited_files,
+                },
+            )
+        ],
     )
     await target_store.save(session)
     logger.info("defense_session_initialized", session_id=session.session_id)
@@ -125,21 +117,14 @@ def _advance_or_complete_session(session: DefenseSessionState) -> None:
     if next_index < session.total_questions:
         session.current_question_index = next_index
         next_prog = session.questions[next_index]
-        next_prog.status = DefenseStage.QUESTION_ACTIVE
-        session.status = DefenseStage.QUESTION_ACTIVE
-
-        turn_content = _format_question_turn_content(
-            next_index, session.total_questions, next_prog.question
-        )
-        cat_val = (
-            next_prog.question.category.value
-            if hasattr(next_prog.question.category, "value")
-            else str(next_prog.question.category)
-        )
+        next_prog.status = session.status = DefenseStage.QUESTION_ACTIVE
+        cat_val = getattr(next_prog.question.category, "value", str(next_prog.question.category))
         session.turns.append(
             DefenseTurn(
                 role=TurnRole.INTERVIEWER,
-                content=turn_content,
+                content=_format_question_turn_content(
+                    next_index, session.total_questions, next_prog.question
+                ),
                 stage=DefenseStage.QUESTION_ACTIVE,
                 metadata={
                     "question_id": next_prog.question.id,
@@ -199,6 +184,45 @@ async def _process_secondary_turn(
     _advance_or_complete_session(session)
 
 
+def _branch_to_stress_or_mentor(
+    session: DefenseSessionState,
+    prog: DefenseQuestionProgress,
+    eval_out: EvaluationOutput,
+) -> None:
+    """Branches question state to STRESS_TEST_ACTIVE or MENTOR_ACTIVE based on evaluation."""
+    if eval_out.passed_initial_defense:
+        prog.status = session.status = DefenseStage.STRESS_TEST_ACTIVE
+        prog.stress_test_prompt = eval_out.stress_test_prompt
+        content = f"{eval_out.feedback}\n\nProduction Stress-Test:\n{eval_out.stress_test_prompt}"
+    else:
+        ref_file = prog.question.cited_files[0] if prog.question.cited_files else "the module"
+        prog.status = session.status = DefenseStage.MENTOR_ACTIVE
+        prog.mentor_hint = eval_out.mentor_hint or (
+            f"Review how `{ref_file}` coordinates resource lifecycle and boundaries. "
+            "Think about failure modes, connection limits, and defensive checks."
+        )
+        prog.retest_question = eval_out.retest_question or (
+            f"In `{ref_file}`, what specific boundary or fallback pattern would you implement "
+            "to ensure graceful degradation under failure?"
+        )
+        content = (
+            f"{eval_out.feedback}\n\nMentor Hint: {prog.mentor_hint}\n\n"
+            f"Follow-up: {prog.retest_question}"
+        )
+
+    session.turns.append(
+        DefenseTurn(
+            role=TurnRole.INTERVIEWER,
+            content=content,
+            stage=session.status,
+            metadata={
+                "depth_score": eval_out.depth_score,
+                "grounding_verified": eval_out.grounding_verified,
+            },
+        )
+    )
+
+
 async def submit_defense_turn(
     session_id: str,
     candidate_answer: str,
@@ -213,71 +237,49 @@ async def submit_defense_turn(
         raise ValueError("Cannot submit an answer to an already completed defense session.")
 
     prog = session.questions[session.current_question_index]
+    session.turns.append(
+        DefenseTurn(role=TurnRole.CANDIDATE, content=candidate_answer, stage=session.status)
+    )
 
     if session.status == DefenseStage.QUESTION_ACTIVE:
-        session.turns.append(
-            DefenseTurn(
-                role=TurnRole.CANDIDATE,
-                content=candidate_answer,
-                stage=DefenseStage.QUESTION_ACTIVE,
-            )
-        )
         eval_out = await evaluate_candidate_defense(prog.question, candidate_answer)
         prog.initial_defense = candidate_answer
         prog.defense_score = eval_out.depth_score
         prog.feedback = eval_out.feedback
 
-        if eval_out.passed_initial_defense:
-            prog.status = DefenseStage.STRESS_TEST_ACTIVE
-            session.status = DefenseStage.STRESS_TEST_ACTIVE
-            prog.stress_test_prompt = eval_out.stress_test_prompt
-            content = (
-                f"{eval_out.feedback}\n\nProduction Stress-Test:\n"
-                f"{eval_out.stress_test_prompt}"
+        if eval_out.is_vague and prog.pushback_count < 1:
+            prog.pushback_count += 1
+            prog.pushback_prompt = (
+                eval_out.pushback_prompt
+                or "Your answer is too high-level. What specific code mechanisms govern this?"
             )
-            stage = DefenseStage.STRESS_TEST_ACTIVE
+            prog.status = session.status = DefenseStage.PUSHBACK_ACTIVE
+            pb_content = (
+                f"{eval_out.feedback}\n\nPrincipal Engineer Pushback:\n{prog.pushback_prompt}"
+            )
+            session.turns.append(
+                DefenseTurn(
+                    role=TurnRole.INTERVIEWER,
+                    content=pb_content,
+                    stage=DefenseStage.PUSHBACK_ACTIVE,
+                    metadata={"depth_score": eval_out.depth_score, "is_vague": True},
+                )
+            )
         else:
-            prog.status = DefenseStage.MENTOR_ACTIVE
-            session.status = DefenseStage.MENTOR_ACTIVE
-            prog.mentor_hint = eval_out.mentor_hint
-            prog.retest_question = eval_out.retest_question
-            content = (
-                f"{eval_out.feedback}\n\nMentor Hint: {eval_out.mentor_hint}\n\n"
-                f"Follow-up: {eval_out.retest_question}"
-            )
-            stage = DefenseStage.MENTOR_ACTIVE
+            _branch_to_stress_or_mentor(session, prog, eval_out)
 
-        session.turns.append(
-            DefenseTurn(
-                role=TurnRole.INTERVIEWER,
-                content=content,
-                stage=stage,
-                metadata={
-                    "depth_score": eval_out.depth_score,
-                    "grounding_verified": eval_out.grounding_verified,
-                },
-            )
-        )
+    elif session.status == DefenseStage.PUSHBACK_ACTIVE:
+        prog.pushback_response = candidate_answer
+        eval_out = await evaluate_candidate_defense(prog.question, candidate_answer)
+        prog.defense_score = eval_out.depth_score
+        prog.feedback = eval_out.feedback
+        _branch_to_stress_or_mentor(session, prog, eval_out)
 
     elif session.status == DefenseStage.STRESS_TEST_ACTIVE:
-        session.turns.append(
-            DefenseTurn(
-                role=TurnRole.CANDIDATE,
-                content=candidate_answer,
-                stage=DefenseStage.STRESS_TEST_ACTIVE,
-            )
-        )
         prompt_ctx = prog.stress_test_prompt or prog.question.question_text
         await _process_secondary_turn(session, prog, candidate_answer, prompt_ctx, is_stress=True)
 
     elif session.status == DefenseStage.MENTOR_ACTIVE:
-        session.turns.append(
-            DefenseTurn(
-                role=TurnRole.CANDIDATE,
-                content=candidate_answer,
-                stage=DefenseStage.MENTOR_ACTIVE,
-            )
-        )
         prompt_ctx = prog.retest_question or prog.question.question_text
         await _process_secondary_turn(session, prog, candidate_answer, prompt_ctx, is_stress=False)
 

@@ -148,11 +148,46 @@ def build_deterministic_fallback_evaluation(
     """Evaluates candidate defense with deterministic heuristics when LLM is unavailable."""
     clean = candidate_answer.strip().lower()
     word_count = len(clean.split())
-    weak_tokens = ["don't know", "idk", "copied", "tutorial", "boilerplate", "not sure"]
+    fail_tokens = ["don't know", "idk", "copied", "tutorial", "not sure"]
+    is_explicit_fail = any(tok in clean for tok in fail_tokens)
+    vague_tokens = [
+        "standard practice",
+        "it just works",
+        "boilerplate",
+        "normal way",
+        "best practice",
+        "good practice",
+        "industry standard",
+    ]
+    has_vague = any(tok in clean for tok in vague_tokens)
+    tech_tokens = [
+        "pool", "cache", "queue", "replica", "circuit", "retry", "token", "async", "lock",
+    ]
+    has_tech = any(k in clean for k in tech_tokens)
+    is_vague = not is_explicit_fail and (has_vague or (8 <= word_count <= 15 and not has_tech))
 
-    is_weak = word_count < 8 or any(tok in clean for tok in weak_tokens)
+    ref_file = question.cited_files[0] if question.cited_files else "the module"
+    if is_vague:
+        snippet = candidate_answer.strip()[:40]
+        return EvaluationOutput(
+            passed_initial_defense=False,
+            depth_score=4,
+            grounding_verified=False,
+            is_vague=True,
+            feedback=(
+                "Your response is superficial or relies on generic assertions without "
+                "referencing specific codebase mechanisms or implementation details."
+            ),
+            pushback_prompt=(
+                f"You stated '{snippet}...', but looking at `{ref_file}`, what concrete code "
+                "mechanisms or constraints govern this in your implementation?"
+            ),
+            stress_test_prompt=None,
+            mentor_hint=None,
+            retest_question=None,
+        )
 
-    if is_weak:
+    if is_explicit_fail or word_count < 8:
         depth = max(2, min(5, word_count))
         ref_file = question.cited_files[0] if question.cited_files else "the module"
         return EvaluationOutput(

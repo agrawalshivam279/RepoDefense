@@ -387,7 +387,9 @@ gantt
 - **AI Coding Prompt:** "Update the defense session state machine. If an answer scores below 50%, the next generated question should drill down into the same topic at a simpler level. If >90%, increase difficulty."
 
 ### Milestone 2.5: AI Pushback Logic
-- **Goal:** The AI challenges vague or incorrect answers.
+- **Goal:** [x] The AI challenges vague or incorrect answers.
+- **Sub-tasks:**
+  - [x] **Step 2.5: AI Pushback Logic & Multi-Turn Clarification Engine** (PUSHBACK_ACTIVE stage, EvaluationOutput is_vague & pushback_prompt, DefenseQuestionProgress pushback fields, fsm.py clarification routing, fallbacks.py vague heuristic, DefenseTurnBubble.tsx rose/amber styling, 5/5 tests passing)
 - **Components:**
   - "Pushback" prompt template.
   - Multi-turn conversation support per question.

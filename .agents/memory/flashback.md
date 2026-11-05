@@ -115,7 +115,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | Phase | Description | Status |
 | :--- | :--- | :--- |
 | **Phase 1** | Ingestion & Core MVP (Scaffolding, Auth, Git Clone, Security Filter, Complete MVP) | 🟢 Complete |
-| **Phase 2** | Differentiation (Claims Extraction, Verification, Adaptive Questioning) | 🟡 In Progress (Milestones 2.1, 2.2, 2.3, 2.4 Complete) |
+| **Phase 2** | Differentiation (Claims Extraction, Verification, Adaptive Questioning, Pushback Logic) | 🟡 In Progress (Milestones 2.1, 2.2, 2.3, 2.4, 2.5 Complete) |
 | **Phase 3** | The State Machine (LiteLLM, Evidence Grounding, Principal Engineer FSM, Prompts) | ⚪ Planned |
 | **Phase 4** | Interactive Frontend (Next.js 15, SSE / WebSocket chat, Monaco/Prism Code Viewer) | ⚪ Planned |
 | **Phase 5** | Evaluation & Export (Rubric Scoring, Transcript Generation, PDF & Badge Export) | ⚪ Planned |
@@ -123,6 +123,11 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-11-06] — Step 2.5: AI Pushback Logic & Multi-Turn Clarification Engine
+- **Scope / Module**: Defense State Machine & AI Pushback (`backend/app/schemas/defense.py`, `backend/app/ai/prompts.py`, `backend/app/ai/fallbacks.py`, `backend/app/ai/fsm.py`, `backend/tests/test_pushback.py`, `frontend/src/types/defense.ts`, `frontend/src/components/domain/DefenseTurnBubble.tsx`, `docs/specs/step-2-5-ai-pushback-logic.md`)
+- **Details**: Built the AI pushback and multi-turn clarification engine for RepoDefense interview sessions. Extended `DefenseStage` with `PUSHBACK_ACTIVE`, `EvaluationOutput` with `is_vague` and `pushback_prompt`, and `DefenseQuestionProgress` with `pushback_prompt`, `pushback_response`, and `pushback_count`. Updated `DEFENSE_EVALUATION_SYSTEM_PROMPT` in `prompts.py` commanding the Principal Engineer persona to assess whether candidate responses are superficial, vague, or evasive without technical substance, setting `is_vague=True` and synthesizing pointed evidence-grounded pushback prompts without revealing hints. Enhanced `build_deterministic_fallback_evaluation` in `fallbacks.py` with vague token and length heuristics, distinguishing explicit admissions of defeat (routing to mentor) from superficial buzzwords (triggering pushback). Upgraded `fsm.py` state machine to route initial vague answers into `PUSHBACK_ACTIVE`, append structured pushback turns, limit pushback quota to 1 per question to prevent loops, and evaluate candidate clarifications (advancing to `STRESS_TEST_ACTIVE` on technical depth or falling back to `MENTOR_ACTIVE` on persistent vagueness). Enhanced frontend Next.js 15 UI with `DefenseTurnBubble.tsx` rendering distinctive "Principal Engineer Pushback" cards with rose/amber alert badges. Verified 100% via 5/5 new pushback tests passing, 20/20 total defense engine tests passing in 8.38s, `ruff check` (0 errors), `tsc --noEmit` (0 errors), Next.js 15 production build (`next build` across all 10 routes cleanly), and strict <= 300 LOC limit across all files (schemas 192 LOC, prompts 227 LOC, fallbacks 224 LOC, fsm 252 LOC, tests 142 LOC, frontend types 87 LOC, bubble component 126 LOC). Concludes Milestone 2.5 (AI Pushback Logic).
+- **Key Files**: `backend/app/schemas/defense.py`, `backend/app/ai/prompts.py`, `backend/app/ai/fallbacks.py`, `backend/app/ai/fsm.py`, `backend/tests/test_pushback.py`, `frontend/src/types/defense.ts`, `frontend/src/components/domain/DefenseTurnBubble.tsx`, `docs/specs/step-2-5-ai-pushback-logic.md`
 
 ### [2026-11-06] — Step 2.4: Adaptive Questioning State Machine & Topic Confidence Engine
 - **Scope / Module**: Defense State Machine & Adaptive Questioning (ackend/app/schemas/defense.py, ackend/app/schemas/__init__.py, ackend/app/ai/adaptive.py, ackend/app/ai/fsm.py, ackend/app/ai/__init__.py, ackend/tests/test_adaptive_questioning.py, docs/specs/step-2-4-adaptive-questioning-fsm.md)
