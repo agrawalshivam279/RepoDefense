@@ -343,6 +343,9 @@ gantt
 
 ### Milestone 2.1: Resume Claim Extraction
 - **Goal:** User can upload a resume/text and extract claims.
+- **Sub-tasks:**
+  - [x] **Step 2.1a: Backend Resume Parsing, Claim Extraction Engine & REST API** (claim.py schemas, pypdf extraction, LiteLLM Principal Engineer prompt, claims.py router, 13/13 tests)
+  - [ ] **Step 2.1b: Next.js 15 Resume Upload UI & Extracted Claims Dashboard** (resume upload component, claim list cards, category badges, verifiability indicators)
 - **Components:**
   - PDF/text parsing.
   - LLM extraction of technical claims.

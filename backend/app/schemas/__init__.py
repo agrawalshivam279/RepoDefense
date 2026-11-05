@@ -4,6 +4,12 @@ from app.schemas.chunk import (
     ChunkType,
     CodeChunk,
 )
+from app.schemas.claim import (
+    ClaimCategory,
+    ClaimExtractionRequest,
+    ClaimExtractionResponse,
+    TechnicalClaim,
+)
 from app.schemas.defense import (
     DefenseQuestionProgress,
     DefenseSessionState,
@@ -53,6 +59,9 @@ from app.schemas.summary import (
 __all__ = [
     "CategoryScore",
     "ChunkType",
+    "ClaimCategory",
+    "ClaimExtractionRequest",
+    "ClaimExtractionResponse",
     "CodeChunk",
     "DefenseQuestionProgress",
     "DefenseReportResponse",
@@ -83,5 +92,6 @@ __all__ = [
     "SecondaryEvaluationOutput",
     "StartDefenseRequest",
     "SubmitAnswerRequest",
+    "TechnicalClaim",
     "TurnRole",
 ]

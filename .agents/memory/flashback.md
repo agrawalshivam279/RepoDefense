@@ -112,7 +112,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | Phase | Description | Status |
 | :--- | :--- | :--- |
 | **Phase 1** | Ingestion & Core MVP (Scaffolding, Auth, Git Clone, Security Filter, Complete MVP) | 🟢 Complete |
-| **Phase 2** | Analysis & Vectorization (Tree-sitter AST, Chunking, Local Embeddings, pgvector, ARQ) | ⚪ Planned |
+| **Phase 2** | Differentiation (Claims Extraction, Verification, Adaptive Questioning) | 🟡 In Progress |
 | **Phase 3** | The State Machine (LiteLLM, Evidence Grounding, Principal Engineer FSM, Prompts) | ⚪ Planned |
 | **Phase 4** | Interactive Frontend (Next.js 15, SSE / WebSocket chat, Monaco/Prism Code Viewer) | ⚪ Planned |
 | **Phase 5** | Evaluation & Export (Rubric Scoring, Transcript Generation, PDF & Badge Export) | ⚪ Planned |
@@ -120,6 +120,11 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-11-05] — Step 2.1a: Backend Resume Parsing, Claim Extraction Engine & REST API
+- **Scope / Module**: Backend Claim Extraction & REST API (`backend/app/schemas/claim.py`, `backend/app/ai/claim_extractor.py`, `backend/app/api/v1/claims.py`, `backend/app/ai/prompts.py`, `backend/app/main.py`, `backend/pyproject.toml`, `backend/tests/test_claim_extraction.py`, `docs/specs/step-2-1a-resume-claim-extraction-backend.md`)
+- **Details**: Built the backend resume technical claim extraction pipeline initiating Phase 2 (Differentiation). Designed Pydantic v2 data models `ClaimCategory` (architecture, scalability, performance, database, security, framework, infrastructure), `TechnicalClaim`, `ClaimExtractionRequest`, and `ClaimExtractionResponse`. Authored `CLAIM_EXTRACTION_SYSTEM_PROMPT` in `prompts.py` commanding the Principal Engineer persona to extract only verifiable engineering claims, discard fluffy resume buzzwords, and sanitize input via `<resume_text>` XML boundaries. Implemented static PDF text extraction with `pypdf` without code execution, regex technology detection cataloging 40+ frameworks/tools, keyword heuristic categorization, and a deterministic action-verb fallback engine when LLM is unavailable. Exposed `POST /api/v1/claims/extract` for JSON payloads and `POST /api/v1/claims/upload` for multipart PDF/form uploads with 10MB quota and 50,000 character limits. Mounted router under `/api/v1/claims`. Verified 100% via 13/13 hermetic unit/integration tests passing in 7.19s, `ruff check` (0 errors), `tsc --noEmit` (0 errors), and strict <= 300 LOC limit across all files. Concludes Step 2.1a.
+- **Key Files**: `backend/app/schemas/claim.py`, `backend/app/ai/claim_extractor.py`, `backend/app/api/v1/claims.py`, `backend/app/ai/prompts.py`, `backend/app/main.py`, `backend/tests/test_claim_extraction.py`, `docs/specs/step-2-1a-resume-claim-extraction-backend.md`
 
 ### [2026-11-05] — Step 1.18b: Landing Page Showcase & End-to-End UX Polish
 - **Scope / Module**: Frontend UI & Showcase Experience (`frontend/src/app/page.tsx`, `frontend/src/app/layout.tsx`, `frontend/src/components/domain/DefenseShowcaseCard.tsx`, `frontend/src/components/domain/SystemHealthBadge.tsx`, `docs/specs/step-1-18b-landing-showcase-ux-polish.md`)

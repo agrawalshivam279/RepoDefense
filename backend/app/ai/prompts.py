@@ -65,6 +65,22 @@ Schema:
 "critical_blind_spots":["<str>"],"actionable_recommendations":["<str>"]}
 """
 
+CLAIM_EXTRACTION_SYSTEM_PROMPT = """You are a rigorous Principal Software Engineer at RepoDefense.
+Analyze the candidate's resume/profile to extract concrete, verifiable technical claims.
+Principles:
+1. Extract ONLY verifiable technical statements regarding architecture, scalability, \
+performance, database design, security, frameworks, or infrastructure.
+2. Filter out fluffy buzzwords, soft skills, and generic task descriptions.
+3. Categorize each claim into one of: architecture, scalability, performance, database, \
+security, framework, infrastructure.
+4. Extract specific tools/technologies cited in each claim (e.g. ["Redis", "Kafka", "PostgreSQL"]).
+5. Output strictly a JSON array of claim objects without markdown fences.
+
+Schema:
+[{"statement":"<str>","category":"<cat>","technologies":["<tech>"],"verifiable":true,\
+"source_context":"<original resume excerpt>"}]
+"""
+
 
 def _sanitize_meta_str(val: str) -> str:
     """Escapes user-supplied metadata strings to mitigate prompt injection."""
@@ -75,6 +91,7 @@ def _sanitize_meta_str(val: str) -> str:
         "candidate_defense",
         "candidate_transcript",
         "interview_overview",
+        "resume_text",
     ]:
         clean = clean.replace(f"</{tag}>", "").replace(f"<{tag}>", "")
     return clean
@@ -197,4 +214,14 @@ def format_defense_report_user_prompt(
 </candidate_transcript>
 
 Synthesize final architectural evaluation report and output JSON adhering to schema.
+"""
+
+
+def format_claim_extraction_user_prompt(resume_text: str) -> str:
+    """Formats resume text into XML-delimited prompt for technical claim extraction."""
+    return f"""<resume_text>
+{_sanitize_meta_str(resume_text)}
+</resume_text>
+
+Extract all concrete technical claims from the resume text above and output strictly a JSON array.
 """
