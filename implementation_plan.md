@@ -324,7 +324,7 @@ gantt
 - **Goal:** Deploy MVP to production and verify full-stack CI/CD and user flow polish.
 - **Sub-tasks:**
   - [x] **Step 1.18a: GitHub Actions CI/CD Pipeline & Production Readiness Suite** (.github/workflows/ci.yml, pyproject.toml, package.json, doctor preflight, production build verification)
-  - [ ] **Step 1.18b: Landing Page Showcase & End-to-End UX Polish** (landing page polish, global navigation, production health checks, live demo flow)
+  - [x] **Step 1.18b: Landing Page Showcase & End-to-End UX Polish** (landing page polish, global navigation, production health checks, live demo flow)
 - **Components:**
   - Supabase project setup (production).
   - Vercel deployment (frontend).
