@@ -409,6 +409,9 @@ gantt
 
 ### Milestone 2.7: Ownership Analysis Engine
 - **Goal:** Determine who actually wrote complex parts.
+- **Sub-tasks:**
+  - [x] **Step 2.7a: Backend Ownership Analysis Engine, Git Blame Parser & REST API** (schemas/ownership.py, analyzers/blame.py, services/ownership.py, GET /api/v1/projects/{project_id}/ownership, flagged unowned evidence)
+  - [ ] **Step 2.7b: Next.js 15 Repository Ownership Visualizer & Symbol Attribution Inspector** (SymbolOwnershipCard, FileOwnershipList, /projects/[id]/ownership)
 - **Components:**
   - `git blame` integration.
   - Heuristics correlating complexity with authorship.
