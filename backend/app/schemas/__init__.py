@@ -10,6 +10,13 @@ from app.schemas.claim import (
     ClaimExtractionResponse,
     TechnicalClaim,
 )
+from app.schemas.claim_verification import (
+    BatchClaimVerificationResponse,
+    ClaimVerificationRequest,
+    ClaimVerificationResult,
+    EvidenceCitation,
+    VerificationStatus,
+)
 from app.schemas.defense import (
     DefenseQuestionProgress,
     DefenseSessionState,
@@ -57,11 +64,14 @@ from app.schemas.summary import (
 )
 
 __all__ = [
+    "BatchClaimVerificationResponse",
     "CategoryScore",
     "ChunkType",
     "ClaimCategory",
     "ClaimExtractionRequest",
     "ClaimExtractionResponse",
+    "ClaimVerificationRequest",
+    "ClaimVerificationResult",
     "CodeChunk",
     "DefenseQuestionProgress",
     "DefenseReportResponse",
@@ -71,6 +81,7 @@ __all__ = [
     "DependencyOverviewItem",
     "EvaluationOutput",
     "EvidenceBase",
+    "EvidenceCitation",
     "EvidenceCreate",
     "EvidenceRef",
     "EvidenceResponse",
@@ -94,4 +105,5 @@ __all__ = [
     "SubmitAnswerRequest",
     "TechnicalClaim",
     "TurnRole",
+    "VerificationStatus",
 ]
