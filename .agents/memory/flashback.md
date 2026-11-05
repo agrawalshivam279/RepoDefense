@@ -3,8 +3,8 @@
 > **Product**: RepoDefense  
 > **Tagline**: "Prove that you understand — and can defend — the software you built."  
 > **Core Loop**: Evidence → Claim → Defense → Stress Test → Evaluation → Mentor → Re-test  
-> **Status**: 🟢 Initialized — Specifications & Foundations Complete (Ready for Phase 1 Scaffolding)  
-> **Last Synchronized**: 2026-10-06  
+> **Status**: 🟢 Phase 1 (Core MVP) Complete — Ready for Phase 2 (Differentiation)  
+> **Last Synchronized**: 2026-11-05  
 
 ---
 
@@ -14,7 +14,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 
 | Module | Stack | Status |
 | :--- | :--- | :--- |
-| **Frontend Core** | Next.js 15 (App Router) + TypeScript + Tailwind + shadcn/ui | 🟢 Milestone 1.1 Complete |
+| **Frontend Core** | Next.js 15 (App Router) + TypeScript + Tailwind + shadcn/ui | 🟢 Phase 1 Complete (Milestones 1.1 - 1.18 Complete) |
 | **Backend API** | FastAPI (Python 3.12+) + Pydantic v2 + structlog | 🟢 Milestone 1.1 Complete |
 | **Database & Vectors** | PostgreSQL 17 + pgvector (Supabase) + SQLAlchemy asyncpg | 🟢 Milestone 1.2 Complete |
 | **Authentication** | Supabase Auth (GitHub OAuth + Email/Password) | 🟢 Milestone 1.3 Complete |
@@ -111,7 +111,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 
 | Phase | Description | Status |
 | :--- | :--- | :--- |
-| **Phase 1** | Ingestion & Core MVP (Scaffolding, Auth, Git Clone, Security Filter) | 🟡 In Progress |
+| **Phase 1** | Ingestion & Core MVP (Scaffolding, Auth, Git Clone, Security Filter, Complete MVP) | 🟢 Complete |
 | **Phase 2** | Analysis & Vectorization (Tree-sitter AST, Chunking, Local Embeddings, pgvector, ARQ) | ⚪ Planned |
 | **Phase 3** | The State Machine (LiteLLM, Evidence Grounding, Principal Engineer FSM, Prompts) | ⚪ Planned |
 | **Phase 4** | Interactive Frontend (Next.js 15, SSE / WebSocket chat, Monaco/Prism Code Viewer) | ⚪ Planned |
@@ -120,6 +120,11 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-11-05] — Step 1.18b: Landing Page Showcase & End-to-End UX Polish
+- **Scope / Module**: Frontend UI & Showcase Experience (`frontend/src/app/page.tsx`, `frontend/src/app/layout.tsx`, `frontend/src/components/domain/DefenseShowcaseCard.tsx`, `frontend/src/components/domain/SystemHealthBadge.tsx`, `docs/specs/step-1-18b-landing-showcase-ux-polish.md`)
+- **Details**: Built the user-facing landing page showcase and comprehensive navigation polish, concluding Phase 1 (Core MVP). Created `SystemHealthBadge` component dynamically probing `/api/health` with animated pulse indicators and graceful offline states. Developed `DefenseShowcaseCard` interactive simulator demonstrating the 7-stage core loop (AST evidence anchor in `backend/app/ai/fsm.py`, Principal Engineer architectural inquiry, candidate defense, 10,000 req/sec stress test injection, and rubric scoring tier). Overhauled `frontend/src/app/page.tsx` with hero section, dynamic auth CTAs (directing to `/dashboard` or `/signup`), embedded interactive showcase, 7-stage interaction engine cards, differentiator comparison matrix (RepoDefense vs LeetCode vs ChatGPT), and bottom conversion banner. Polished `frontend/src/app/layout.tsx` with active section links (`#showcase`, `#core-loop`, `#differentiators`), responsive navigation, embedded health badge, and tech stack footer credits. Verified 100% via `tsc --noEmit` (0 errors), Next.js 15 production build (`next build` across all 8 routes), ruff lint (0 errors), and strict <= 300 LOC limit across all files. Concludes Milestone 1.18 and Phase 1 (Core MVP).
+- **Key Files**: `frontend/src/components/domain/DefenseShowcaseCard.tsx`, `frontend/src/components/domain/SystemHealthBadge.tsx`, `frontend/src/app/page.tsx`, `frontend/src/app/layout.tsx`, `docs/specs/step-1-18b-landing-showcase-ux-polish.md`
 
 ### [2026-11-05] — Step 1.18a: GitHub Actions CI/CD Pipeline & Production Readiness Suite
 - **Scope / Module**: CI/CD Automation & Environment Configuration (`.github/workflows/ci.yml`, `backend/pyproject.toml`, `.env.example`, `docs/specs/step-1-18a-ci-pipeline-readiness.md`)
