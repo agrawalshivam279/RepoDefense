@@ -152,10 +152,17 @@ export default function ProjectOverviewPage() {
           </button>
           <Link
             href={`/projects/${overview.project_id}/claims`}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white font-semibold text-xs font-mono transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white font-semibold text-xs font-mono transition-colors"
           >
             <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Verify Claims</span>
+            <span>Claims</span>
+          </Link>
+          <Link
+            href={`/projects/${overview.project_id}/coverage`}
+            className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white font-semibold text-xs font-mono transition-colors"
+          >
+            <Layers className="w-3.5 h-3.5 text-sky-400" />
+            <span>Coverage</span>
           </Link>
           <Link
             href={`/interview/${overview.project_id}`}

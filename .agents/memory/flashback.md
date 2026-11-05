@@ -31,7 +31,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **Resume Claim Extraction** | pypdf + LiteLLM + Next.js 15 Dashboard | 🟢 Milestone 2.1 Complete (Steps 2.1a & 2.1b) |
 | **Claim Verification Engine** | pgvector RAG + LiteLLM + Deterministic Fallback | 🟢 Step 2.2a Complete |
 | **Claim Verification UI** | Next.js 15 App Router + Evidence Graph | 🟢 Milestone 2.3 Complete |
-| **Defense Coverage & Heatmap** | Dynamic Coverage Service + Module Heatmap REST API | 🟢 Step 2.6a Complete |
+| **Defense Coverage & Heatmap** | Dynamic Coverage Service + Next.js 15 Heatmap Visualizer | 🟢 Milestone 2.6 Complete (Steps 2.6a & 2.6b) |
 | **IDE Code Viewer** | Monaco / Prism code viewer with AST evidence highlights | ⚪ Phase 4 Planned |
 | **Evaluation & Export** | Rubric generator + PDF transcript export | ⚪ Phase 5 Planned |
 
@@ -116,7 +116,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | Phase | Description | Status |
 | :--- | :--- | :--- |
 | **Phase 1** | Ingestion & Core MVP (Scaffolding, Auth, Git Clone, Security Filter, Complete MVP) | 🟢 Complete |
-| **Phase 2** | Differentiation (Claims Extraction, Verification, Adaptive Questioning, Pushback Logic) | 🟡 In Progress (Milestones 2.1, 2.2, 2.3, 2.4, 2.5 Complete) |
+| **Phase 2** | Differentiation (Claims Extraction, Verification, Adaptive Questioning, Pushback Logic, Coverage Tracking) | 🟡 In Progress (Milestones 2.1, 2.2, 2.3, 2.4, 2.5, 2.6 Complete) |
 | **Phase 3** | The State Machine (LiteLLM, Evidence Grounding, Principal Engineer FSM, Prompts) | ⚪ Planned |
 | **Phase 4** | Interactive Frontend (Next.js 15, SSE / WebSocket chat, Monaco/Prism Code Viewer) | ⚪ Planned |
 | **Phase 5** | Evaluation & Export (Rubric Scoring, Transcript Generation, PDF & Badge Export) | ⚪ Planned |
@@ -124,6 +124,11 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-11-06] — Step 2.6b: Next.js 15 Repository Coverage Heatmap & Tested vs Untested Visualizer
+- **Scope / Module**: Frontend Defense Coverage UI & Module Heatmap (`frontend/src/types/coverage.ts`, `frontend/src/lib/coverageApi.ts`, `frontend/src/components/domain/CoverageScorecard.tsx`, `frontend/src/components/domain/ModuleHeatmapGrid.tsx`, `frontend/src/components/domain/BlindSpotList.tsx`, `frontend/src/app/projects/[id]/coverage/page.tsx`, `frontend/src/app/projects/[id]/page.tsx`, `docs/specs/step-2-6b-repository-coverage-heatmap.md`)
+- **Details**: Designed and built the Next.js 15 App Router frontend visualizer for repository defense coverage, directory heatmaps, and untested architectural blind spots (`/projects/[id]/coverage`). Created TypeScript data contracts in `coverage.ts` mirroring backend Pydantic models (`CoverageStatus`, `CoverageTier`, `FileCoverageItem`, `ModuleCoverageItem`, `BlindSpotItem`, `ProjectCoverageResponse`). Implemented typed API client `coverageApi.ts` fetching `GET /api/v1/projects/{id}/coverage` with Supabase JWT bearer token authorization. Developed modular `CoverageScorecard.tsx` displaying executive KPIs (Files Defended %, Evidence Defended %, Lines Covered, Untested Blind Spots count), `ModuleHeatmapGrid.tsx` rendering interactive directory tiles with coverage density colors and click-to-filter drilldown, and `BlindSpotList.tsx` showing ranked untested architectural components with priority badges (`critical`, `high`, `medium`) and line ranges. Built the comprehensive `/projects/[id]/coverage` visualizer page with coverage tier badge (*Principal Verified*, *Substantial Coverage*, *Needs More Defense*), search filtering, status toggles (`all`, `tested`, `untested`), and file list drilldown. Added "Coverage" navigation pill in the `/projects/[id]` header. Verified 100% via `tsc --noEmit` (0 errors), Next.js 15 production build (`next build` across all 11 routes cleanly with 5.71 kB coverage route), and strict <= 300 LOC limit across all files (types 59 LOC, api 44 LOC, scorecard 63 LOC, heatmap 139 LOC, blind spots 106 LOC, page 293 LOC, project overview 298 LOC). Concludes Milestone 2.6 (Coverage Tracking).
+- **Key Files**: `frontend/src/types/coverage.ts`, `frontend/src/lib/coverageApi.ts`, `frontend/src/components/domain/CoverageScorecard.tsx`, `frontend/src/components/domain/ModuleHeatmapGrid.tsx`, `frontend/src/components/domain/BlindSpotList.tsx`, `frontend/src/app/projects/[id]/coverage/page.tsx`, `frontend/src/app/projects/[id]/page.tsx`, `docs/specs/step-2-6b-repository-coverage-heatmap.md`
 
 ### [2026-11-06] — Step 2.6a: Backend Coverage Tracking & Module Heatmap API
 - **Scope / Module**: Backend Coverage Tracking & Module Heatmap (`backend/app/schemas/coverage.py`, `backend/app/schemas/__init__.py`, `backend/app/services/coverage.py`, `backend/app/services/__init__.py`, `backend/app/api/v1/projects.py`, `backend/app/ai/fsm.py`, `backend/app/core/database.py`, `backend/app/workers/cloner.py`, `backend/tests/test_coverage.py`, `docs/specs/step-2-6a-backend-coverage-tracking.md`)
