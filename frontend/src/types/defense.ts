@@ -7,10 +7,13 @@ export type DefenseStage =
   | "initializing"
   | "question_active"
   | "evaluating_defense"
+  | "pushback_active"
   | "stress_test_active"
   | "mentor_active"
   | "question_completed"
   | "session_completed";
+
+export type DifficultyLevel = "foundational" | "intermediate" | "advanced";
 
 export type TurnRole = "interviewer" | "candidate" | "system";
 
@@ -30,6 +33,8 @@ export interface DefenseTurn {
   metadata?: {
     depth_score?: number;
     grounding_verified?: boolean;
+    is_vague?: boolean;
+    difficulty?: DifficultyLevel | string;
     final_score?: number;
     overall_score?: number;
     feedback?: string;
@@ -52,8 +57,12 @@ export interface GroundedQuestion {
 export interface DefenseQuestionProgress {
   question: GroundedQuestion;
   status: DefenseStage;
+  difficulty?: DifficultyLevel;
   initial_defense?: string;
   defense_score?: number;
+  pushback_prompt?: string;
+  pushback_response?: string;
+  pushback_count?: number;
   stress_test_prompt?: string;
   stress_test_response?: string;
   mentor_hint?: string;
@@ -68,6 +77,8 @@ export interface DefenseSessionState {
   project_id: string;
   status: DefenseStage;
   current_question_index: number;
+  current_difficulty?: DifficultyLevel;
+  topic_confidence?: Record<string, number>;
   total_questions: number;
   questions: DefenseQuestionProgress[];
   turns: DefenseTurn[];

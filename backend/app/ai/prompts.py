@@ -34,12 +34,14 @@ Rubric:
 1. Grounding: Does the answer reflect the repository architecture?
 2. Depth Score (1-10): >=6 passes initial defense, <6 fails.
 3. Branching: If depth >=6, provide stress_test_prompt. If depth <6, mentor_hint & retest_question.
-4. Output strictly a single JSON object conforming to schema.
+4. Pushback Detection: If answer is superficial, vague, evades details, or uses buzzwords \
+without substance, set is_vague=true and provide pushback_prompt demanding code mechanisms.
+5. Output strictly a single JSON object conforming to schema.
 
 Schema:
 {"passed_initial_defense":true,"depth_score":7,"grounding_verified":true,\
 "feedback":"<str>","stress_test_prompt":"<str|null>","mentor_hint":"<str|null>",\
-"retest_question":"<str|null>"}
+"retest_question":"<str|null>","is_vague":false,"pushback_prompt":"<str|null>"}
 """
 
 SECONDARY_EVALUATION_SYSTEM_PROMPT = """You are a Principal Software Engineer evaluating a \

@@ -27,6 +27,7 @@ export function DefenseTurnBubble({ turn }: DefenseTurnBubbleProps) {
 
   const isStressTest = turn.stage === "stress_test_active" && turn.role === "interviewer";
   const isMentor = turn.stage === "mentor_active" && turn.role === "interviewer";
+  const isPushback = turn.stage === "pushback_active" && turn.role === "interviewer";
   const depthScore = turn.metadata?.depth_score;
   const finalScore = turn.metadata?.final_score;
   const citedFiles = turn.metadata?.cited_files;
@@ -63,6 +64,8 @@ export function DefenseTurnBubble({ turn }: DefenseTurnBubbleProps) {
         className={`max-w-3xl rounded-2xl p-4 sm:p-5 text-sm transition-all shadow-sm ${
           isCandidate
             ? "bg-slate-900 border border-slate-800 text-slate-100 rounded-tr-none"
+            : isPushback
+            ? "bg-rose-950/20 border border-rose-500/40 text-slate-100 rounded-tl-none shadow-rose-950/10"
             : isStressTest
             ? "bg-amber-950/20 border border-amber-500/40 text-slate-100 rounded-tl-none shadow-amber-950/10"
             : isMentor
@@ -71,8 +74,14 @@ export function DefenseTurnBubble({ turn }: DefenseTurnBubbleProps) {
         }`}
       >
         {/* Dynamic Context Header inside Interviewer Bubble */}
-        {!isCandidate && (isStressTest || isMentor || depthScore !== undefined || finalScore !== undefined) && (
+        {!isCandidate && (isPushback || isStressTest || isMentor || depthScore !== undefined || finalScore !== undefined) && (
           <div className="flex flex-wrap items-center gap-2 mb-3 pb-3 border-b border-slate-800/80">
+            {isPushback && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-mono font-medium bg-rose-500/10 text-rose-400 border border-rose-500/30">
+                <AlertTriangle className="w-3 h-3" />
+                Principal Engineer Pushback
+              </span>
+            )}
             {isStressTest && (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-mono font-medium bg-amber-500/10 text-amber-400 border border-amber-500/30">
                 <ShieldAlert className="w-3 h-3" />
