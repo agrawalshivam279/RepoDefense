@@ -212,7 +212,11 @@ async def clone_and_sanitize_repository(ctx: dict[str, Any], project_id: str) ->
 
                 # 6. AI-Powered Project Summary Generation
                 evidence_tags = [
-                    f"{e.evidence_type.value}: {e.label}" for e in evidence_items[:30]
+                    (
+                        f"{getattr(e.evidence_type, 'value', e.evidence_type)}: "
+                        f"{getattr(e, 'title', getattr(e, 'label', ''))}"
+                    )
+                    for e in evidence_items[:30]
                 ]
                 summary_input = ProjectSummaryInput(
                     project_name=project.name,
@@ -223,8 +227,7 @@ async def clone_and_sanitize_repository(ctx: dict[str, Any], project_id: str) ->
                     dependencies=all_dep_names[:30],
                     evidence_tags=evidence_tags,
                     top_contributors=[
-                        f"{c.name} ({c.commit_count} commits)"
-                        for c in git_history.contributors[:5]
+                        f"{c.name} ({c.commit_count} commits)" for c in git_history.contributors[:5]
                     ],
                 )
                 ai_summary = await generate_project_summary(summary_input)

@@ -131,6 +131,7 @@ async def test_cloner_worker_embed_pipeline(monkeypatch):
     proj_id, user_id = uuid.uuid4(), uuid.uuid4()
     mock_project = MagicMock(spec=Project)
     mock_project.id, mock_project.user_id = proj_id, user_id
+    mock_project.name = "test-repo"
     mock_project.github_url = "https://github.com/test-org/test-repo"
     mock_project.default_branch, mock_project.status = "main", "pending"
 

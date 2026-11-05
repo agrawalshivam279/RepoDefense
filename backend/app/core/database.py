@@ -1,3 +1,5 @@
+import os
+import sys
 from typing import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import (
@@ -5,17 +7,27 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
+from sqlalchemy.pool import NullPool
 
 from app.core.config import settings
 
-# Configure async engine with pooling parameters calibrated for Supabase / PostgreSQL 17
-engine = create_async_engine(
-    url=settings.DATABASE_URL,
-    pool_size=10,
-    max_overflow=5,
-    pool_recycle=300,
-    pool_pre_ping=True,
-)
+# In test environments (pytest or TESTING=true), use NullPool to prevent asyncpg
+# connections from being pooled and reused across separate anyio event loops.
+_is_testing = "pytest" in sys.modules or os.getenv("TESTING") == "true"
+
+if _is_testing:
+    engine = create_async_engine(
+        url=settings.DATABASE_URL,
+        poolclass=NullPool,
+    )
+else:
+    engine = create_async_engine(
+        url=settings.DATABASE_URL,
+        pool_size=10,
+        max_overflow=5,
+        pool_recycle=300,
+        pool_pre_ping=True,
+    )
 
 # Async session factory
 AsyncSessionLocal = async_sessionmaker(

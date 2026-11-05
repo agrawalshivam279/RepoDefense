@@ -239,7 +239,7 @@ async def test_cloner_worker_catalogs_analyzed_files():
             stmt = select(RepositorySnapshot).where(RepositorySnapshot.project_id == project_id)
             snapshot = (await session.execute(stmt)).scalar_one_or_none()
             assert snapshot is not None
-            assert "Languages:" in snapshot.summary
+            assert "full-scan-repo" in snapshot.summary
 
             file_stmt = select(AnalyzedFile).where(AnalyzedFile.snapshot_id == snapshot.id)
             files = (await session.execute(file_stmt)).scalars().all()

@@ -70,7 +70,8 @@ async def root() -> dict[str, str]:
 async def health_check() -> HealthResponse:
     """Returns application health and operational status."""
     return HealthResponse(
-        status="healthy",
+        status="ok",
+        app=settings.PROJECT_NAME,
         version=settings.VERSION,
-        environment=settings.ENVIRONMENT,
+
     )

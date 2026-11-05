@@ -17,6 +17,14 @@ from app.schemas.claim_verification import (
     EvidenceCitation,
     VerificationStatus,
 )
+from app.schemas.coverage import (
+    BlindSpotItem,
+    CoverageStatus,
+    CoverageTier,
+    FileCoverageItem,
+    ModuleCoverageItem,
+    ProjectCoverageResponse,
+)
 from app.schemas.defense import (
     DefenseQuestionProgress,
     DefenseSessionState,
@@ -66,6 +74,7 @@ from app.schemas.summary import (
 
 __all__ = [
     "BatchClaimVerificationResponse",
+    "BlindSpotItem",
     "CategoryScore",
     "ChunkType",
     "ClaimCategory",
@@ -74,6 +83,8 @@ __all__ = [
     "ClaimVerificationRequest",
     "ClaimVerificationResult",
     "CodeChunk",
+    "CoverageStatus",
+    "CoverageTier",
     "DefenseQuestionProgress",
     "DefenseReportResponse",
     "DefenseSessionState",
@@ -88,8 +99,11 @@ __all__ = [
     "EvidenceRef",
     "EvidenceResponse",
     "EvidenceType",
+    "FileCoverageItem",
     "GroundedQuestion",
     "LanguageMetric",
+    "ModuleCoverageItem",
+    "ProjectCoverageResponse",
     "ProjectCreate",
     "ProjectOverviewResponse",
     "ProjectResponse",

@@ -179,7 +179,7 @@ async def test_cloner_worker_infra_and_manifest_pipeline():
         async with AsyncSessionLocal() as session:
             stmt = select(RepositorySnapshot).where(RepositorySnapshot.project_id == project_id)
             snapshot = (await session.execute(stmt)).scalar_one()
-            assert "dependencies" in snapshot.summary
+            assert "full-ecosystem-repo" in snapshot.summary
 
             stmt_deps = select(Dependency).where(Dependency.project_id == project_id)
             db_deps = (await session.execute(stmt_deps)).scalars().all()

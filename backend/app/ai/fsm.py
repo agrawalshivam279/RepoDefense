@@ -33,6 +33,10 @@ class DefenseSessionStore:
         async with self._lock:
             return self._sessions.get(session_id)
 
+    async def get_by_project(self, project_id: str) -> List[DefenseSessionState]:
+        async with self._lock:
+            return [s for s in self._sessions.values() if s.project_id == project_id]
+
     async def save(self, session: DefenseSessionState) -> DefenseSessionState:
         session.updated_at = datetime.now(timezone.utc).isoformat()
         async with self._lock:

@@ -10,6 +10,7 @@ from app.core.redis import enqueue_clone_job
 from app.core.security import get_current_user
 from app.models.analysis import AnalyzedFile, Dependency, Evidence
 from app.models.project import Project, RepositorySnapshot, User
+from app.schemas.coverage import ProjectCoverageResponse
 from app.schemas.evidence import EvidenceResponse
 from app.schemas.project import (
     DependencyOverviewItem,
@@ -20,6 +21,7 @@ from app.schemas.project import (
     RepositoryOverviewMetrics,
 )
 from app.schemas.summary import ProjectSummary
+from app.services.coverage import calculate_project_coverage
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
 
@@ -263,4 +265,23 @@ async def get_project_overview(
         summary=parsed_summary,
         metrics=metrics,
         dependencies=dep_items,
+    )
+
+
+@router.get(
+    "/{project_id}/coverage",
+    response_model=ProjectCoverageResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Get repository defense coverage and module heatmaps",
+)
+async def get_project_coverage(
+    project_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ProjectCoverageResponse:
+    """Calculates coverage, module heatmaps, and untested blind spots for a project."""
+    return await calculate_project_coverage(
+        project_id=project_id,
+        user_id=current_user.id,
+        db=db,
     )
