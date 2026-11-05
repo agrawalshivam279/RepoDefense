@@ -14,7 +14,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 
 | Module | Stack | Status |
 | :--- | :--- | :--- |
-| **Frontend Core** | Next.js 15 (App Router) + TypeScript + Tailwind + shadcn/ui | 🟢 Phase 1 Complete (Milestones 1.1 - 1.18 Complete) |
+| **Frontend Core** | Next.js 15 (App Router) + TypeScript + Tailwind + shadcn/ui | 🟢 Phase 1 & Step 2.1b Complete |
 | **Backend API** | FastAPI (Python 3.12+) + Pydantic v2 + structlog | 🟢 Milestone 1.1 Complete |
 | **Database & Vectors** | PostgreSQL 17 + pgvector (Supabase) + SQLAlchemy asyncpg | 🟢 Milestone 1.2 Complete |
 | **Authentication** | Supabase Auth (GitHub OAuth + Email/Password) | 🟢 Milestone 1.3 Complete |
@@ -28,6 +28,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **AI LLM Routing** | LiteLLM (OpenAI-compatible, FreeLLMAPI primary) | 🟢 Milestone 1.10 Complete |
 | **Defense Session & FSM** | Interactive Next.js 15 UI + Python FSM | 🟢 Milestone 1.14 Complete |
 | **Defense Evaluation & Report** | LiteLLM Principal Engineer Synthesis + Next.js 15 Report UI | 🟢 Milestone 1.16 Complete |
+| **Resume Claim Extraction** | pypdf + LiteLLM + Next.js 15 Dashboard | 🟢 Milestone 2.1 Complete (Steps 2.1a & 2.1b) |
 | **IDE Code Viewer** | Monaco / Prism code viewer with AST evidence highlights | ⚪ Phase 4 Planned |
 | **Evaluation & Export** | Rubric generator + PDF transcript export | ⚪ Phase 5 Planned |
 
@@ -112,7 +113,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | Phase | Description | Status |
 | :--- | :--- | :--- |
 | **Phase 1** | Ingestion & Core MVP (Scaffolding, Auth, Git Clone, Security Filter, Complete MVP) | 🟢 Complete |
-| **Phase 2** | Differentiation (Claims Extraction, Verification, Adaptive Questioning) | 🟡 In Progress |
+| **Phase 2** | Differentiation (Claims Extraction, Verification, Adaptive Questioning) | 🟡 In Progress (Milestone 2.1 Complete) |
 | **Phase 3** | The State Machine (LiteLLM, Evidence Grounding, Principal Engineer FSM, Prompts) | ⚪ Planned |
 | **Phase 4** | Interactive Frontend (Next.js 15, SSE / WebSocket chat, Monaco/Prism Code Viewer) | ⚪ Planned |
 | **Phase 5** | Evaluation & Export (Rubric Scoring, Transcript Generation, PDF & Badge Export) | ⚪ Planned |
@@ -120,6 +121,11 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-11-05] — Step 2.1b: Next.js 15 Resume Upload UI & Extracted Claims Dashboard
+- **Scope / Module**: Frontend UI & Claims Extraction (`frontend/src/types/claim.ts`, `frontend/src/lib/claimApi.ts`, `frontend/src/components/domain/ResumeUploadCard.tsx`, `frontend/src/app/claims/page.tsx`, `frontend/src/app/layout.tsx`, `docs/specs/step-2-1b-resume-upload-claims-ui.md`)
+- **Details**: Built the complete user-facing resume upload interface and extracted technical claims dashboard in Next.js 15 App Router (`/claims`). Created TypeScript data contracts for claims (`ClaimCategory`, `TechnicalClaim`, `ClaimExtractionResponse`) matching backend Pydantic models. Implemented typed API client `claimApi.ts` supporting both direct text paste (`extractClaimsFromText`) and multipart PDF file uploads (`uploadResumePdf`) with Supabase JWT bearer authentication. Developed modular `ResumeUploadCard` component with tabbed modes ("Upload PDF" vs "Paste Text"), drag-and-drop file upload with 10MB quota enforcement, sample resume loader, and animated processing states. Built the full claims dashboard with summary KPI cards (total claims, verifiable ratio, top detected technologies), live search filter, category filter pills, claim cards with color-coded verifiability rings and tech chips, and direct navigation CTAs to repository verification and defense interviews. Added Claims navigation links in global layout header and footer. Verified 100% via `tsc --noEmit` (0 errors), Next.js 15 production build (`next build` across all 9 App Router routes cleanly), backend pytest (13/13 passing in 6.44s), ruff lint (0 errors), and strict <= 300 LOC limit across all files (`ResumeUploadCard.tsx` 267 LOC, `page.tsx` 251 LOC). Concludes Milestone 2.1 (Resume Claim Extraction).
+- **Key Files**: `frontend/src/types/claim.ts`, `frontend/src/lib/claimApi.ts`, `frontend/src/components/domain/ResumeUploadCard.tsx`, `frontend/src/app/claims/page.tsx`, `frontend/src/app/layout.tsx`, `docs/specs/step-2-1b-resume-upload-claims-ui.md`
 
 ### [2026-11-05] — Step 2.1a: Backend Resume Parsing, Claim Extraction Engine & REST API
 - **Scope / Module**: Backend Claim Extraction & REST API (`backend/app/schemas/claim.py`, `backend/app/ai/claim_extractor.py`, `backend/app/api/v1/claims.py`, `backend/app/ai/prompts.py`, `backend/app/main.py`, `backend/pyproject.toml`, `backend/tests/test_claim_extraction.py`, `docs/specs/step-2-1a-resume-claim-extraction-backend.md`)
