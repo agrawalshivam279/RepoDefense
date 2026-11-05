@@ -356,6 +356,8 @@ gantt
 
 ### Milestone 2.2: Claim-Evidence Verification Engine
 - **Goal:** Map resume claims to codebase evidence.
+- **Sub-tasks:**
+  - [x] **Step 2.2a: Backend Claim-Evidence Verification Engine, LiteLLM Grounding & REST API** (claim_verification.py schemas, prompts.py templates, claim_verifier.py RAG & fallbacks, POST /api/v1/projects/{id}/claims/verify endpoint)
 - **Components:**
   - RAG pipeline to find evidence supporting a claim.
   - LLM evaluation (Supported/Contradicted/Unverifiable).

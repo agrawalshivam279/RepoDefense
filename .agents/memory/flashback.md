@@ -4,7 +4,7 @@
 > **Tagline**: "Prove that you understand — and can defend — the software you built."  
 > **Core Loop**: Evidence → Claim → Defense → Stress Test → Evaluation → Mentor → Re-test  
 > **Status**: 🟢 Phase 1 (Core MVP) Complete — Ready for Phase 2 (Differentiation)  
-> **Last Synchronized**: 2026-11-05  
+> **Last Synchronized**: 2026-11-06  
 
 ---
 
@@ -29,6 +29,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **Defense Session & FSM** | Interactive Next.js 15 UI + Python FSM | 🟢 Milestone 1.14 Complete |
 | **Defense Evaluation & Report** | LiteLLM Principal Engineer Synthesis + Next.js 15 Report UI | 🟢 Milestone 1.16 Complete |
 | **Resume Claim Extraction** | pypdf + LiteLLM + Next.js 15 Dashboard | 🟢 Milestone 2.1 Complete (Steps 2.1a & 2.1b) |
+| **Claim Verification Engine** | pgvector RAG + LiteLLM + Deterministic Fallback | 🟢 Step 2.2a Complete |
 | **IDE Code Viewer** | Monaco / Prism code viewer with AST evidence highlights | ⚪ Phase 4 Planned |
 | **Evaluation & Export** | Rubric generator + PDF transcript export | ⚪ Phase 5 Planned |
 
@@ -113,7 +114,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | Phase | Description | Status |
 | :--- | :--- | :--- |
 | **Phase 1** | Ingestion & Core MVP (Scaffolding, Auth, Git Clone, Security Filter, Complete MVP) | 🟢 Complete |
-| **Phase 2** | Differentiation (Claims Extraction, Verification, Adaptive Questioning) | 🟡 In Progress (Milestone 2.1 Complete) |
+| **Phase 2** | Differentiation (Claims Extraction, Verification, Adaptive Questioning) | 🟡 In Progress (Milestone 2.1 & Step 2.2a Complete) |
 | **Phase 3** | The State Machine (LiteLLM, Evidence Grounding, Principal Engineer FSM, Prompts) | ⚪ Planned |
 | **Phase 4** | Interactive Frontend (Next.js 15, SSE / WebSocket chat, Monaco/Prism Code Viewer) | ⚪ Planned |
 | **Phase 5** | Evaluation & Export (Rubric Scoring, Transcript Generation, PDF & Badge Export) | ⚪ Planned |
@@ -121,6 +122,12 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-11-06] — Step 2.2a: Backend Claim-Evidence Verification Engine, LiteLLM Grounding & REST API
+- **Scope / Module**: Backend Claim Verification & RAG Grounding (ackend/app/schemas/claim_verification.py, ackend/app/ai/prompts.py, ackend/app/ai/claim_verifier.py, ackend/app/api/v1/claims.py, ackend/app/main.py, ackend/tests/test_claim_verification.py, docs/specs/step-2-2a-claim-verification-engine.md)
+- **Details**: Built the backend claim-evidence verification engine grounding candidate resume technical claims against real repository evidence. Implemented Pydantic v2 data models VerificationStatus (supported, contradicted, unverifiable), EvidenceCitation, ClaimVerificationResult, ClaimVerificationRequest, and BatchClaimVerificationResponse. Authored CLAIM_VERIFICATION_SYSTEM_PROMPT in prompts.py commanding the Principal Engineer persona to assess candidate claims strictly against retrieved code chunks, architecture evidence, and dependency manifests with zero citation hallucination and XML boundary isolation (<claim>, <codebase_evidence>). Implemented erify_single_claim and erify_claims_batch in claim_verifier.py combining pgvector cosine distance search (ll-MiniLM-L6-v2), architectural evidence lookups, and dependency cross-referencing, backed by a deterministic rule-based fallback when offline or when LLM API keys are unconfigured. Exposed POST /api/v1/projects/{project_id}/claims/verify and alias POST /api/v1/claims/verify/{project_id} requiring Supabase JWT authentication and asserting tenant project ownership. Verified 100% via 7/7 hermetic tests passing in 7.45s, 
+uff check (0 errors), 	sc --noEmit (0 errors), Next.js 15 production build (0 errors across 8 routes), and strict <= 300 LOC limit across all files (claim_verification.py 115 LOC, prompts.py 261 LOC, claim_verifier.py 257 LOC, claims.py 203 LOC, main.py 76 LOC, 	est_claim_verification.py 279 LOC). Concludes Step 2.2a.
+- **Key Files**: ackend/app/schemas/claim_verification.py, ackend/app/ai/prompts.py, ackend/app/ai/claim_verifier.py, ackend/app/api/v1/claims.py, ackend/app/main.py, ackend/tests/test_claim_verification.py, docs/specs/step-2-2a-claim-verification-engine.md
 
 ### [2026-11-05] — Step 2.1b: Next.js 15 Resume Upload UI & Extracted Claims Dashboard
 - **Scope / Module**: Frontend UI & Claims Extraction (`frontend/src/types/claim.ts`, `frontend/src/lib/claimApi.ts`, `frontend/src/components/domain/ResumeUploadCard.tsx`, `frontend/src/app/claims/page.tsx`, `frontend/src/app/layout.tsx`, `docs/specs/step-2-1b-resume-upload-claims-ui.md`)
