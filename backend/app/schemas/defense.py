@@ -22,6 +22,14 @@ class DefenseStage(str, Enum):
     SESSION_COMPLETED = "session_completed"
 
 
+class DifficultyLevel(str, Enum):
+    """Calibrated difficulty tiers for defense questions."""
+
+    FOUNDATIONAL = "foundational"
+    INTERMEDIATE = "intermediate"
+    ADVANCED = "advanced"
+
+
 class TurnRole(str, Enum):
     """Participants in the defense interview turn exchange."""
 
@@ -46,7 +54,7 @@ class DefenseTurn(BaseModel):
     )
     metadata: Dict[str, Any] = Field(
         default_factory=dict,
-        description="Arbitrary turn metadata (scores, hints, cited files)",
+        description="Arbitrary turn metadata (scores, hints, cited files, difficulty)",
     )
 
     model_config = ConfigDict(extra="ignore")
@@ -57,6 +65,10 @@ class DefenseQuestionProgress(BaseModel):
 
     question: GroundedQuestion
     status: DefenseStage = DefenseStage.QUESTION_ACTIVE
+    difficulty: DifficultyLevel = Field(
+        default=DifficultyLevel.INTERMEDIATE,
+        description="Target difficulty level of this question",
+    )
     initial_defense: Optional[str] = None
     defense_score: Optional[int] = None
     stress_test_prompt: Optional[str] = None
@@ -85,6 +97,14 @@ class DefenseSessionState(BaseModel):
     current_question_index: int = Field(
         default=0,
         description="0-indexed pointer to active question",
+    )
+    current_difficulty: DifficultyLevel = Field(
+        default=DifficultyLevel.INTERMEDIATE,
+        description="Active difficulty tier of the defense session",
+    )
+    topic_confidence: Dict[str, float] = Field(
+        default_factory=dict,
+        description="Continuous confidence rating (0.0-1.0) per evaluated category",
     )
     total_questions: int = Field(
         default=0,
