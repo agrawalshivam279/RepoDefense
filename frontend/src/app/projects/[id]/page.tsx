@@ -24,14 +24,8 @@ import { supabase } from "@/lib/supabase";
 import type { ProjectOverviewResponse } from "@/types/project";
 
 const LANGUAGE_COLORS: Record<string, string> = {
-  Python: "bg-emerald-500",
-  TypeScript: "bg-blue-500",
-  JavaScript: "bg-amber-400",
-  Go: "bg-cyan-500",
-  HTML: "bg-orange-500",
-  CSS: "bg-indigo-500",
-  Rust: "bg-rose-500",
-  Other: "bg-slate-600",
+  Python: "bg-emerald-500", TypeScript: "bg-blue-500", JavaScript: "bg-amber-400",
+  Go: "bg-cyan-500", HTML: "bg-orange-500", CSS: "bg-indigo-500", Rust: "bg-rose-500", Other: "bg-slate-600",
 };
 
 export default function ProjectOverviewPage() {
@@ -156,6 +150,13 @@ export default function ProjectOverviewPage() {
           >
             <RefreshCw className="w-4 h-4" />
           </button>
+          <Link
+            href={`/projects/${overview.project_id}/claims`}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white font-semibold text-xs font-mono transition-colors"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Verify Claims</span>
+          </Link>
           <Link
             href={`/interview/${overview.project_id}`}
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs font-mono transition-colors shadow-md"

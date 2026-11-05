@@ -368,6 +368,8 @@ gantt
 
 ### Milestone 2.3: Claim Verification UI (Evidence Graph View)
 - **Goal:** Visual display of claims and supporting evidence.
+- **Sub-tasks:**
+  - [x] **Step 2.3: Claim Verification UI (Evidence Graph View)** (claim.ts interfaces, claimApi.ts verifyProjectClaims, ClaimVerificationCard.tsx with status badges/confidence/code citations/suggested questions, /projects/[id]/claims page with KPI scorecards and filters)
 - **Components:**
   - Next.js UI showing claim status.
   - Expandable evidence graph.

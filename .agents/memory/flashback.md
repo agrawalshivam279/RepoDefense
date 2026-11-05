@@ -30,6 +30,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **Defense Evaluation & Report** | LiteLLM Principal Engineer Synthesis + Next.js 15 Report UI | 🟢 Milestone 1.16 Complete |
 | **Resume Claim Extraction** | pypdf + LiteLLM + Next.js 15 Dashboard | 🟢 Milestone 2.1 Complete (Steps 2.1a & 2.1b) |
 | **Claim Verification Engine** | pgvector RAG + LiteLLM + Deterministic Fallback | 🟢 Step 2.2a Complete |
+| **Claim Verification UI** | Next.js 15 App Router + Evidence Graph | 🟢 Milestone 2.3 Complete |
 | **IDE Code Viewer** | Monaco / Prism code viewer with AST evidence highlights | ⚪ Phase 4 Planned |
 | **Evaluation & Export** | Rubric generator + PDF transcript export | ⚪ Phase 5 Planned |
 
@@ -114,7 +115,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | Phase | Description | Status |
 | :--- | :--- | :--- |
 | **Phase 1** | Ingestion & Core MVP (Scaffolding, Auth, Git Clone, Security Filter, Complete MVP) | 🟢 Complete |
-| **Phase 2** | Differentiation (Claims Extraction, Verification, Adaptive Questioning) | 🟡 In Progress (Milestone 2.1 & Step 2.2a Complete) |
+| **Phase 2** | Differentiation (Claims Extraction, Verification, Adaptive Questioning) | 🟡 In Progress (Milestones 2.1, 2.2, 2.3 Complete) |
 | **Phase 3** | The State Machine (LiteLLM, Evidence Grounding, Principal Engineer FSM, Prompts) | ⚪ Planned |
 | **Phase 4** | Interactive Frontend (Next.js 15, SSE / WebSocket chat, Monaco/Prism Code Viewer) | ⚪ Planned |
 | **Phase 5** | Evaluation & Export (Rubric Scoring, Transcript Generation, PDF & Badge Export) | ⚪ Planned |
@@ -122,6 +123,13 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-11-06] — Step 2.3: Claim Verification UI (Evidence Graph View)
+- **Scope / Module**: Frontend Claim Verification UI & Evidence Graph (rontend/src/types/claim.ts, rontend/src/lib/claimApi.ts, rontend/src/components/domain/ClaimVerificationCard.tsx, rontend/src/app/projects/[id]/claims/page.tsx, rontend/src/app/projects/[id]/page.tsx, docs/specs/step-2-3-claim-verification-ui.md)
+- **Details**: Built the complete interactive Next.js 15 App Router frontend interface for inspecting, exploring, and auditing candidate technical claims grounded in repository code truth. Extended TypeScript data contracts with VerificationStatus (supported, contradicted, unverifiable), EvidenceCitation, ClaimVerificationResult, and BatchClaimVerificationResponse. Implemented erifyProjectClaims in claimApi.ts calling POST /api/v1/projects/{project_id}/claims/verify with Supabase JWT bearer token authorization. Developed modular ClaimVerificationCard featuring color-coded verification status badges (emerald for supported, rose for contradicted, amber for unverifiable), confidence percentage meter, Principal Engineer rationale block, expandable citation drawer showing relative file paths, 1-indexed line spans, similarity ratings, and syntax-styled code snippet excerpts, and suggested interview defense questions with direct launch CTAs to defense interviews (/interview/[id]). Built dedicated project claims page /projects/[id]/claims with summary KPI scorecards (total evaluated, supported, contradicted, unverifiable, match rate %), preset candidate claims loader, live status filter tabs, search filtering, and verification execution controls. Added 'Verify Claims' navigation button on /projects/[id]. Verified 100% via 	sc --noEmit (0 errors), Next.js 15 production build (
+ext build across all 9 App Router routes cleanly), 7/7 backend claim verification tests passing, 13/13 claim extraction tests passing, 
+uff check (0 errors), and strict <= 300 LOC limit across all files (claim.ts 53 LOC, claimApi.ts 114 LOC, ClaimVerificationCard.tsx 214 LOC, claims/page.tsx 274 LOC, projects/[id]/page.tsx 291 LOC). Concludes Milestone 2.3 (Claim Verification UI).
+- **Key Files**: rontend/src/types/claim.ts, rontend/src/lib/claimApi.ts, rontend/src/components/domain/ClaimVerificationCard.tsx, rontend/src/app/projects/[id]/claims/page.tsx, rontend/src/app/projects/[id]/page.tsx, docs/specs/step-2-3-claim-verification-ui.md
 
 ### [2026-11-06] — Step 2.2a: Backend Claim-Evidence Verification Engine, LiteLLM Grounding & REST API
 - **Scope / Module**: Backend Claim Verification & RAG Grounding (ackend/app/schemas/claim_verification.py, ackend/app/ai/prompts.py, ackend/app/ai/claim_verifier.py, ackend/app/api/v1/claims.py, ackend/app/main.py, ackend/tests/test_claim_verification.py, docs/specs/step-2-2a-claim-verification-engine.md)
