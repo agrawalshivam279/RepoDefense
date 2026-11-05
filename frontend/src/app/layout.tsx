@@ -31,6 +31,12 @@ export default function RootLayout({
 
             <nav className="flex items-center gap-4 sm:gap-6 text-xs sm:text-sm text-slate-300">
               <Link
+                href="/claims"
+                className="hover:text-emerald-400 text-slate-200 transition-colors flex items-center gap-1 font-medium"
+              >
+                Claims
+              </Link>
+              <Link
                 href="/#showcase"
                 className="hover:text-white transition-colors hidden md:inline-block"
               >
@@ -93,6 +99,13 @@ export default function RootLayout({
             <div className="text-center sm:text-right space-y-1">
               <p>© 2026 RepoDefense. Evidence-grounded technical assessment.</p>
               <div className="flex items-center justify-center sm:justify-end gap-3 text-slate-400">
+                <Link
+                  href="/claims"
+                  className="hover:text-emerald-400 transition-colors"
+                >
+                  Resume Claims
+                </Link>
+                <span>•</span>
                 <a
                   href="https://github.com/agrawalshivam279/RepoDefense"
                   target="_blank"
