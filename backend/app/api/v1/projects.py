@@ -10,18 +10,19 @@ from app.core.redis import enqueue_clone_job
 from app.core.security import get_current_user
 from app.models.analysis import AnalyzedFile, Dependency, Evidence
 from app.models.project import Project, RepositorySnapshot, User
-from app.schemas.coverage import ProjectCoverageResponse
-from app.schemas.evidence import EvidenceResponse
-from app.schemas.project import (
+from app.schemas import (
     DependencyOverviewItem,
+    EvidenceResponse,
     LanguageMetric,
+    ProjectCoverageResponse,
     ProjectCreate,
     ProjectOverviewResponse,
+    ProjectOwnershipReport,
     ProjectResponse,
+    ProjectSummary,
     RepositoryOverviewMetrics,
 )
-from app.schemas.summary import ProjectSummary
-from app.services.coverage import calculate_project_coverage
+from app.services import calculate_project_coverage, calculate_project_ownership
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
 
@@ -30,7 +31,7 @@ router = APIRouter(prefix="/projects", tags=["Projects"])
     "",
     response_model=ProjectResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Register a GitHub repository project",
+    summary="Register a GitHub repo",
 )
 async def create_project(
     payload: ProjectCreate,
@@ -42,8 +43,7 @@ async def create_project(
         Project.user_id == current_user.id,
         Project.github_url == payload.github_url,
     )
-    existing = (await db.execute(stmt)).scalar_one_or_none()
-    if existing is not None:
+    if (await db.execute(stmt)).scalar_one_or_none() is not None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Project with this GitHub URL already exists for current user",
@@ -61,7 +61,6 @@ async def create_project(
     await db.commit()
     await db.refresh(project)
     await enqueue_clone_job(project.id)
-
     return ProjectResponse.model_validate(project)
 
 
@@ -76,8 +75,7 @@ async def list_projects(
         .where(Project.user_id == current_user.id)
         .order_by(Project.created_at.desc())
     )
-    result = await db.execute(stmt)
-    projects = result.scalars().all()
+    projects = (await db.execute(stmt)).scalars().all()
     return [ProjectResponse.model_validate(p) for p in projects]
 
 
@@ -94,10 +92,7 @@ async def get_project(
     )
     project = (await db.execute(stmt)).scalar_one_or_none()
     if project is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Project not found",
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
     return ProjectResponse.model_validate(project)
 
 
@@ -114,10 +109,7 @@ async def delete_project(
     )
     project = (await db.execute(stmt)).scalar_one_or_none()
     if project is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Project not found",
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
     await db.delete(project)
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -138,17 +130,13 @@ async def list_project_evidence(
         Project.id == project_id,
         Project.user_id == current_user.id,
     )
-    project = (await db.execute(stmt_proj)).scalar_one_or_none()
-    if project is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Project not found",
-        )
+    if (await db.execute(stmt_proj)).scalar_one_or_none() is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
 
     stmt_ev = (
         select(Evidence)
         .where(Evidence.project_id == project_id)
-        .order_by(Evidence.start_line, Evidence.id)
+        .order_by(Evidence.file_path, Evidence.start_line)
     )
     evidence_rows = (await db.execute(stmt_ev)).scalars().all()
     return [EvidenceResponse.model_validate(e) for e in evidence_rows]
@@ -164,19 +152,15 @@ async def get_project_overview(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ProjectOverviewResponse:
-    """Retrieves full repository analysis overview for a project owned by the current user."""
+    """Retrieves comprehensive analysis metrics and AI summary for a repository."""
     stmt_proj = select(Project).where(
         Project.id == project_id,
         Project.user_id == current_user.id,
     )
     project = (await db.execute(stmt_proj)).scalar_one_or_none()
     if project is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Project not found",
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
 
-    # 1. Fetch latest repository snapshot
     stmt_snap = (
         select(RepositorySnapshot)
         .where(RepositorySnapshot.project_id == project_id)
@@ -185,7 +169,6 @@ async def get_project_overview(
     )
     snapshot = (await db.execute(stmt_snap)).scalar_one_or_none()
 
-    # 2. Fetch cataloged dependencies
     stmt_deps = (
         select(Dependency)
         .where(Dependency.project_id == project_id)
@@ -202,11 +185,9 @@ async def get_project_overview(
         for d in dep_rows
     ]
 
-    # 3. Fetch evidence count
     stmt_ev_count = select(func.count(Evidence.id)).where(Evidence.project_id == project_id)
     evidence_count = (await db.execute(stmt_ev_count)).scalar() or 0
 
-    # 4. Aggregate file & language metrics from the snapshot
     language_metrics: list[LanguageMetric] = []
     total_files = 0
     total_lines = 0
@@ -220,10 +201,11 @@ async def get_project_overview(
             )
             .where(AnalyzedFile.snapshot_id == snapshot.id)
             .group_by(AnalyzedFile.language)
-            .order_by(func.coalesce(func.sum(AnalyzedFile.total_lines), 0).desc())
+            .order_by(func.sum(AnalyzedFile.total_lines).desc())
         )
-        file_rows = (await db.execute(stmt_files)).all()
-        for r in file_rows:
+
+        rows = (await db.execute(stmt_files)).all()
+        for r in rows:
             language_metrics.append(
                 LanguageMetric(
                     language=r.language,
@@ -234,7 +216,6 @@ async def get_project_overview(
             total_files += r.file_count
             total_lines += r.total_lines
 
-    # 5. Deserialize AI project summary if present
     parsed_summary: Optional[ProjectSummary] = None
     commit_hash: Optional[str] = None
     if snapshot:
@@ -271,8 +252,7 @@ async def get_project_overview(
 @router.get(
     "/{project_id}/coverage",
     response_model=ProjectCoverageResponse,
-    status_code=status.HTTP_200_OK,
-    summary="Get repository defense coverage and module heatmaps",
+    summary="Get defense coverage",
 )
 async def get_project_coverage(
     project_id: uuid.UUID,
@@ -280,8 +260,24 @@ async def get_project_coverage(
     db: AsyncSession = Depends(get_db),
 ) -> ProjectCoverageResponse:
     """Calculates coverage, module heatmaps, and untested blind spots for a project."""
-    return await calculate_project_coverage(
+    return await calculate_project_coverage(project_id=project_id, user_id=current_user.id, db=db)
+
+
+@router.get(
+    "/{project_id}/ownership",
+    response_model=ProjectOwnershipReport,
+    summary="Get code ownership",
+)
+async def get_project_ownership(
+    project_id: uuid.UUID,
+    candidate_email: Optional[str] = None,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ProjectOwnershipReport:
+    """Calculates symbol-level and file-level git authorship attribution."""
+    return await calculate_project_ownership(
         project_id=project_id,
         user_id=current_user.id,
+        candidate_email=candidate_email,
         db=db,
     )

@@ -47,6 +47,13 @@ from app.schemas.evidence import (
     EvidenceResponse,
     EvidenceType,
 )
+from app.schemas.ownership import (
+    AuthorShare,
+    FileOwnershipSummary,
+    OwnershipStatus,
+    ProjectOwnershipReport,
+    SymbolOwnership,
+)
 from app.schemas.project import (
     DependencyOverviewItem,
     LanguageMetric,
@@ -73,6 +80,7 @@ from app.schemas.summary import (
 )
 
 __all__ = [
+    "AuthorShare",
     "BatchClaimVerificationResponse",
     "BlindSpotItem",
     "CategoryScore",
@@ -100,12 +108,15 @@ __all__ = [
     "EvidenceResponse",
     "EvidenceType",
     "FileCoverageItem",
+    "FileOwnershipSummary",
     "GroundedQuestion",
     "LanguageMetric",
     "ModuleCoverageItem",
+    "OwnershipStatus",
     "ProjectCoverageResponse",
     "ProjectCreate",
     "ProjectOverviewResponse",
+    "ProjectOwnershipReport",
     "ProjectResponse",
     "ProjectSummary",
     "ProjectSummaryInput",
@@ -119,6 +130,7 @@ __all__ = [
     "SecondaryEvaluationOutput",
     "StartDefenseRequest",
     "SubmitAnswerRequest",
+    "SymbolOwnership",
     "TechnicalClaim",
     "TurnRole",
     "VerificationStatus",

@@ -32,6 +32,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **Claim Verification Engine** | pgvector RAG + LiteLLM + Deterministic Fallback | 🟢 Step 2.2a Complete |
 | **Claim Verification UI** | Next.js 15 App Router + Evidence Graph | 🟢 Milestone 2.3 Complete |
 | **Defense Coverage & Heatmap** | Dynamic Coverage Service + Next.js 15 Heatmap Visualizer | 🟢 Milestone 2.6 Complete (Steps 2.6a & 2.6b) |
+| **Code Ownership & Attribution** | Git Blame Parser + Symbol Attribution Engine | 🟢 Step 2.7a Complete |
 | **IDE Code Viewer** | Monaco / Prism code viewer with AST evidence highlights | ⚪ Phase 4 Planned |
 | **Evaluation & Export** | Rubric generator + PDF transcript export | ⚪ Phase 5 Planned |
 
@@ -124,6 +125,11 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-11-06] — Step 2.7a: Backend Ownership Analysis Engine, Git Blame Parser & REST API
+- **Scope / Module**: Backend Git Blame & Ownership Attribution (`backend/app/schemas/ownership.py`, `backend/app/schemas/__init__.py`, `backend/app/analyzers/blame.py`, `backend/app/analyzers/__init__.py`, `backend/app/services/ownership.py`, `backend/app/services/__init__.py`, `backend/app/api/v1/projects.py`, `backend/tests/test_ownership.py`, `docs/specs/step-2-7a-backend-ownership-engine.md`)
+- **Details**: Designed and implemented the backend repository code ownership analysis engine for RepoDefense. Built Pydantic v2 schemas in `ownership.py` (`OwnershipStatus`, `AuthorShare`, `SymbolOwnership`, `FileOwnershipSummary`, `ProjectOwnershipReport`). Implemented deterministic `git blame --line-porcelain` parser in `analyzers/blame.py` using `asyncio.create_subprocess_exec` with explicit argument arrays, subprocess timeouts, and `Path.is_relative_to` path traversal protection. Created modular `calculate_project_ownership` in `services/ownership.py` mapping line spans to AST `CodeSymbol` coordinates, computing candidate attribution percentages (`PRIMARY >= 80%`, `COLLABORATOR 20-79%`, `MINOR 1-19%`, `UNOWNED 0%`), and cross-referencing with `Evidence` records to flag critical unowned load-bearing components for targeted interview questioning. Added authenticated endpoint `GET /api/v1/projects/{project_id}/ownership` in `projects.py` with multi-tenant isolation. Verified 100% via 6/6 new hermetic ownership tests passing in 7.23s, `ruff check` (0 errors), `tsc --noEmit` (0 errors), and strict <= 300 LOC limit across all files (schemas 107 LOC, blame 226 LOC, services 251 LOC, projects 283 LOC, test_ownership 231 LOC). Concludes Step 2.7a.
+- **Key Files**: `backend/app/schemas/ownership.py`, `backend/app/schemas/__init__.py`, `backend/app/analyzers/blame.py`, `backend/app/analyzers/__init__.py`, `backend/app/services/ownership.py`, `backend/app/services/__init__.py`, `backend/app/api/v1/projects.py`, `backend/tests/test_ownership.py`, `docs/specs/step-2-7a-backend-ownership-engine.md`
 
 ### [2026-11-06] — Step 2.6b: Next.js 15 Repository Coverage Heatmap & Tested vs Untested Visualizer
 - **Scope / Module**: Frontend Defense Coverage UI & Module Heatmap (`frontend/src/types/coverage.ts`, `frontend/src/lib/coverageApi.ts`, `frontend/src/components/domain/CoverageScorecard.tsx`, `frontend/src/components/domain/ModuleHeatmapGrid.tsx`, `frontend/src/components/domain/BlindSpotList.tsx`, `frontend/src/app/projects/[id]/coverage/page.tsx`, `frontend/src/app/projects/[id]/page.tsx`, `docs/specs/step-2-6b-repository-coverage-heatmap.md`)
