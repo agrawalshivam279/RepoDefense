@@ -35,6 +35,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **Code Ownership & Attribution** | Git Blame Parser + Symbol Attribution Engine + Next.js 15 Visualizer | 🟢 Milestone 2.7 Complete (Steps 2.7a & 2.7b) |
 | **Architecture Audit & Detection** | Static Directory Topology + Pattern Engine + Next.js 15 Visualizer | 🟢 Milestone 2.8 Complete (Steps 2.8a & 2.8b) |
 | **Architecture Diagram Engine** | Multi-tier Mermaid Generation + Next.js 15 Interactive Visualizer | 🟢 Milestone 2.9 Complete (Steps 2.9a & 2.9b) |
+| **Dependency / Technology Audit** | Heuristic Semver Parser + Obsolescence Engine + REST API | 🟢 Step 2.10a Complete |
 | **IDE Code Viewer** | Monaco / Prism code viewer with AST evidence highlights | ⚪ Phase 4 Planned |
 | **Evaluation & Export** | Rubric generator + PDF transcript export | ⚪ Phase 5 Planned |
 
@@ -127,6 +128,14 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-11-07] - Step 2.10a: Backend Dependency & Technology Audit Engine & REST API
+- **Scope / Module**: Backend Dependency & Technology Audit Engine (ackend/app/schemas/tech_audit.py, ackend/app/schemas/__init__.py, ackend/app/analyzers/tech_audit.py, ackend/app/analyzers/__init__.py, ackend/app/services/tech_audit.py, ackend/app/services/__init__.py, ackend/app/api/v1/tech_audit.py, ackend/app/main.py, ackend/tests/test_tech_audit.py, docs/specs/step-2-10a-dependency-audit-engine.md)
+- **Details**: Designed and implemented the backend dependency and technology health audit engine detecting outdated, deprecated, and insecure packages across ingested repositories. Created Pydantic v2 data models in 	ech_audit.py (AuditSeverity, AuditCategory, AuditedDependencyItem, TechAuditReportResponse). Authored deterministic semver parser (parse_semver) handling npm and PyPI specifiers (^, ~, >=, , prereleases) without external code execution. Implemented curated static deprecation rules (
+equest, moment, querystring, lake8, pyflakes) and version-based CVE thresholds (lodash < 4.17.21, urllib3 < 2.0.7, jsonwebtoken < 9.0.0, express < 4.19.2, django < 4.2.0, 
+eact < 18.0.0, pydantic < 2.0.0, lask < 2.3.0, xios < 1.6.0). Implemented technology health score calculator (calculate_tech_health_score) with weighted deduction penalties (Critical: -25, High: -15, Medium: -8, Low: -3) clamped to 0-100%. Implemented udit_project_technology business service in services/tech_audit.py querying project dependencies and aggregating audit items and score. Created authenticated REST endpoint GET /api/v1/projects/{project_id}/tech-audit in pi/v1/tech_audit.py with multi-tenant tenancy checks (project.user_id == current_user.id). Verified 100% via 9/9 pytest tests passing in 5.49s, 
+uff check (0 errors), 	sc --noEmit (0 errors), and strict <= 300 LOC limit across all 9 touched files (schemas 55 LOC, analyzer 219 LOC, service 52 LOC, router 53 LOC, main 82 LOC, tests 256 LOC). Concludes Step 2.10a.
+- **Key Files**: ackend/app/schemas/tech_audit.py, ackend/app/schemas/__init__.py, ackend/app/analyzers/tech_audit.py, ackend/app/analyzers/__init__.py, ackend/app/services/tech_audit.py, ackend/app/services/__init__.py, ackend/app/api/v1/tech_audit.py, ackend/app/main.py, ackend/tests/test_tech_audit.py, docs/specs/step-2-10a-dependency-audit-engine.md
 
 ### [2026-11-07] — Step 2.9b: Next.js 15 Mermaid Architecture Visualizer & Interactive Diagram Viewer
 - **Scope / Module**: Frontend Mermaid Architecture UI & Interactive Viewer (`frontend/package.json`, `frontend/src/types/diagram.ts`, `frontend/src/lib/diagramApi.ts`, `frontend/src/components/domain/MermaidViewer.tsx`, `frontend/src/app/projects/[id]/architecture/page.tsx`, `docs/specs/step-2-9b-mermaid-architecture-visualizer.md`)

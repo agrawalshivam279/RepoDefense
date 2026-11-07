@@ -92,6 +92,12 @@ from app.schemas.summary import (
     ProjectSummary,
     ProjectSummaryInput,
 )
+from app.schemas.tech_audit import (
+    AuditCategory,
+    AuditedDependencyItem,
+    AuditSeverity,
+    TechAuditReportResponse,
+)
 
 __all__ = [
     "ArchitecturalRisk",
@@ -156,6 +162,10 @@ __all__ = [
     "SubmitAnswerRequest",
     "SymbolOwnership",
     "TechnicalClaim",
+    "AuditCategory",
+    "AuditSeverity",
+    "AuditedDependencyItem",
+    "TechAuditReportResponse",
     "TurnRole",
     "VerificationStatus",
 ]
