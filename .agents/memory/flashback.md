@@ -33,7 +33,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **Claim Verification UI** | Next.js 15 App Router + Evidence Graph | 🟢 Milestone 2.3 Complete |
 | **Defense Coverage & Heatmap** | Dynamic Coverage Service + Next.js 15 Heatmap Visualizer | 🟢 Milestone 2.6 Complete (Steps 2.6a & 2.6b) |
 | **Code Ownership & Attribution** | Git Blame Parser + Symbol Attribution Engine + Next.js 15 Visualizer | 🟢 Milestone 2.7 Complete (Steps 2.7a & 2.7b) |
-| **Architecture Audit & Detection** | Static Directory Topology + Dependency Clustering + Pattern Engine | 🟢 Step 2.8a Complete |
+| **Architecture Audit & Detection** | Static Directory Topology + Pattern Engine + Next.js 15 Visualizer | 🟢 Milestone 2.8 Complete (Steps 2.8a & 2.8b) |
 | **IDE Code Viewer** | Monaco / Prism code viewer with AST evidence highlights | ⚪ Phase 4 Planned |
 | **Evaluation & Export** | Rubric generator + PDF transcript export | ⚪ Phase 5 Planned |
 
@@ -118,7 +118,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | Phase | Description | Status |
 | :--- | :--- | :--- |
 | **Phase 1** | Ingestion & Core MVP (Scaffolding, Auth, Git Clone, Security Filter, Complete MVP) | 🟢 Complete |
-| **Phase 2** | Differentiation (Claims Extraction, Verification, Adaptive Questioning, Pushback Logic, Coverage Tracking, Ownership Engine) | 🟡 In Progress (Milestones 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7 Complete) |
+| **Phase 2** | Differentiation (Claims Extraction, Verification, Adaptive Questioning, Pushback Logic, Coverage Tracking, Ownership Engine, Architecture Audit) | 🟡 In Progress (Milestones 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8 Complete) |
 | **Phase 3** | The State Machine (LiteLLM, Evidence Grounding, Principal Engineer FSM, Prompts) | ⚪ Planned |
 | **Phase 4** | Interactive Frontend (Next.js 15, SSE / WebSocket chat, Monaco/Prism Code Viewer) | ⚪ Planned |
 | **Phase 5** | Evaluation & Export (Rubric Scoring, Transcript Generation, PDF & Badge Export) | ⚪ Planned |
@@ -126,6 +126,11 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-11-07] — Step 2.8b: Next.js 15 Architecture Pattern Visualizer & Health Card
+- **Scope / Module**: Frontend Architecture UI & Health Card (`frontend/src/types/architecture.ts`, `frontend/src/lib/architectureApi.ts`, `frontend/src/components/domain/ArchitectureReportCard.tsx`, `frontend/src/components/domain/PatternIndicatorList.tsx`, `frontend/src/components/domain/ArchitecturalRisksCard.tsx`, `frontend/src/app/projects/[id]/architecture/page.tsx`, `frontend/src/app/projects/[id]/page.tsx`, `docs/specs/step-2-8b-architecture-visualizer.md`)
+- **Details**: Designed and built the Next.js 15 App Router frontend visualizer for repository architecture pattern detection, indicator signals, and design risk inspection (`/projects/[id]/architecture`). Created TypeScript data contracts in `architecture.ts` mirroring backend Pydantic models (`ArchitecturePatternType`, `PatternConfidenceTier`, `PatternIndicator`, `DetectedPattern`, `ArchitecturalRisk`, `ArchitectureReportResponse`). Implemented typed API client `architectureApi.ts` connecting to `GET /api/v1/projects/{id}/architecture` with Supabase JWT bearer token authentication. Developed modular `ArchitectureReportCard.tsx` rendering primary pattern classification with confidence meters, tier badges (`High`, `Moderate`, `Low`), structural summary narrative, and secondary pattern comparison cards. Developed `PatternIndicatorList.tsx` with signal filter tabs (`all`, `directory`, `dependency`, `evidence`), heuristic weights, and matched item tag clouds. Developed `ArchitecturalRisksCard.tsx` highlighting detected architectural smells (`FAT_ROUTER_MISSING_SERVICES`, `FLAT_ROOT_HIERARCHY`, `UNISOLATED_BACKGROUND_TASKS`) with severity badges (`critical`, `high`, `medium`, `low`) and actionable defense recommendations. Built full visualizer page with executive KPI scorecards, repository directory distribution breakdown, and integrated "Architecture" navigation pill in `/projects/[id]` overview. Verified 100% via `tsc --noEmit` (0 errors), Next.js 15 production build (`next build` across all 12 routes cleanly with 6.22 kB `/projects/[id]/architecture` route), and strict <= 300 LOC limit across all files (types 51 LOC, api 46 LOC, report card 137 LOC, indicator list 133 LOC, risks card 115 LOC, page 275 LOC, project overview 258 LOC). Concludes Milestone 2.8 (Architecture Audit & Detection).
+- **Key Files**: `frontend/src/types/architecture.ts`, `frontend/src/lib/architectureApi.ts`, `frontend/src/components/domain/ArchitectureReportCard.tsx`, `frontend/src/components/domain/PatternIndicatorList.tsx`, `frontend/src/components/domain/ArchitecturalRisksCard.tsx`, `frontend/src/app/projects/[id]/architecture/page.tsx`, `frontend/src/app/projects/[id]/page.tsx`, `docs/specs/step-2-8b-architecture-visualizer.md`
 
 ### [2026-11-07] — Step 2.8a: Backend Architecture Pattern Detection Engine & REST API
 - **Scope / Module**: Backend Architecture Detection & REST API (`backend/app/schemas/architecture.py`, `backend/app/schemas/__init__.py`, `backend/app/analyzers/architecture.py`, `backend/app/analyzers/__init__.py`, `backend/app/services/architecture.py`, `backend/app/services/__init__.py`, `backend/app/api/v1/architecture.py`, `backend/app/main.py`, `backend/tests/test_architecture.py`, `docs/specs/step-2-8a-architecture-pattern-detection.md`)
