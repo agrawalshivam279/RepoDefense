@@ -69,6 +69,10 @@ class AnalyzedFile(Base):
         passive_deletes=True,
     )
 
+    __table_args__ = (
+        Index("ix_analyzed_files_snapshot_path", "snapshot_id", "path"),
+    )
+
 
 class CodeSymbol(Base):
     """Deterministic AST symbol extracted via Tree-sitter (function, class, endpoint)."""
@@ -123,6 +127,10 @@ class CodeSymbol(Base):
         back_populates="symbol",
     )
 
+    __table_args__ = (
+        Index("ix_code_symbols_file_symbol_type", "file_id", "symbol_type"),
+    )
+
 
 class Dependency(Base):
     """Third-party library, package, or framework extracted from configuration files."""
@@ -163,6 +171,10 @@ class Dependency(Base):
     project: Mapped["Project"] = relationship(  # noqa: F821
         "Project",
         back_populates="dependencies",
+    )
+
+    __table_args__ = (
+        Index("ix_dependencies_project_name", "project_id", "name"),
     )
 
 
@@ -212,6 +224,10 @@ class Evidence(Base):
     project: Mapped["Project"] = relationship(  # noqa: F821
         "Project",
         back_populates="evidence",
+    )
+
+    __table_args__ = (
+        Index("ix_evidence_project_type", "project_id", "evidence_type"),
     )
 
 

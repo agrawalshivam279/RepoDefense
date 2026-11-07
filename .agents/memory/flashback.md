@@ -16,7 +16,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | :--- | :--- | :--- |
 | **Frontend Core** | Next.js 15 (App Router) + TypeScript + Tailwind + shadcn/ui | 🟢 Phase 1 & Step 2.1b Complete |
 | **Backend API** | FastAPI (Python 3.12+) + Pydantic v2 + structlog | 🟢 Milestone 1.1 Complete |
-| **Database & Vectors** | PostgreSQL 17 + pgvector (Supabase) + SQLAlchemy asyncpg | 🟢 Milestone 1.2 Complete |
+| **Database & Vectors** | PostgreSQL 17 + pgvector (Supabase) + SQLAlchemy asyncpg | 🟢 Milestone 1.2 & Step 2.12a Complete |
 | **Authentication** | Supabase Auth (GitHub OAuth + Email/Password) | 🟢 Milestone 1.3 Complete |
 | **Background Queue** | ARQ (asyncio + Upstash Redis) | 🟢 Milestone 1.5 Complete |
 | **Static Code Ingestion & Cataloging** | Shallow Git Clone + Security Filter + File Scanner | 🟢 Milestone 1.5 & 1.6 Complete |
@@ -129,6 +129,12 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-11-08] — Step 2.12a: Backend Database Indexing & Query Optimization for Phase 2 Workloads
+- **Scope / Module**: Database Models & Alembic Migrations (ackend/alembic/versions/2a3f8b9c1d2e_add_phase2_performance_indexes.py, ackend/app/models/analysis.py, ackend/tests/test_db_indexes.py, docs/specs/step-2-12a-database-indexing-optimization.md)
+- **Details**: Designed and implemented targeted database indexing optimizations for high-frequency Phase 2 query patterns under PostgreSQL 17 (Supabase) and SQLAlchemy 2.0 asyncpg. Authored Alembic async migration 2a3f8b9c1d2e_add_phase2_performance_indexes.py adding composite B-tree indexes: ix_dependencies_project_name on dependencies(project_id, name) (optimizing tech stack audit filtering), ix_analyzed_files_snapshot_path on nalyzed_files(snapshot_id, path) (accelerating heatmap directory resolution), ix_evidence_project_type on evidence(project_id, evidence_type) (optimizing architectural pattern and claim verification lookups), and ix_code_symbols_file_symbol_type on code_symbols(file_id, symbol_type) (speeding up code ownership attribution). Synchronized declarative SQLAlchemy models in ackend/app/models/analysis.py with explicit __table_args__ = (Index(...),) constructs. Implemented a fully reversible downgrade() dropping all indexes cleanly via op.drop_index(). Verified 100% via 7/7 new hermetic index tests passing in 1.11s, full 	est_analysis_models.py live Supabase pgvector regression passing in 52.87s, zero 
+uff lint errors, zero 	sc type errors, and strict <= 300 LOC limit across all touched files (migration 53 LOC, models 293 LOC, tests 104 LOC). Concludes Step 2.12a.
+- **Key Files**: ackend/alembic/versions/2a3f8b9c1d2e_add_phase2_performance_indexes.py, ackend/app/models/analysis.py, ackend/tests/test_db_indexes.py, docs/specs/step-2-12a-database-indexing-optimization.md
 
 ### [2026-11-07] — Step 2.11b: Next.js 15 Comprehensive Defense Report Page with Architecture Embed, Verified Claims & Print-to-PDF Styling
 - **Scope / Module**: Frontend Enhanced Defense Report UI (`frontend/src/types/report.ts`, `frontend/src/lib/defenseApi.ts`, `frontend/src/components/domain/ReportArchitectureSection.tsx`, `frontend/src/app/report/[id]/page.tsx`, `docs/specs/step-2-11b-comprehensive-defense-report-ui.md`)
