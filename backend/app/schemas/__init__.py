@@ -86,6 +86,7 @@ from app.schemas.question import (
 from app.schemas.report import (
     CategoryScore,
     DefenseReportResponse,
+    EnhancedDefenseReportResponse,
     ReportSynthesisOutput,
 )
 from app.schemas.summary import (
@@ -118,6 +119,7 @@ __all__ = [
     "CoverageTier",
     "DefenseQuestionProgress",
     "DefenseReportResponse",
+    "EnhancedDefenseReportResponse",
     "DefenseSessionState",
     "DefenseStage",
     "DefenseTurn",

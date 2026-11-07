@@ -23,11 +23,45 @@ from app.schemas.defense import (
     SubmitAnswerRequest,
 )
 from app.schemas.question import EvidenceRef, QuestionGenerationInput
-from app.schemas.report import DefenseReportResponse
+from app.schemas.report import DefenseReportResponse, EnhancedDefenseReportResponse
+from app.services.enhanced_report import generate_enhanced_defense_report
 
 logger = structlog.get_logger(__name__)
 
 router = APIRouter(tags=["Defense"])
+
+
+async def _get_completed_session(
+    session_id: str,
+    current_user: User,
+    db: AsyncSession,
+) -> DefenseSessionState:
+    """Validates session existence, user authorization, and completion status."""
+    session = await defense_store.get(session_id)
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Defense session '{session_id}' not found.",
+        )
+
+    proj_stmt = select(Project).where(
+        Project.id == uuid.UUID(session.project_id),
+        Project.user_id == current_user.id,
+    )
+    project = (await db.execute(proj_stmt)).scalar_one_or_none()
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found or unauthorized.",
+        )
+
+    if session.status != DefenseStage.SESSION_COMPLETED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Defense session must be completed before report generation.",
+        )
+
+    return session
 
 
 @router.post(
@@ -35,10 +69,6 @@ router = APIRouter(tags=["Defense"])
     response_model=DefenseSessionState,
     status_code=status.HTTP_201_CREATED,
     summary="Start an evidence-grounded defense session for a repository",
-    description=(
-        "Retrieves repository evidence, generates targeted technical questions, "
-        "and initializes the interview state machine (FSM)."
-    ),
 )
 async def start_defense_session(
     project_id: uuid.UUID,
@@ -53,10 +83,7 @@ async def start_defense_session(
     )
     project = (await db.execute(stmt)).scalar_one_or_none()
     if not project:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Project not found",
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
 
     snap_stmt = (
         select(RepositorySnapshot)
@@ -65,108 +92,140 @@ async def start_defense_session(
     )
     snapshot = (await db.execute(snap_stmt)).scalars().first()
 
-    ev_stmt = (
+    evidence_stmt = (
         select(Evidence)
         .where(Evidence.project_id == project_id)
-        .order_by(Evidence.start_line)
+        .order_by(Evidence.confidence.desc())
+        .limit(10)
     )
-    evidence_rows = (await db.execute(ev_stmt)).scalars().all()
+    evidence_rows = (await db.execute(evidence_stmt)).scalars().all()
 
-    evidence_items = [
-        EvidenceRef(
-            id=str(row.id),
-            evidence_type=row.evidence_type.value
-            if hasattr(row.evidence_type, "value")
-            else str(row.evidence_type),
-            title=row.title,
-            description=row.description,
-            file_path=row.file_path,
-            start_line=row.start_line,
-            end_line=row.end_line,
-        )
-        for row in evidence_rows
-    ]
-
-    summary_narrative = None
-    architectural_style = None
-    if snapshot and snapshot.summary:
-        try:
-            summary_data = (
-                json.loads(snapshot.summary)
-                if isinstance(snapshot.summary, str)
-                else snapshot.summary
+    evidence_pool: list[EvidenceRef] = []
+    for row in evidence_rows:
+        metadata = {}
+        if row.extra_data:
+            try:
+                metadata = (
+                    json.loads(row.extra_data)
+                    if isinstance(row.extra_data, str)
+                    else row.extra_data
+                )
+            except Exception:
+                metadata = {}
+        evidence_pool.append(
+            EvidenceRef(
+                id=str(row.id),
+                file_path=row.file_path,
+                line_range=f"{row.line_start}-{row.line_end}",
+                code_snippet=row.snippet or "",
+                evidence_type=row.evidence_type,
+                metadata=metadata,
             )
-            summary_narrative = summary_data.get("narrative")
-            architectural_style = summary_data.get("architectural_style")
-        except Exception:
-            pass
+        )
 
-    requested_count = payload.num_questions if payload else 3
-    q_input = QuestionGenerationInput(
+    model_override = payload.model if payload else None
+    api_key_override = payload.api_key if payload else None
+    base_url_override = payload.base_url if payload else None
+
+    input_payload = QuestionGenerationInput(
         project_name=project.name,
         commit_hash=snapshot.commit_hash if snapshot else "HEAD",
-        architectural_style=architectural_style,
-        summary_narrative=summary_narrative,
-        evidence_items=evidence_items,
-        requested_count=requested_count,
+        evidence_pool=evidence_pool,
+        category_distribution={
+            "architecture": 2,
+            "security": 1,
+            "resilience": 1,
+            "scalability": 1,
+        },
     )
 
-    q_response = await generate_grounded_questions(q_input)
+    try:
+        gen_response = await generate_grounded_questions(
+            input_payload=input_payload,
+            model=model_override,
+            api_key=api_key_override,
+            base_url=base_url_override,
+        )
+    except Exception as exc:
+        logger.error(
+            "defense_question_generation_failed",
+            project_id=str(project_id),
+            error=str(exc),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Failed to generate questions: {str(exc)}",
+        ) from exc
 
-    session = await create_defense_session(
+    return await create_defense_session(
         project_id=str(project_id),
-        questions=q_response.questions,
+        user_id=str(current_user.id),
+        questions=gen_response.questions,
     )
-
-    logger.info(
-        "defense_session_started",
-        session_id=session.session_id,
-        project_id=str(project_id),
-        question_count=len(session.questions),
-    )
-
-    return session
 
 
 @router.post(
-    "/defense/sessions/{session_id}/answer",
+    "/defense/sessions/{session_id}/turn",
     response_model=DefenseSessionState,
     status_code=status.HTTP_200_OK,
-    summary="Submit candidate response to current defense question or stress-test",
-    description=(
-        "Submits candidate defense, evaluates technical depth, and advances "
-        "the interview state machine through stress-test or mentor-guidance branches."
-    ),
+    summary="Submit candidate defense answer and evaluate progress",
 )
-async def submit_defense_answer(
+async def submit_defense_turn_endpoint(
     session_id: str,
     payload: SubmitAnswerRequest,
     current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ) -> DefenseSessionState:
-    """Processes candidate defense turn through the deterministic interview FSM."""
-    try:
-        session = await submit_defense_turn(
-            session_id=session_id,
-            candidate_answer=payload.answer,
-        )
-        return session
-    except KeyError:
+    """Processes candidate defense turn, triggers rubric evaluation, and advances FSM."""
+    session = await defense_store.get(session_id)
+    if not session:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Defense session '{session_id}' not found.",
         )
-    except ValueError as val_err:
+
+    proj_stmt = select(Project).where(
+        Project.id == uuid.UUID(session.project_id),
+        Project.user_id == current_user.id,
+    )
+    project = (await db.execute(proj_stmt)).scalar_one_or_none()
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found or unauthorized.",
+        )
+
+    if session.status == DefenseStage.SESSION_COMPLETED:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(val_err),
+            detail="Defense session is already completed.",
         )
+
+    try:
+        updated_session = await submit_defense_turn(
+            session_id=session_id,
+            user_response=payload.answer,
+            model=payload.model,
+            api_key=payload.api_key,
+            base_url=payload.base_url,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.error("defense_turn_submission_failed", error=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to evaluate defense turn.",
+        ) from exc
+
+    return updated_session
 
 
 @router.get(
     "/defense/sessions/{session_id}",
     response_model=DefenseSessionState,
     status_code=status.HTTP_200_OK,
-    summary="Retrieve current state and transcript of a defense session",
+    summary="Retrieve current state of a defense interview session",
 )
 async def get_defense_session(
     session_id: str,
@@ -194,29 +253,21 @@ async def get_defense_report(
     db: AsyncSession = Depends(get_db),
 ) -> DefenseReportResponse:
     """Generates structured evaluation report for a completed defense session."""
-    session = await defense_store.get(session_id)
-    if not session:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Defense session '{session_id}' not found.",
-        )
-
-    # Multi-tenant isolation: verify user owns the project
-    proj_stmt = select(Project).where(
-        Project.id == uuid.UUID(session.project_id),
-        Project.user_id == current_user.id,
-    )
-    project = (await db.execute(proj_stmt)).scalar_one_or_none()
-    if not project:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Project not found or unauthorized.",
-        )
-
-    if session.status != DefenseStage.SESSION_COMPLETED:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Defense session must be completed before report generation.",
-        )
-
+    session = await _get_completed_session(session_id, current_user, db)
     return await generate_defense_report(session)
+
+
+@router.get(
+    "/defense/sessions/{session_id}/enhanced-report",
+    response_model=EnhancedDefenseReportResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Generate and retrieve enhanced architectural defense report",
+)
+async def get_enhanced_defense_report_endpoint(
+    session_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> EnhancedDefenseReportResponse:
+    """Generates enhanced architectural report for a completed defense session."""
+    session = await _get_completed_session(session_id, current_user, db)
+    return await generate_enhanced_defense_report(session, db)

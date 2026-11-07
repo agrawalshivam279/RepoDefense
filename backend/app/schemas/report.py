@@ -83,3 +83,34 @@ class DefenseReportResponse(BaseModel):
     completed_at: str = Field(..., description="ISO 8601 completion timestamp")
 
     model_config = ConfigDict(from_attributes=True, extra="ignore")
+
+
+class EnhancedDefenseReportResponse(DefenseReportResponse):
+    """Extended defense evaluation report enriched with architectural context and tech audit."""
+
+    architecture_primary_pattern: str | None = Field(
+        None, description="Primary detected architecture pattern name"
+    )
+    architecture_confidence_tier: str | None = Field(
+        None, description="Pattern detection confidence tier (high, moderate, low)"
+    )
+    diagram_mermaid_code: str | None = Field(
+        None, description="Synthesized Mermaid flowchart syntax for system topology"
+    )
+    tech_health_score: int | None = Field(
+        None, ge=0, le=100, description="Technology stack health score (0-100%)"
+    )
+    tech_flagged_count: int | None = Field(
+        None, ge=0, description="Count of flagged obsolete or vulnerable dependencies"
+    )
+    tech_total_dependencies: int | None = Field(
+        None, ge=0, description="Total count of inspected dependencies"
+    )
+    claims_verified_count: int | None = Field(
+        None, ge=0, description="Count of verified resume technical claims"
+    )
+    claims_total_count: int | None = Field(
+        None, ge=0, description="Total count of extracted resume claims"
+    )
+
+    model_config = ConfigDict(from_attributes=True, extra="ignore")

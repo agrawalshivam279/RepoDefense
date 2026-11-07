@@ -36,6 +36,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **Architecture Audit & Detection** | Static Directory Topology + Pattern Engine + Next.js 15 Visualizer | 🟢 Milestone 2.8 Complete (Steps 2.8a & 2.8b) |
 | **Architecture Diagram Engine** | Multi-tier Mermaid Generation + Next.js 15 Interactive Visualizer | 🟢 Milestone 2.9 Complete (Steps 2.9a & 2.9b) |
 | **Dependency / Technology Audit** | Heuristic Semver Parser + Next.js 15 Health Scorecard & Inspector | 🟢 Milestone 2.10 Complete (Steps 2.10a & 2.10b) |
+| **Enhanced Defense Report** | Unified Defense Evaluation + Architecture & Tech Audit Aggregator | 🟢 Step 2.11a Complete |
 | **IDE Code Viewer** | Monaco / Prism code viewer with AST evidence highlights | ⚪ Phase 4 Planned |
 | **Evaluation & Export** | Rubric generator + PDF transcript export | ⚪ Phase 5 Planned |
 
@@ -128,6 +129,11 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-11-07] — Step 2.11a: Backend Enhanced Defense Report Aggregation Service & REST API
+- **Scope / Module**: Backend Enhanced Defense Report Engine (`backend/app/schemas/report.py`, `backend/app/schemas/__init__.py`, `backend/app/services/enhanced_report.py`, `backend/app/services/__init__.py`, `backend/app/api/v1/defense.py`, `backend/tests/test_enhanced_report.py`, `docs/specs/step-2-11a-enhanced-defense-report-api.md`)
+- **Details**: Designed and implemented the backend enhanced defense report aggregation service and REST API. Extracted and extended `DefenseReportResponse` into `EnhancedDefenseReportResponse` in `schemas/report.py`, adding architectural pattern classifications (`architecture_primary_pattern`, `architecture_confidence_tier`), synthesized Mermaid flowchart code (`diagram_mermaid_code`), technology stack health audit scores (`tech_health_score`, `tech_flagged_count`, `tech_total_dependencies`), and verified resume claim summaries. Implemented `generate_enhanced_defense_report` domain service in `services/enhanced_report.py` unifying core defense interview evaluations with asynchronous queries across architecture pattern analyzers, diagram generators, and technology health audit engines with graceful exception resilience. Created authenticated REST endpoint `GET /api/v1/defense/sessions/{session_id}/enhanced-report` in `api/v1/defense.py` with session existence checks, completion status validation, and multi-tenant project ownership enforcement. Refactored session validation logic into reusable helper `_get_completed_session` reducing duplication. Verified 100% via 4/4 pytest unit & API tests passing in 23.17s, 8/8 regression tests passing in 15.50s, zero `ruff` lint errors, zero `tsc` type errors, and strict <= 300 LOC limit across all 6 touched files (schemas 116 LOC, service 107 LOC, router 273 LOC, tests 269 LOC). Concludes Step 2.11a.
+- **Key Files**: `backend/app/schemas/report.py`, `backend/app/schemas/__init__.py`, `backend/app/services/enhanced_report.py`, `backend/app/services/__init__.py`, `backend/app/api/v1/defense.py`, `backend/tests/test_enhanced_report.py`, `docs/specs/step-2-11a-enhanced-defense-report-api.md`
 
 ### [2026-11-07] — Step 2.10b: Next.js 15 Technology Health Audit Visualizer & Deprecation Inspector
 - **Scope / Module**: Frontend Tech Audit UI (`frontend/src/types/techAudit.ts`, `frontend/src/lib/techAuditApi.ts`, `frontend/src/components/domain/TechAuditScorecard.tsx`, `frontend/src/components/domain/AuditedDependencyList.tsx`, `frontend/src/app/projects/[id]/tech-audit/page.tsx`, `docs/specs/step-2-10b-tech-audit-visualizer.md`)
