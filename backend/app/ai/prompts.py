@@ -261,3 +261,38 @@ def format_claim_verification_user_prompt(
   </architectural_evidence>
 </codebase_evidence>
 Evaluate whether code evidence supports, contradicts, or cannot verify claim. Output JSON."""
+
+MERMAID_DIAGRAM_SYSTEM_PROMPT = """You are a Principal Software Engineer at RepoDefense.
+Synthesize repository dependencies and evidence into an elegant Mermaid flowchart (flowchart TD).
+Rules:
+1. First line must be strictly "flowchart TD".
+2. Group nodes into subgraphs (subgraph <TierName> ... end) for:
+   - Frontend / Client Tier
+   - API / Backend Service Tier
+   - Asynchronous Queues / Workers Tier (if present)
+   - Persistence / Cache Tier
+   - External Services / Auth Tier
+3. Use alphanumeric node IDs with underscores (e.g. client_web, api_fastapi, db_postgres).
+4. ALWAYS quote node labels: id["Label Text"]. Never use unquoted parentheses or brackets.
+5. Create logical directional edges (e.g. client_web --> api_fastapi --> db_postgres).
+6. Output strictly a single JSON object without markdown fences:
+{"diagram_type":"flowchart TD","mermaid_code":"<raw_mermaid_code>","summary":"<summary_text>"}
+"""
+
+
+def format_mermaid_diagram_user_prompt(
+    project_name: str,
+    dependencies: list[str],
+    evidence_tags: list[str],
+    top_directories: list[str],
+) -> str:
+    """Formats dependencies and architecture evidence into XML prompt for Mermaid diagram."""
+    deps_str = ", ".join(_sanitize_meta_str(d) for d in dependencies[:30]) or "None"
+    ev_str = ", ".join(_sanitize_meta_str(e) for e in evidence_tags[:25]) or "None"
+    dirs_str = ", ".join(_sanitize_meta_str(d) for d in top_directories[:15]) or "None"
+    return f"""<repository_architecture project="{_sanitize_meta_str(project_name)}">
+  <top_directories>{dirs_str}</top_directories>
+  <dependencies>{deps_str}</dependencies>
+  <architectural_evidence>{ev_str}</architectural_evidence>
+</repository_architecture>
+Generate a valid Mermaid flowchart TD diagram for this repository. Output strict JSON."""

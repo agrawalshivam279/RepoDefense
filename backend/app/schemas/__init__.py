@@ -45,6 +45,12 @@ from app.schemas.defense import (
     SubmitAnswerRequest,
     TurnRole,
 )
+from app.schemas.diagram import (
+    DiagramEdge,
+    DiagramNode,
+    DiagramResponse,
+    DiagramType,
+)
 from app.schemas.embedding import (
     RetrievalQuery,
     RetrievedChunk,
@@ -109,6 +115,10 @@ __all__ = [
     "DefenseSessionState",
     "DefenseStage",
     "DefenseTurn",
+    "DiagramEdge",
+    "DiagramNode",
+    "DiagramResponse",
+    "DiagramType",
     "DependencyOverviewItem",
     "DetectedPattern",
     "DifficultyLevel",

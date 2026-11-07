@@ -30,6 +30,13 @@ from app.analyzers.dependencies import (
     extract_file_dependencies,
     persist_dependencies,
 )
+from app.analyzers.diagram import (
+    build_deterministic_mermaid_diagram,
+    classify_tier,
+    sanitize_node_id,
+    sanitize_node_label,
+    validate_mermaid_syntax,
+)
 from app.analyzers.embeddings import (
     DEFAULT_MODEL_NAME,
     EMBEDDING_DIM,
@@ -70,6 +77,11 @@ __all__ = [
     "chunk_analyzed_file",
     "compute_range_attribution",
     "detect_architectural_risks",
+    "build_deterministic_mermaid_diagram",
+    "classify_tier",
+    "sanitize_node_id",
+    "sanitize_node_label",
+    "validate_mermaid_syntax",
     "detect_language",
     "embed_and_persist_workspace_chunks",
     "estimate_token_count",
