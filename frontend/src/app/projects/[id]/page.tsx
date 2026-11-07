@@ -16,6 +16,7 @@ import {
   RefreshCw,
   Shield,
   Sparkles,
+  UserCheck,
 } from "lucide-react";
 
 import { TechStackBadgeCloud } from "@/components/domain/TechStackBadgeCloud";
@@ -43,10 +44,7 @@ export default function ProjectOverviewPage() {
     setError(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        router.push("/login");
-        return;
-      }
+      if (!session) { router.push("/login"); return; }
       const data = await getProjectOverview(projectId, session.access_token);
       setOverview(data);
     } catch (err: unknown) {
@@ -56,9 +54,7 @@ export default function ProjectOverviewPage() {
     }
   }, [projectId, router]);
 
-  useEffect(() => {
-    fetchOverview();
-  }, [fetchOverview]);
+  useEffect(() => { fetchOverview(); }, [fetchOverview]);
 
   if (loading) {
     return (
@@ -77,10 +73,7 @@ export default function ProjectOverviewPage() {
         </div>
         <h2 className="text-xl font-bold text-white">Project Overview Unavailable</h2>
         <p className="text-sm text-slate-400 font-mono">{error ?? "Project not found."}</p>
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800 text-slate-200 hover:text-white font-mono text-xs border border-slate-700"
-        >
+        <Link href="/dashboard" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800 text-slate-200 hover:text-white font-mono text-xs border border-slate-700">
           <ArrowLeft className="w-4 h-4" /> Back to Dashboard
         </Link>
       </div>
@@ -101,11 +94,7 @@ export default function ProjectOverviewPage() {
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-5">
         <div className="flex items-center gap-3 min-w-0">
-          <Link
-            href="/dashboard"
-            className="p-2 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-800/80 transition-colors"
-            title="Back to Dashboard"
-          >
+          <Link href="/dashboard" className="p-2 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-800/80 transition-colors" title="Back to Dashboard">
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <div className="min-w-0">
@@ -117,57 +106,34 @@ export default function ProjectOverviewPage() {
               </span>
             </div>
             <div className="flex flex-wrap items-center gap-3 text-xs font-mono text-slate-400 mt-1">
-              <a
-                href={overview.github_url}
-                target="_blank"
-                rel="noreferrer"
-                className="hover:text-emerald-400 transition-colors inline-flex items-center gap-1"
-              >
+              <a href={overview.github_url} target="_blank" rel="noreferrer" className="hover:text-emerald-400 transition-colors inline-flex items-center gap-1">
                 <span>{overview.github_url.replace("https://github.com/", "")}</span>
                 <ExternalLink className="w-3 h-3" />
               </a>
               <span>•</span>
-              <span className="inline-flex items-center gap-1">
-                <GitBranch className="w-3 h-3 text-slate-500" />
-                {overview.default_branch}
-              </span>
-              {overview.commit_hash && (
-                <>
-                  <span>•</span>
-                  <span>SHA: {overview.commit_hash.slice(0, 7)}</span>
-                </>
-              )}
+              <span className="inline-flex items-center gap-1"><GitBranch className="w-3 h-3 text-slate-500" />{overview.default_branch}</span>
+              {overview.commit_hash && <><span>•</span><span>SHA: {overview.commit_hash.slice(0, 7)}</span></>}
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5">
-          <button
-            type="button"
-            onClick={fetchOverview}
-            className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white transition-colors"
-            title="Refresh Analysis"
-          >
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={fetchOverview} className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white transition-colors" title="Refresh Analysis">
             <RefreshCw className="w-4 h-4" />
           </button>
-          <Link
-            href={`/projects/${overview.project_id}/claims`}
-            className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white font-semibold text-xs font-mono transition-colors"
-          >
+          <Link href={`/projects/${overview.project_id}/claims`} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white font-semibold text-xs font-mono transition-colors">
             <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
             <span>Claims</span>
           </Link>
-          <Link
-            href={`/projects/${overview.project_id}/coverage`}
-            className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white font-semibold text-xs font-mono transition-colors"
-          >
+          <Link href={`/projects/${overview.project_id}/coverage`} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white font-semibold text-xs font-mono transition-colors">
             <Layers className="w-3.5 h-3.5 text-sky-400" />
             <span>Coverage</span>
           </Link>
-          <Link
-            href={`/interview/${overview.project_id}`}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs font-mono transition-colors shadow-md"
-          >
+          <Link href={`/projects/${overview.project_id}/ownership`} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white font-semibold text-xs font-mono transition-colors">
+            <UserCheck className="w-3.5 h-3.5 text-indigo-400" />
+            <span>Ownership</span>
+          </Link>
+          <Link href={`/interview/${overview.project_id}`} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs font-mono transition-colors shadow-md">
             <span>Start Defense</span>
             <Shield className="w-4 h-4" />
           </Link>
@@ -181,11 +147,7 @@ export default function ProjectOverviewPage() {
             <Loader2 className="w-4 h-4 animate-spin text-blue-400" />
             <span>Repository cloning and AST analysis in progress. Metrics will populate shortly.</span>
           </div>
-          <button
-            type="button"
-            onClick={fetchOverview}
-            className="px-3 py-1 rounded bg-blue-500/20 hover:bg-blue-500/30 text-blue-200 border border-blue-500/40"
-          >
+          <button type="button" onClick={fetchOverview} className="px-3 py-1 rounded bg-blue-500/20 hover:bg-blue-500/30 text-blue-200 border border-blue-500/40">
             Refresh
           </button>
         </div>
@@ -215,14 +177,7 @@ export default function ProjectOverviewPage() {
             {metrics.languages.map((l) => {
               const pct = metrics.total_lines > 0 ? (l.total_lines / metrics.total_lines) * 100 : 0;
               const color = LANGUAGE_COLORS[l.language] || LANGUAGE_COLORS.Other;
-              return (
-                <div
-                  key={l.language}
-                  style={{ width: `${pct}%` }}
-                  className={`h-full ${color}`}
-                  title={`${l.language}: ${pct.toFixed(1)}%`}
-                />
-              );
+              return <div key={l.language} style={{ width: `${pct}%` }} className={`h-full ${color}`} title={`${l.language}: ${pct.toFixed(1)}%`} />;
             })}
           </div>
           <div className="flex flex-wrap items-center gap-3 pt-1 text-xs font-mono">
