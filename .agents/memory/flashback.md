@@ -34,7 +34,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **Defense Coverage & Heatmap** | Dynamic Coverage Service + Next.js 15 Heatmap Visualizer | 🟢 Milestone 2.6 Complete (Steps 2.6a & 2.6b) |
 | **Code Ownership & Attribution** | Git Blame Parser + Symbol Attribution Engine + Next.js 15 Visualizer | 🟢 Milestone 2.7 Complete (Steps 2.7a & 2.7b) |
 | **Architecture Audit & Detection** | Static Directory Topology + Pattern Engine + Next.js 15 Visualizer | 🟢 Milestone 2.8 Complete (Steps 2.8a & 2.8b) |
-| **Architecture Diagram Engine** | Multi-tier Mermaid Generation + Deterministic Fallback + REST API | 🟢 Step 2.9a Complete |
+| **Architecture Diagram Engine** | Multi-tier Mermaid Generation + Next.js 15 Interactive Visualizer | 🟢 Milestone 2.9 Complete (Steps 2.9a & 2.9b) |
 | **IDE Code Viewer** | Monaco / Prism code viewer with AST evidence highlights | ⚪ Phase 4 Planned |
 | **Evaluation & Export** | Rubric generator + PDF transcript export | ⚪ Phase 5 Planned |
 
@@ -119,7 +119,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | Phase | Description | Status |
 | :--- | :--- | :--- |
 | **Phase 1** | Ingestion & Core MVP (Scaffolding, Auth, Git Clone, Security Filter, Complete MVP) | 🟢 Complete |
-| **Phase 2** | Differentiation (Claims Extraction, Verification, Adaptive Questioning, Pushback Logic, Coverage Tracking, Ownership Engine, Architecture Audit) | 🟡 In Progress (Milestones 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8 Complete) |
+| **Phase 2** | Differentiation (Claims Extraction, Verification, Adaptive Questioning, Pushback Logic, Coverage Tracking, Ownership Engine, Architecture Audit, Mermaid Diagrams) | 🟡 In Progress (Milestones 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9 Complete) |
 | **Phase 3** | The State Machine (LiteLLM, Evidence Grounding, Principal Engineer FSM, Prompts) | ⚪ Planned |
 | **Phase 4** | Interactive Frontend (Next.js 15, SSE / WebSocket chat, Monaco/Prism Code Viewer) | ⚪ Planned |
 | **Phase 5** | Evaluation & Export (Rubric Scoring, Transcript Generation, PDF & Badge Export) | ⚪ Planned |
@@ -127,6 +127,11 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-11-07] — Step 2.9b: Next.js 15 Mermaid Architecture Visualizer & Interactive Diagram Viewer
+- **Scope / Module**: Frontend Mermaid Architecture UI & Interactive Viewer (`frontend/package.json`, `frontend/src/types/diagram.ts`, `frontend/src/lib/diagramApi.ts`, `frontend/src/components/domain/MermaidViewer.tsx`, `frontend/src/app/projects/[id]/architecture/page.tsx`, `docs/specs/step-2-9b-mermaid-architecture-visualizer.md`)
+- **Details**: Designed and built the Next.js 15 App Router interactive Mermaid architecture diagram visualizer and flowchart viewer (`/projects/[id]/architecture`). Installed `mermaid` and configured client-side rendering with dark-theme calibration matching the RepoDefense design language and `securityLevel: 'strict'` to prevent arbitrary DOM execution. Created TypeScript data contracts in `diagram.ts` mirroring backend Pydantic models (`DiagramType`, `DiagramNode`, `DiagramEdge`, `DiagramResponse`). Implemented typed API client `diagramApi.ts` connecting to `GET /api/v1/projects/{id}/diagram` with Supabase JWT bearer token authentication. Built modular `MermaidViewer.tsx` featuring dynamic client-side SVG rendering, interactive zoom controls (zoom in, zoom out, reset to 100%), fullscreen modal inspection mode, raw Mermaid code view toggle with clipboard copy CTA, synthesis origin badge ("AI Principal Synthesis" vs "Deterministic Fallback"), and descriptive architecture summary blocks. Integrated the diagram viewer seamlessly into `/projects/[id]/architecture`, fetching diagram and pattern detection metrics in parallel. Verified 100% via `tsc --noEmit` (0 errors), Next.js 15 production build (`next build` across all 12 routes cleanly with 168 kB diagram bundle on `/projects/[id]/architecture`), 8/8 backend diagram tests passing in 15.02s, and strict <= 300 LOC limit across all files (types 31 LOC, api 46 LOC, viewer 219 LOC, architecture page 268 LOC). Concludes Milestone 2.9 (Architecture Diagram Generation).
+- **Key Files**: `frontend/package.json`, `frontend/src/types/diagram.ts`, `frontend/src/lib/diagramApi.ts`, `frontend/src/components/domain/MermaidViewer.tsx`, `frontend/src/app/projects/[id]/architecture/page.tsx`, `docs/specs/step-2-9b-mermaid-architecture-visualizer.md`
 
 ### [2026-11-07] — Step 2.9a: Backend Mermaid Architecture Diagram Generation Engine & REST API
 - **Scope / Module**: Backend Mermaid Architecture Diagram Engine (`backend/app/schemas/diagram.py`, `backend/app/schemas/__init__.py`, `backend/app/ai/prompts.py`, `backend/app/analyzers/diagram.py`, `backend/app/analyzers/__init__.py`, `backend/app/services/diagram.py`, `backend/app/services/__init__.py`, `backend/app/api/v1/diagram.py`, `backend/app/main.py`, `backend/tests/test_diagram.py`, `docs/specs/step-2-9a-mermaid-diagram-engine.md`)
