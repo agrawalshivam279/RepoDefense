@@ -4,16 +4,15 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
-  ArrowLeft,
   Sparkles,
   Loader2,
   RefreshCw,
   Search,
-  Shield,
   FileText,
   AlertCircle,
 } from "lucide-react";
 import { ClaimVerificationCard } from "@/components/domain/ClaimVerificationCard";
+import { ProjectNavHeader } from "@/components/domain/ProjectNavHeader";
 import { verifyProjectClaims } from "@/lib/claimApi";
 import { getProjectOverview } from "@/lib/projectApi";
 import { supabase } from "@/lib/supabase";
@@ -100,36 +99,19 @@ export default function ProjectClaimsPage() {
   const matchRate = total > 0 ? Math.round((supported / total) * 100) : 0;
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
-      {/* Header & Breadcrumb */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-5">
-        <div className="space-y-1">
-          <Link
-            href={`/projects/${projectId}`}
-            className="inline-flex items-center gap-1.5 text-xs font-mono text-slate-400 hover:text-emerald-400 transition-colors"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" /> Back to Project Overview
-          </Link>
-          <h1 className="text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
-            <span>Claim Grounding Inspector</span>
-            <span className="text-xs px-2.5 py-0.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-mono font-medium">
-              Phase 2: Differentiation
-            </span>
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-400 font-sans">
-            Verify resume claims against codebase truth using pgvector embeddings and AST symbols.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Link
-            href={`/interview/${projectId}`}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs font-mono transition-colors shadow-sm"
-          >
-            <Shield className="w-3.5 h-3.5" /> Start Defense
-          </Link>
-        </div>
-      </div>
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 text-slate-100">
+      {/* Centralized Phase 2 Navigation Header */}
+      <ProjectNavHeader
+        projectId={projectId}
+        projectName={project?.name}
+        githubUrl={project?.github_url}
+        defaultBranch={project?.default_branch}
+        commitHash={project?.commit_hash}
+        activeTab="claims"
+        subtitle="Verify resume claims against codebase truth"
+        onRefresh={loadProject}
+        isRefreshing={loadingProject}
+      />
 
       {error && (
         <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs font-mono text-rose-300 flex items-center gap-2.5">

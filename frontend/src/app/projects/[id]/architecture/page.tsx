@@ -8,21 +8,16 @@ import {
   ArrowLeft,
   CheckCircle2,
   FolderTree,
-  Layers,
   Loader2,
   Network,
-  PackageCheck,
-  RefreshCw,
-  Shield,
   ShieldAlert,
-  Sparkles,
-  UserCheck,
 } from "lucide-react";
 
 import { ArchitectureReportCard } from "@/components/domain/ArchitectureReportCard";
 import { ArchitecturalRisksCard } from "@/components/domain/ArchitecturalRisksCard";
 import { MermaidViewer } from "@/components/domain/MermaidViewer";
 import { PatternIndicatorList } from "@/components/domain/PatternIndicatorList";
+import { ProjectNavHeader } from "@/components/domain/ProjectNavHeader";
 import { getProjectArchitecture } from "@/lib/architectureApi";
 import { getProjectDiagram } from "@/lib/diagramApi";
 import { supabase } from "@/lib/supabase";
@@ -102,78 +97,16 @@ export default function ProjectArchitecturePage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 text-slate-100">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-5">
-        <div className="flex items-center gap-3 min-w-0">
-          <Link
-            href={`/projects/${projectId}`}
-            className="p-2 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-800/80 transition-colors"
-            title="Back to Project Overview"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </Link>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2.5">
-              <Network className="w-5 h-5 text-indigo-400 flex-shrink-0" />
-              <h1 className="text-xl font-bold text-white tracking-tight truncate">
-                {report.project_name} — Architecture Audit
-              </h1>
-              <span className="px-2.5 py-0.5 rounded text-[11px] font-mono uppercase bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                ● {report.primary_pattern.pattern_name}
-              </span>
-            </div>
-            <p className="text-xs font-mono text-slate-400 mt-1">
-              Static topology classification, structural patterns & architecture diagrams
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={fetchReport}
-            className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white transition-colors"
-            title="Refresh Analysis"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
-          <Link
-            href={`/projects/${projectId}/claims`}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white font-semibold text-xs font-mono transition-colors"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Claims</span>
-          </Link>
-          <Link
-            href={`/projects/${projectId}/coverage`}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white font-semibold text-xs font-mono transition-colors"
-          >
-            <Layers className="w-3.5 h-3.5 text-sky-400" />
-            <span>Coverage</span>
-          </Link>
-          <Link
-            href={`/projects/${projectId}/ownership`}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white font-semibold text-xs font-mono transition-colors"
-          >
-            <UserCheck className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Ownership</span>
-          </Link>
-          <Link
-            href={`/projects/${projectId}/tech-audit`}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white font-semibold text-xs font-mono transition-colors"
-          >
-            <PackageCheck className="w-3.5 h-3.5 text-amber-400" />
-            <span>Tech Audit</span>
-          </Link>
-          <Link
-            href={`/interview/${projectId}`}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs font-mono transition-colors shadow-md"
-          >
-            <span>Start Defense</span>
-            <Shield className="w-4 h-4" />
-          </Link>
-        </div>
-      </div>
+      {/* Centralized Phase 2 Navigation Header */}
+      <ProjectNavHeader
+        projectId={projectId}
+        projectName={report.project_name}
+        activeTab="architecture"
+        statusBadge={report.primary_pattern.pattern_name}
+        subtitle="Static topology classification, structural patterns & architecture diagrams"
+        onRefresh={fetchReport}
+        isRefreshing={loading}
+      />
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

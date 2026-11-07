@@ -7,20 +7,15 @@ import {
   AlertCircle,
   ArrowLeft,
   Code2,
-  ExternalLink,
   FileCode,
-  GitBranch,
   Layers,
   Loader2,
-  Network,
   Package,
-  PackageCheck,
-  RefreshCw,
   Shield,
   Sparkles,
-  UserCheck,
 } from "lucide-react";
 
+import { ProjectNavHeader } from "@/components/domain/ProjectNavHeader";
 import { TechStackBadgeCloud } from "@/components/domain/TechStackBadgeCloud";
 import { getProjectOverview } from "@/lib/projectApi";
 import { supabase } from "@/lib/supabase";
@@ -93,62 +88,18 @@ export default function ProjectOverviewPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 text-slate-100">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-5">
-        <div className="flex items-center gap-3 min-w-0">
-          <Link href="/dashboard" className="p-2 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-800/80 transition-colors" title="Back to Dashboard">
-            <ArrowLeft className="w-5 h-5" />
-          </Link>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2.5">
-              <Shield className="w-5 h-5 text-emerald-400 flex-shrink-0" />
-              <h1 className="text-xl font-bold text-white tracking-tight truncate">{overview.name}</h1>
-              <span className="px-2.5 py-0.5 rounded text-[11px] font-mono font-medium uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                ● {overview.status}
-              </span>
-            </div>
-            <div className="flex flex-wrap items-center gap-3 text-xs font-mono text-slate-400 mt-1">
-              <a href={overview.github_url} target="_blank" rel="noreferrer" className="hover:text-emerald-400 transition-colors inline-flex items-center gap-1">
-                <span>{overview.github_url.replace("https://github.com/", "")}</span>
-                <ExternalLink className="w-3 h-3" />
-              </a>
-              <span>•</span>
-              <span className="inline-flex items-center gap-1"><GitBranch className="w-3 h-3 text-slate-500" />{overview.default_branch}</span>
-              {overview.commit_hash && <><span>•</span><span>SHA: {overview.commit_hash.slice(0, 7)}</span></>}
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button type="button" onClick={fetchOverview} className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white transition-colors" title="Refresh Analysis">
-            <RefreshCw className="w-4 h-4" />
-          </button>
-          <Link href={`/projects/${overview.project_id}/claims`} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white font-semibold text-xs font-mono transition-colors">
-            <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Claims</span>
-          </Link>
-          <Link href={`/projects/${overview.project_id}/coverage`} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white font-semibold text-xs font-mono transition-colors">
-            <Layers className="w-3.5 h-3.5 text-sky-400" />
-            <span>Coverage</span>
-          </Link>
-          <Link href={`/projects/${overview.project_id}/ownership`} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white font-semibold text-xs font-mono transition-colors">
-            <UserCheck className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Ownership</span>
-          </Link>
-          <Link href={`/projects/${overview.project_id}/architecture`} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white font-semibold text-xs font-mono transition-colors">
-            <Network className="w-3.5 h-3.5 text-purple-400" />
-            <span>Architecture</span>
-          </Link>
-          <Link href={`/projects/${overview.project_id}/tech-audit`} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white font-semibold text-xs font-mono transition-colors">
-            <PackageCheck className="w-3.5 h-3.5 text-amber-400" />
-            <span>Tech Audit</span>
-          </Link>
-          <Link href={`/interview/${overview.project_id}`} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs font-mono transition-colors shadow-md">
-            <span>Start Defense</span>
-            <Shield className="w-4 h-4" />
-          </Link>
-        </div>
-      </div>
+      {/* Centralized Phase 2 Navigation Header */}
+      <ProjectNavHeader
+        projectId={overview.project_id}
+        projectName={overview.name}
+        githubUrl={overview.github_url}
+        defaultBranch={overview.default_branch}
+        commitHash={overview.commit_hash}
+        activeTab="overview"
+        statusBadge={overview.status}
+        onRefresh={fetchOverview}
+        isRefreshing={loading}
+      />
 
       {/* Ingestion In-Progress Alert */}
       {isPending && (
