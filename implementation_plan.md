@@ -420,6 +420,9 @@ gantt
 
 ### Milestone 2.8: Architecture Audit & Detection
 - **Goal:** Detect overarching patterns (e.g., MVC, Microservices).
+- **Sub-tasks:**
+  - [x] **Step 2.8a: Backend Architecture Pattern Detection Engine & REST API** (schemas/architecture.py, analyzers/architecture.py, services/architecture.py, GET /api/v1/projects/{project_id}/architecture, 10/10 tests)
+  - [ ] **Step 2.8b: Next.js 15 Architecture Pattern Visualizer & Health Card** (ArchitectureReportCard, PatternIndicatorList, /projects/[id]/architecture)
 - **Components:**
   - Directory structure analysis.
   - Dependency clustering.

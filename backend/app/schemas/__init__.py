@@ -1,5 +1,13 @@
 """Pydantic schemas and data contracts."""
 
+from app.schemas.architecture import (
+    ArchitecturalRisk,
+    ArchitecturePatternType,
+    ArchitectureReportResponse,
+    DetectedPattern,
+    PatternConfidenceTier,
+    PatternIndicator,
+)
 from app.schemas.chunk import (
     ChunkType,
     CodeChunk,
@@ -80,6 +88,9 @@ from app.schemas.summary import (
 )
 
 __all__ = [
+    "ArchitecturalRisk",
+    "ArchitecturePatternType",
+    "ArchitectureReportResponse",
     "AuthorShare",
     "BatchClaimVerificationResponse",
     "BlindSpotItem",
@@ -99,6 +110,7 @@ __all__ = [
     "DefenseStage",
     "DefenseTurn",
     "DependencyOverviewItem",
+    "DetectedPattern",
     "DifficultyLevel",
     "EvaluationOutput",
     "EvidenceBase",
@@ -113,6 +125,8 @@ __all__ = [
     "LanguageMetric",
     "ModuleCoverageItem",
     "OwnershipStatus",
+    "PatternConfidenceTier",
+    "PatternIndicator",
     "ProjectCoverageResponse",
     "ProjectCreate",
     "ProjectOverviewResponse",
