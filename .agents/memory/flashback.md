@@ -32,7 +32,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **Claim Verification Engine** | pgvector RAG + LiteLLM + Deterministic Fallback | 🟢 Step 2.2a Complete |
 | **Claim Verification UI** | Next.js 15 App Router + Evidence Graph | 🟢 Milestone 2.3 Complete |
 | **Defense Coverage & Heatmap** | Dynamic Coverage Service + Next.js 15 Heatmap Visualizer | 🟢 Milestone 2.6 Complete (Steps 2.6a & 2.6b) |
-| **Code Ownership & Attribution** | Git Blame Parser + Symbol Attribution Engine | 🟢 Step 2.7a Complete |
+| **Code Ownership & Attribution** | Git Blame Parser + Symbol Attribution Engine + Next.js 15 Visualizer | 🟢 Milestone 2.7 Complete (Steps 2.7a & 2.7b) |
 | **IDE Code Viewer** | Monaco / Prism code viewer with AST evidence highlights | ⚪ Phase 4 Planned |
 | **Evaluation & Export** | Rubric generator + PDF transcript export | ⚪ Phase 5 Planned |
 
@@ -117,7 +117,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | Phase | Description | Status |
 | :--- | :--- | :--- |
 | **Phase 1** | Ingestion & Core MVP (Scaffolding, Auth, Git Clone, Security Filter, Complete MVP) | 🟢 Complete |
-| **Phase 2** | Differentiation (Claims Extraction, Verification, Adaptive Questioning, Pushback Logic, Coverage Tracking) | 🟡 In Progress (Milestones 2.1, 2.2, 2.3, 2.4, 2.5, 2.6 Complete) |
+| **Phase 2** | Differentiation (Claims Extraction, Verification, Adaptive Questioning, Pushback Logic, Coverage Tracking, Ownership Engine) | 🟡 In Progress (Milestones 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7 Complete) |
 | **Phase 3** | The State Machine (LiteLLM, Evidence Grounding, Principal Engineer FSM, Prompts) | ⚪ Planned |
 | **Phase 4** | Interactive Frontend (Next.js 15, SSE / WebSocket chat, Monaco/Prism Code Viewer) | ⚪ Planned |
 | **Phase 5** | Evaluation & Export (Rubric Scoring, Transcript Generation, PDF & Badge Export) | ⚪ Planned |
@@ -125,6 +125,11 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-11-07] — Step 2.7b: Next.js 15 Repository Ownership Visualizer & Symbol Attribution Inspector
+- **Scope / Module**: Frontend Ownership UI & Attribution Inspector (`frontend/src/types/ownership.ts`, `frontend/src/lib/ownershipApi.ts`, `frontend/src/components/domain/OwnershipScorecard.tsx`, `frontend/src/components/domain/SymbolOwnershipCard.tsx`, `frontend/src/components/domain/FlaggedUnownedAlert.tsx`, `frontend/src/components/domain/ContributorLeaderboard.tsx`, `frontend/src/app/projects/[id]/ownership/page.tsx`, `frontend/src/app/projects/[id]/page.tsx`, `docs/specs/step-2-7b-repository-ownership-ui.md`)
+- **Details**: Designed and built the Next.js 15 App Router frontend visualizer for git blame line attribution and symbol authorship inspection (`/projects/[id]/ownership`). Created TypeScript data contracts in `ownership.ts` matching backend Pydantic models (`OwnershipStatus`, `AuthorShare`, `SymbolOwnership`, `FileOwnershipSummary`, `ProjectOwnershipReport`). Implemented typed API client `ownershipApi.ts` connecting to `GET /api/v1/projects/{id}/ownership` with Supabase JWT bearer token authentication and candidate email query overrides. Developed modular `OwnershipScorecard.tsx` rendering 4 executive KPI cards (Candidate Ownership %, Candidate Authored Symbols, Flagged Unowned Symbols, Total Contributors), `SymbolOwnershipCard.tsx` with attribution badges (`Primary >= 80%`, `Collaborator 20-79%`, `Minor 1-19%`, `Unowned 0%`), line numbers, author share progress bars, and load-bearing evidence chips, `FlaggedUnownedAlert.tsx` alerting on critical architectural components the candidate did not author, and `ContributorLeaderboard.tsx` ranking author contributions. Built full interactive visualizer page with dynamic candidate email switcher, real-time symbol search and status filter tabs (`all`, `primary`, `collaborator`, `minor`, `unowned`), file ownership breakdown, and contributor leaderboard. Updated `/projects/[id]` overview page with an "Ownership" navigation button. Verified 100% via `tsc --noEmit` (0 errors), Next.js 15 production build (`next build` across all 11 routes cleanly with 5.35 kB `/projects/[id]/ownership` route), 6/6 backend ownership tests passing in 4.97s, and strict <= 300 LOC limit across all files (types 51 LOC, api 50 LOC, scorecard 63 LOC, symbol card 124 LOC, flagged alert 36 LOC, leaderboard 41 LOC, page 298 LOC, project overview 253 LOC). Concludes Milestone 2.7 (Ownership Analysis Engine).
+- **Key Files**: `frontend/src/types/ownership.ts`, `frontend/src/lib/ownershipApi.ts`, `frontend/src/components/domain/OwnershipScorecard.tsx`, `frontend/src/components/domain/SymbolOwnershipCard.tsx`, `frontend/src/components/domain/FlaggedUnownedAlert.tsx`, `frontend/src/components/domain/ContributorLeaderboard.tsx`, `frontend/src/app/projects/[id]/ownership/page.tsx`, `frontend/src/app/projects/[id]/page.tsx`, `docs/specs/step-2-7b-repository-ownership-ui.md`
 
 ### [2026-11-06] — Step 2.7a: Backend Ownership Analysis Engine, Git Blame Parser & REST API
 - **Scope / Module**: Backend Git Blame & Ownership Attribution (`backend/app/schemas/ownership.py`, `backend/app/schemas/__init__.py`, `backend/app/analyzers/blame.py`, `backend/app/analyzers/__init__.py`, `backend/app/services/ownership.py`, `backend/app/services/__init__.py`, `backend/app/api/v1/projects.py`, `backend/tests/test_ownership.py`, `docs/specs/step-2-7a-backend-ownership-engine.md`)
