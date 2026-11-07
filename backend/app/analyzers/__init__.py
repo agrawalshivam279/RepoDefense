@@ -63,6 +63,12 @@ from app.analyzers.scanner import (
     persist_analyzed_files,
     scan_workspace_files,
 )
+from app.analyzers.tech_audit import (
+    audit_dependencies_list,
+    audit_dependency,
+    calculate_tech_health_score,
+    parse_semver,
+)
 
 __all__ = [
     "ContributorStats",
@@ -77,6 +83,10 @@ __all__ = [
     "chunk_analyzed_file",
     "compute_range_attribution",
     "detect_architectural_risks",
+    "audit_dependencies_list",
+    "audit_dependency",
+    "calculate_tech_health_score",
+    "parse_semver",
     "build_deterministic_mermaid_diagram",
     "classify_tier",
     "sanitize_node_id",

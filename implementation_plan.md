@@ -442,6 +442,9 @@ gantt
 
 ### Milestone 2.10: Dependency/Technology Audit
 - **Goal:** Identify outdated or insecure tech.
+- **Sub-tasks:**
+  - [x] **Step 2.10a: Backend Dependency & Technology Audit Engine & REST API** (schemas/tech_audit.py, analyzers/tech_audit.py, services/tech_audit.py, GET /api/v1/projects/{project_id}/tech-audit)
+  - [ ] **Step 2.10b: Next.js 15 Technology Health Audit Visualizer & Deprecation Inspector** (TechAuditScorecard, AuditedDependencyList, /projects/[id]/tech-audit)
 - **Components:**
   - Basic vulnerability DB or simple version heuristic.
 - **Dependencies:** 1.8
