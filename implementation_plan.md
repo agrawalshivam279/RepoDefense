@@ -454,7 +454,7 @@ gantt
 - **Goal:** Combine Phase 1 report with claim verification and architecture.
 - **Sub-tasks:**
   - [x] **Step 2.11a: Backend Enhanced Defense Report Aggregation Service & REST API** (schemas/report.py, services/enhanced_report.py, GET /api/v1/defense/sessions/{session_id}/enhanced-report)
-  - [ ] **Step 2.11b: Next.js 15 Comprehensive Defense Report Page with Architecture Embed, Verified Claims & Print-to-PDF Styling** (ReportArchitectureSection, ReportClaimsSection, Print CSS, /report/[id])
+  - [x] **Step 2.11b: Next.js 15 Comprehensive Defense Report Page with Architecture Embed, Verified Claims & Print-to-PDF Styling** (ReportArchitectureSection, ReportClaimsSection, Print CSS, /report/[id])
 - **Components:**
   - PDF export of report.
   - Comprehensive scoring UI.

@@ -28,3 +28,14 @@ export interface DefenseReportResponse {
   total_questions: number;
   completed_at: string;
 }
+
+export interface EnhancedDefenseReportResponse extends DefenseReportResponse {
+  architecture_primary_pattern?: string | null;
+  architecture_confidence_tier?: string | null;
+  diagram_mermaid_code?: string | null;
+  tech_health_score?: number | null;
+  tech_flagged_count?: number | null;
+  tech_total_dependencies?: number | null;
+  claims_verified_count?: number | null;
+  claims_total_count?: number | null;
+}

@@ -8,8 +8,8 @@ import {
   ArrowLeft,
   CheckCircle2,
   Clock,
-  HelpCircle,
   Loader2,
+  Printer,
   RotateCcw,
   Shield,
   ShieldAlert,
@@ -19,15 +19,15 @@ import {
 } from "lucide-react";
 
 import { CategoryScorecard } from "@/components/domain/CategoryScorecard";
-import { getDefenseReport } from "@/lib/defenseApi";
+import { ReportArchitectureSection } from "@/components/domain/ReportArchitectureSection";
+import { getDefenseReport, getEnhancedDefenseReport } from "@/lib/defenseApi";
 import { supabase } from "@/lib/supabase";
-import type { DefenseReportResponse } from "@/types/report";
+import type { EnhancedDefenseReportResponse } from "@/types/report";
 
 function getVerdictMeta(verdict: string, score: number) {
   if (score >= 7.5 || verdict.toLowerCase().includes("certified")) {
     return {
       title: verdict || "Certified Principal Defense",
-      color: "emerald",
       badgeClass: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
       bannerClass: "bg-emerald-950/20 border-emerald-500/30",
       scoreClass: "text-emerald-400 border-emerald-500/40 bg-emerald-950/40",
@@ -37,7 +37,6 @@ function getVerdictMeta(verdict: string, score: number) {
   if (score >= 5.0 || verdict.toLowerCase().includes("solid")) {
     return {
       title: verdict || "Solid Architectural Defense",
-      color: "sky",
       badgeClass: "bg-sky-500/10 text-sky-400 border-sky-500/30",
       bannerClass: "bg-sky-950/20 border-sky-500/30",
       scoreClass: "text-sky-400 border-sky-500/40 bg-sky-950/40",
@@ -46,7 +45,6 @@ function getVerdictMeta(verdict: string, score: number) {
   }
   return {
     title: verdict || "Architectural Remediation Required",
-    color: "amber",
     badgeClass: "bg-amber-500/10 text-amber-400 border-amber-500/30",
     bannerClass: "bg-amber-950/20 border-amber-500/30",
     scoreClass: "text-amber-400 border-amber-500/40 bg-amber-950/40",
@@ -59,7 +57,7 @@ export default function DefenseReportPage() {
   const router = useRouter();
   const sessionId = params?.id as string;
 
-  const [report, setReport] = useState<DefenseReportResponse | null>(null);
+  const [report, setReport] = useState<EnhancedDefenseReportResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -73,8 +71,13 @@ export default function DefenseReportPage() {
         router.push("/login");
         return;
       }
-      const data = await getDefenseReport(sessionId, authSession.access_token);
-      setReport(data);
+      try {
+        const data = await getEnhancedDefenseReport(sessionId, authSession.access_token);
+        setReport(data);
+      } catch {
+        const fallbackData = await getDefenseReport(sessionId, authSession.access_token);
+        setReport(fallbackData);
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load defense report");
     } finally {
@@ -116,7 +119,7 @@ export default function DefenseReportPage() {
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-5">
         <div className="flex items-center gap-3">
-          <Link href="/dashboard" className="p-2 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-800/80 transition-colors" title="Back to Dashboard">
+          <Link href="/dashboard" className="no-print p-2 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-800/80 transition-colors" title="Back to Dashboard">
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <div>
@@ -131,7 +134,16 @@ export default function DefenseReportPage() {
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2 font-mono text-xs">
+        <div className="no-print flex items-center gap-2 font-mono text-xs">
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white transition-colors"
+            title="Print or Export PDF"
+          >
+            <Printer className="w-3.5 h-3.5 text-slate-400" />
+            <span>Export PDF</span>
+          </button>
           <Link href={`/interview/${report.project_id}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 transition-colors">
             <RotateCcw className="w-3.5 h-3.5" /> Start New Defense
           </Link>
@@ -142,7 +154,7 @@ export default function DefenseReportPage() {
       </div>
 
       {/* Executive Verdict Banner */}
-      <div className={`rounded-2xl border p-6 sm:p-8 backdrop-blur-sm shadow-lg ${verdictMeta.bannerClass}`}>
+      <div className={`rounded-2xl border p-6 sm:p-8 backdrop-blur-sm shadow-lg page-break-inside-avoid ${verdictMeta.bannerClass}`}>
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-3">
@@ -170,7 +182,7 @@ export default function DefenseReportPage() {
       </div>
 
       {/* Category Breakdown */}
-      <div className="space-y-4">
+      <div className="space-y-4 page-break-inside-avoid">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-emerald-400" />
@@ -186,7 +198,7 @@ export default function DefenseReportPage() {
       </div>
 
       {/* Strengths & Critical Blind Spots */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 page-break-inside-avoid">
         {/* Key Strengths */}
         <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-sm">
           <div className="flex items-center gap-2.5 text-emerald-400 border-b border-slate-800 pb-3">
@@ -229,7 +241,7 @@ export default function DefenseReportPage() {
       </div>
 
       {/* Actionable Engineering Recommendations */}
-      <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-sm">
+      <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-sm page-break-inside-avoid">
         <div className="flex items-center gap-2.5 text-sky-400 border-b border-slate-800 pb-3">
           <Terminal className="w-5 h-5" />
           <h3 className="text-sm font-bold uppercase tracking-wider font-mono">Actionable Engineering Mitigations</h3>
@@ -245,6 +257,30 @@ export default function DefenseReportPage() {
           ))}
         </div>
       </div>
+
+      {/* Integrated Architecture & Technology Health Section */}
+      <div className="page-break-inside-avoid">
+        <ReportArchitectureSection report={report} />
+      </div>
+
+      {/* Print CSS Rules */}
+      <style jsx global>{`
+        @media print {
+          .no-print {
+            display: none !important;
+          }
+          body {
+            background-color: #020617 !important;
+            color: #f8fafc !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          .page-break-inside-avoid {
+            break-inside: avoid;
+            page-break-inside: avoid;
+          }
+        }
+      `}</style>
     </div>
   );
 }
