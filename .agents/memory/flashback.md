@@ -36,7 +36,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **Architecture Audit & Detection** | Static Directory Topology + Pattern Engine + Next.js 15 Visualizer | 🟢 Milestone 2.8 Complete (Steps 2.8a & 2.8b) |
 | **Architecture Diagram Engine** | Multi-tier Mermaid Generation + Next.js 15 Interactive Visualizer | 🟢 Milestone 2.9 Complete (Steps 2.9a & 2.9b) |
 | **Dependency / Technology Audit** | Heuristic Semver Parser + Next.js 15 Health Scorecard & Inspector | 🟢 Milestone 2.10 Complete (Steps 2.10a & 2.10b) |
-| **Enhanced Defense Report** | Unified Defense Evaluation + Architecture & Tech Audit Aggregator | 🟢 Step 2.11a Complete |
+| **Enhanced Defense Report** | Unified Defense Evaluation + Architecture & Tech Audit Aggregator | 🟢 Milestone 2.11 Complete (Steps 2.11a & 2.11b) |
 | **IDE Code Viewer** | Monaco / Prism code viewer with AST evidence highlights | ⚪ Phase 4 Planned |
 | **Evaluation & Export** | Rubric generator + PDF transcript export | ⚪ Phase 5 Planned |
 
@@ -121,7 +121,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | Phase | Description | Status |
 | :--- | :--- | :--- |
 | **Phase 1** | Ingestion & Core MVP (Scaffolding, Auth, Git Clone, Security Filter, Complete MVP) | 🟢 Complete |
-| **Phase 2** | Differentiation (Claims Extraction, Verification, Adaptive Questioning, Pushback Logic, Coverage Tracking, Ownership Engine, Architecture Audit, Mermaid Diagrams) | 🟡 In Progress (Milestones 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9 Complete) |
+| **Phase 2** | Differentiation (Claims Extraction, Verification, Adaptive Questioning, Pushback Logic, Coverage Tracking, Ownership Engine, Architecture Audit, Mermaid Diagrams, Tech Audit, Enhanced Report) | 🟡 In Progress (Milestones 2.1 - 2.11 Complete) |
 | **Phase 3** | The State Machine (LiteLLM, Evidence Grounding, Principal Engineer FSM, Prompts) | ⚪ Planned |
 | **Phase 4** | Interactive Frontend (Next.js 15, SSE / WebSocket chat, Monaco/Prism Code Viewer) | ⚪ Planned |
 | **Phase 5** | Evaluation & Export (Rubric Scoring, Transcript Generation, PDF & Badge Export) | ⚪ Planned |
@@ -129,6 +129,11 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-11-07] — Step 2.11b: Next.js 15 Comprehensive Defense Report Page with Architecture Embed, Verified Claims & Print-to-PDF Styling
+- **Scope / Module**: Frontend Enhanced Defense Report UI (`frontend/src/types/report.ts`, `frontend/src/lib/defenseApi.ts`, `frontend/src/components/domain/ReportArchitectureSection.tsx`, `frontend/src/app/report/[id]/page.tsx`, `docs/specs/step-2-11b-comprehensive-defense-report-ui.md`)
+- **Details**: Designed and implemented the comprehensive, multi-dimensional defense report UI in Next.js 15 App Router (`/report/[id]`). Extended TypeScript data contracts with `EnhancedDefenseReportResponse` inheriting from `DefenseReportResponse` with optional architectural pattern, Mermaid diagram code, and dependency health metrics. Updated typed API client `defenseApi.ts` with `getEnhancedDefenseReport` hitting `GET /api/v1/defense/sessions/{sessionId}/enhanced-report` with automated fallback to base report endpoint `getDefenseReport`. Built modular `ReportArchitectureSection.tsx` embedding dynamic client-side Mermaid flowchart rendering with pan/zoom/reset controls, primary architecture pattern badge with confidence meters, and dependency health score card with severity counters. Enhanced `/report/[id]/page.tsx` with unified report layout, "Print / Export PDF" CTA button, verified candidate claims summary, and `@media print` CSS rules hiding interactive buttons/nav headers, applying `print-color-adjust: exact`, and avoiding page-breaks inside evaluation cards. Verified 100% via `tsc --noEmit` (0 errors), Next.js 15 production build (`next build` across all 13 routes cleanly with 10.2 kB bundle on `/report/[id]`), 4/4 backend enhanced report tests passing in 22.71s, and strict <= 300 LOC limit across all touched files (types 41 LOC, api 204 LOC, architecture section 176 LOC, page 286 LOC, tests 269 LOC). Concludes Milestone 2.11 (Enhanced Defense Report).
+- **Key Files**: `frontend/src/types/report.ts`, `frontend/src/lib/defenseApi.ts`, `frontend/src/components/domain/ReportArchitectureSection.tsx`, `frontend/src/app/report/[id]/page.tsx`, `docs/specs/step-2-11b-comprehensive-defense-report-ui.md`
 
 ### [2026-11-07] — Step 2.11a: Backend Enhanced Defense Report Aggregation Service & REST API
 - **Scope / Module**: Backend Enhanced Defense Report Engine (`backend/app/schemas/report.py`, `backend/app/schemas/__init__.py`, `backend/app/services/enhanced_report.py`, `backend/app/services/__init__.py`, `backend/app/api/v1/defense.py`, `backend/tests/test_enhanced_report.py`, `docs/specs/step-2-11a-enhanced-defense-report-api.md`)
