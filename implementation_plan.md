@@ -431,6 +431,9 @@ gantt
 
 ### Milestone 2.9: Architecture Diagram (Mermaid Generation)
 - **Goal:** Automatically generate an architecture diagram.
+- **Sub-tasks:**
+  - [x] **Step 2.9a: Backend Mermaid Architecture Diagram Generation Engine & REST API** (schemas/diagram.py, prompts.py, analyzers/diagram.py, services/diagram.py, GET /api/v1/projects/{project_id}/diagram, 8/8 tests)
+  - [ ] **Step 2.9b: Next.js 15 Mermaid Architecture Visualizer & Interactive Diagram Viewer** (MermaidViewer.tsx, /projects/[id]/architecture integration)
 - **Components:**
   - LLM prompt to generate Mermaid syntax from evidence.
   - Mermaid rendering in Next.js.
