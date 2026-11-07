@@ -465,7 +465,7 @@ gantt
 - **Goal:** Polish UI, optimize queries, and finalize Phase 2.
 - **Sub-tasks:**
   - [x] **Step 2.12a: Backend Database Indexing & Query Optimization for Phase 2 Workloads** (alembic migration, models/analysis.py, composite indexes for dependencies/evidence/files/symbols, query tuning)
-  - [ ] **Step 2.12b: Frontend Project Navigation Hub, Breadcrumbs & Phase 2 UI Polish** (ProjectNavHeader, unified tabs, breadcrumbs, transition polish)
+  - [x] **Step 2.12b: Frontend Project Navigation Hub, Breadcrumbs & Phase 2 UI Polish** (ProjectNavHeader, unified tabs, breadcrumbs, transition polish)
 - **Components:** Database indexing, UI transitions, performance tuning.
 
 ## 6. PHASE 3 — ADVANCED DEFENSE
