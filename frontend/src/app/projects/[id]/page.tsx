@@ -14,6 +14,7 @@ import {
   Loader2,
   Network,
   Package,
+  PackageCheck,
   RefreshCw,
   Shield,
   Sparkles,
@@ -137,6 +138,10 @@ export default function ProjectOverviewPage() {
           <Link href={`/projects/${overview.project_id}/architecture`} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white font-semibold text-xs font-mono transition-colors">
             <Network className="w-3.5 h-3.5 text-purple-400" />
             <span>Architecture</span>
+          </Link>
+          <Link href={`/projects/${overview.project_id}/tech-audit`} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white font-semibold text-xs font-mono transition-colors">
+            <PackageCheck className="w-3.5 h-3.5 text-amber-400" />
+            <span>Tech Audit</span>
           </Link>
           <Link href={`/interview/${overview.project_id}`} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs font-mono transition-colors shadow-md">
             <span>Start Defense</span>

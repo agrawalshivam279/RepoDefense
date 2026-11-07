@@ -11,6 +11,7 @@ import {
   Layers,
   Loader2,
   Network,
+  PackageCheck,
   RefreshCw,
   Shield,
   ShieldAlert,
@@ -156,6 +157,13 @@ export default function ProjectArchitecturePage() {
           >
             <UserCheck className="w-3.5 h-3.5 text-indigo-400" />
             <span>Ownership</span>
+          </Link>
+          <Link
+            href={`/projects/${projectId}/tech-audit`}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white font-semibold text-xs font-mono transition-colors"
+          >
+            <PackageCheck className="w-3.5 h-3.5 text-amber-400" />
+            <span>Tech Audit</span>
           </Link>
           <Link
             href={`/interview/${projectId}`}
