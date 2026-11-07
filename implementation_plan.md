@@ -461,9 +461,12 @@ gantt
 - **Dependencies:** 2.2, 2.9
 - **AI Coding Prompt:** "Expand the Next.js Report page to include the verified claims section and the Mermaid architecture diagram. Add a 'Print to PDF' styled CSS."
 
-### Milestone 2.12: Phase 2 Polish & Deploy
-- **Goal:** Polish UI, optimize queries.
-- **Components:** Database indexing, UI transitions.
+### Milestone 2.12: Phase 2 Polish & Optimization
+- **Goal:** Polish UI, optimize queries, and finalize Phase 2.
+- **Sub-tasks:**
+  - [x] **Step 2.12a: Backend Database Indexing & Query Optimization for Phase 2 Workloads** (alembic migration, models/analysis.py, composite indexes for dependencies/evidence/files/symbols, query tuning)
+  - [ ] **Step 2.12b: Frontend Project Navigation Hub, Breadcrumbs & Phase 2 UI Polish** (ProjectNavHeader, unified tabs, breadcrumbs, transition polish)
+- **Components:** Database indexing, UI transitions, performance tuning.
 
 ## 6. PHASE 3 — ADVANCED DEFENSE
 **Goal:** PR/commit defense, stress testing, incident simulation.
