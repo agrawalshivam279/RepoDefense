@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.v1.architecture import router as architecture_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.claims import (
     project_claims_router,
@@ -54,6 +55,7 @@ app.include_router(project_claims_router, prefix=f"{settings.API_V1_STR}/v1")
 app.include_router(questions_router, prefix=f"{settings.API_V1_STR}/v1")
 app.include_router(defense_router, prefix=f"{settings.API_V1_STR}/v1")
 app.include_router(claims_router, prefix=f"{settings.API_V1_STR}/v1")
+app.include_router(architecture_router, prefix=f"{settings.API_V1_STR}/v1")
 
 
 @app.get("/", tags=["System"])

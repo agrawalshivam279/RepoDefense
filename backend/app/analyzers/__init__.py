@@ -1,5 +1,15 @@
 """Repository analyzers: scanning, AST, dependencies, history, evidence, and embeddings."""
 
+from app.analyzers.architecture import (
+    detect_architectural_risks,
+    eval_clean_architecture,
+    eval_event_driven,
+    eval_layered_architecture,
+    eval_modular_monolith,
+    eval_mvc,
+    get_confidence_tier,
+    normalize_directory_tokens,
+)
 from app.analyzers.ast import (
     SymbolMetadata,
     extract_and_persist_file_symbols,
@@ -59,9 +69,15 @@ __all__ = [
     "SymbolMetadata",
     "chunk_analyzed_file",
     "compute_range_attribution",
+    "detect_architectural_risks",
     "detect_language",
     "embed_and_persist_workspace_chunks",
     "estimate_token_count",
+    "eval_clean_architecture",
+    "eval_event_driven",
+    "eval_layered_architecture",
+    "eval_modular_monolith",
+    "eval_mvc",
     "extract_and_persist_evidence",
     "extract_and_persist_file_symbols",
     "extract_code_symbols",
@@ -70,7 +86,9 @@ __all__ = [
     "extract_file_metadata",
     "extract_git_history",
     "generate_embeddings",
+    "get_confidence_tier",
     "get_embedding_model",
+    "normalize_directory_tokens",
     "parse_file_blame",
     "persist_analyzed_files",
     "persist_code_symbols",
