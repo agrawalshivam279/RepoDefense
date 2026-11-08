@@ -121,14 +121,20 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | Phase | Description | Status |
 | :--- | :--- | :--- |
 | **Phase 1** | Ingestion & Core MVP (Scaffolding, Auth, Git Clone, Security Filter, Complete MVP) | 🟢 Complete |
-| **Phase 2** | Differentiation (Claims Extraction, Verification, Adaptive Questioning, Pushback Logic, Coverage Tracking, Ownership Engine, Architecture Audit, Mermaid Diagrams, Tech Audit, Enhanced Report) | 🟡 In Progress (Milestones 2.1 - 2.11 Complete) |
-| **Phase 3** | The State Machine (LiteLLM, Evidence Grounding, Principal Engineer FSM, Prompts) | ⚪ Planned |
+| **Phase 2** | Differentiation (Claims Extraction, Verification, Adaptive Questioning, Pushback Logic, Coverage Tracking, Ownership Engine, Architecture Audit, Mermaid Diagrams, Tech Audit, Enhanced Report) | 🟢 Complete (Milestones 2.1 - 2.12 Complete) |
+| **Phase 3** | The State Machine & Advanced Defense (PR Fetch & Diff Defense, Stress Testing, Incident Simulation) | 🟡 In Progress (Step 3.1a Complete) |
 | **Phase 4** | Interactive Frontend (Next.js 15, SSE / WebSocket chat, Monaco/Prism Code Viewer) | ⚪ Planned |
 | **Phase 5** | Evaluation & Export (Rubric Scoring, Transcript Generation, PDF & Badge Export) | ⚪ Planned |
 
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-11-08] — Step 3.1a: GitHub PR Fetcher, Diff Parser & REST API
+- **Scope / Module**: Backend PR Diff Parser & REST API (ackend/app/schemas/pr_analysis.py, ackend/app/analyzers/diff_parser.py, ackend/app/api/v1/pull_requests.py, ackend/app/main.py, ackend/tests/test_pr_diff_parser.py, docs/specs/step-3-1a-pr-diff-parser.md)
+- **Details**: Designed and implemented the backend GitHub Pull Request diff ingestion, parsing, and analysis engine initiating Phase 3 (Advanced Defense). Created Pydantic v2 schemas in pr_analysis.py (FileChangeStatus, DiffLineType, ParsedDiffLine, ParsedDiffHunk, ParsedFileDiff, PRMetadata, RawDiffParseRequest, PRAnalysisRequest, PRAnalysisResponse). Authored unified diff parser engine diff_parser.py parsing multi-file diffs, calculating line counts and changes, sanitizing file paths against traversal attacks (../, ~), and redacting sensitive credentials using scan_for_secrets with [REDACTED_SECRET]. Created FastAPI REST router pi/v1/pull_requests.py exposing POST /api/v1/pr/parse-diff for raw patch strings and authenticated POST /api/v1/pr/projects/{project_id}/analyze fetching PR metadata and unified diff patches via GitHub REST API with tenant project verification. Mounted router on /api/v1 in main.py. Authored hermetic unit and endpoint tests in ackend/tests/test_pr_diff_parser.py utilizing isolated coroutine runner _drive_coro. Verified 100% via 10/10 pytest tests passing in 2.60s, 
+uff check (0 errors), and strict <= 300 LOC limit across all files (schemas 120 LOC, parser 208 LOC, router 190 LOC, tests 285 LOC, main 80 LOC). Concludes Step 3.1a.
+- **Key Files**: ackend/app/schemas/pr_analysis.py, ackend/app/analyzers/diff_parser.py, ackend/app/api/v1/pull_requests.py, ackend/app/main.py, ackend/tests/test_pr_diff_parser.py, docs/specs/step-3-1a-pr-diff-parser.md
 
 ### [2026-11-08] — Step 2.12b: Frontend Project Navigation Hub, Breadcrumbs & Phase 2 UI Polish
 - **Scope / Module**: Frontend Navigation & Project Hub (`frontend/src/components/domain/ProjectNavHeader.tsx`, `frontend/src/app/projects/[id]/page.tsx`, `frontend/src/app/projects/[id]/claims/page.tsx`, `frontend/src/app/projects/[id]/architecture/page.tsx`, `docs/specs/step-2-12b-project-navigation-hub.md`)

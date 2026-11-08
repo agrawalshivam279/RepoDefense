@@ -1,4 +1,4 @@
-"""Repository analyzers: scanning, AST, dependencies, history, evidence, and embeddings."""
+"""Repository analyzers: scanning, AST, dependencies, history, evidence, diffs, and embeddings."""
 
 from app.analyzers.architecture import (
     detect_architectural_risks,
@@ -37,6 +37,10 @@ from app.analyzers.diagram import (
     sanitize_node_label,
     validate_mermaid_syntax,
 )
+from app.analyzers.diff_parser import (
+    DiffParsingError,
+    parse_unified_diff,
+)
 from app.analyzers.embeddings import (
     DEFAULT_MODEL_NAME,
     EMBEDDING_DIM,
@@ -74,6 +78,7 @@ __all__ = [
     "ContributorStats",
     "DEFAULT_MODEL_NAME",
     "DependencyMetadata",
+    "DiffParsingError",
     "EMBEDDING_DIM",
     "FileMetadata",
     "GitCommitMetadata",
@@ -112,6 +117,7 @@ __all__ = [
     "get_embedding_model",
     "normalize_directory_tokens",
     "parse_file_blame",
+    "parse_unified_diff",
     "persist_analyzed_files",
     "persist_code_symbols",
     "persist_dependencies",

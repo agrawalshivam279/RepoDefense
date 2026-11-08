@@ -14,6 +14,7 @@ from app.api.v1.claims import (
 from app.api.v1.defense import router as defense_router
 from app.api.v1.diagram import router as diagram_router
 from app.api.v1.projects import router as projects_router
+from app.api.v1.pull_requests import router as pr_router
 from app.api.v1.questions import router as questions_router
 from app.api.v1.tech_audit import router as tech_audit_router
 from app.core.config import settings
@@ -31,10 +32,6 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
-    description=(
-        "RepoDefense: AI-driven repository stress testing and "
-        "architectural interview simulation platform."
-    ),
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     docs_url=f"{settings.API_V1_STR}/docs",
     redoc_url=f"{settings.API_V1_STR}/redoc",
@@ -60,6 +57,7 @@ app.include_router(claims_router, prefix=f"{settings.API_V1_STR}/v1")
 app.include_router(architecture_router, prefix=f"{settings.API_V1_STR}/v1")
 app.include_router(diagram_router, prefix=f"{settings.API_V1_STR}/v1")
 app.include_router(tech_audit_router, prefix=f"{settings.API_V1_STR}/v1")
+app.include_router(pr_router, prefix=f"{settings.API_V1_STR}/v1")
 
 
 @app.get("/", tags=["System"])
