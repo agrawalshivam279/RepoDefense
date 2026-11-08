@@ -481,9 +481,9 @@ gantt
 - **AI Coding Prompt:** "Create a FastAPI endpoint that takes a GitHub PR URL, fetches the diff via the GitHub REST API, and parses the added/removed lines into a structured format."
 
 ### Milestone 3.2: PR Defense Session
-- **Goal:** Interrogate user strictly on their PR changes.
+- **Goal:** [x] Interrogate user strictly on their PR changes.
   - [x] **Step 3.2a: PR Defense Session Schemas, Question Generator & REST API** (schemas/pr_defense.py, ai/pr_question_generator.py, api/v1/pr_defense.py, 15/15 tests passing)
-  - [ ] **Step 3.2b: Next.js 15 PR Defense Session UI & Diff-Grounded Interview Flow** (prDefenseApi.ts, PRDefenseSession.tsx, turn progression, diff citation inspector)
+  - [x] **Step 3.2b: Next.js 15 PR Defense Session UI & Diff-Grounded Interview Flow** (prDefenseApi.ts, PRDefenseSession.tsx, turn progression, diff citation inspector)
 - **Components:** Questions scoped to diffs.
 - **Dependencies:** 3.1
 - **AI Coding Prompt:** "Modify the question generation prompt to focus exclusively on the 'Why' behind code changes in a provided git diff, rather than the whole repository."
