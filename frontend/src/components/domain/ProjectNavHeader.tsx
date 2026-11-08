@@ -8,6 +8,7 @@ import {
   ExternalLink,
   FileCode,
   GitBranch,
+  GitPullRequest,
   Layers,
   Network,
   PackageCheck,
@@ -23,7 +24,8 @@ export type ProjectNavTab =
   | "coverage"
   | "ownership"
   | "architecture"
-  | "tech-audit";
+  | "tech-audit"
+  | "pr-defense";
 
 export interface ProjectNavHeaderProps {
   projectId: string;
@@ -52,6 +54,7 @@ const TABS: {
   { id: "ownership", label: "Ownership", hrefSuffix: "/ownership", Icon: UserCheck, accentColor: "text-indigo-400" },
   { id: "architecture", label: "Architecture", hrefSuffix: "/architecture", Icon: Network, accentColor: "text-purple-400" },
   { id: "tech-audit", label: "Tech Audit", hrefSuffix: "/tech-audit", Icon: PackageCheck, accentColor: "text-amber-400" },
+  { id: "pr-defense", label: "PR Defense", hrefSuffix: "/pr-defense", Icon: GitPullRequest, accentColor: "text-rose-400" },
 ];
 
 export function ProjectNavHeader({

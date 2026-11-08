@@ -122,13 +122,18 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | :--- | :--- | :--- |
 | **Phase 1** | Ingestion & Core MVP (Scaffolding, Auth, Git Clone, Security Filter, Complete MVP) | 🟢 Complete |
 | **Phase 2** | Differentiation (Claims Extraction, Verification, Adaptive Questioning, Pushback Logic, Coverage Tracking, Ownership Engine, Architecture Audit, Mermaid Diagrams, Tech Audit, Enhanced Report) | 🟢 Complete (Milestones 2.1 - 2.12 Complete) |
-| **Phase 3** | The State Machine & Advanced Defense (PR Fetch & Diff Defense, Stress Testing, Incident Simulation) | 🟡 In Progress (Step 3.1a Complete) |
+| **Phase 3** | The State Machine & Advanced Defense (PR Fetch & Diff Defense, Stress Testing, Incident Simulation) | 🟡 In Progress (Milestone 3.1 Complete) |
 | **Phase 4** | Interactive Frontend (Next.js 15, SSE / WebSocket chat, Monaco/Prism Code Viewer) | ⚪ Planned |
 | **Phase 5** | Evaluation & Export (Rubric Scoring, Transcript Generation, PDF & Badge Export) | ⚪ Planned |
 
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-11-09] — Step 3.1b: Next.js 15 PR Ingestion & Diff Viewer UI
+- **Scope / Module**: Frontend PR Ingestion & Diff Viewer UI (`frontend/src/types/prAnalysis.ts`, `frontend/src/lib/prAnalysisApi.ts`, `frontend/src/components/domain/PRDiffViewer.tsx`, `frontend/src/app/projects/[id]/pr-defense/page.tsx`, `frontend/src/components/domain/ProjectNavHeader.tsx`, `docs/specs/step-3-1b-pr-diff-viewer-ui.md`)
+- **Details**: Designed and implemented the complete Next.js 15 App Router interactive Pull Request ingestion and diff inspection interface (`/projects/[id]/pr-defense`). Defined TypeScript data contracts in `prAnalysis.ts` mirroring backend Pydantic models (`FileChangeStatus`, `DiffLineType`, `ParsedDiffLine`, `ParsedDiffHunk`, `ParsedFileDiff`, `PRMetadata`, `PRAnalysisResponse`). Implemented typed API client `prAnalysisApi.ts` connecting to `POST /api/v1/pr/projects/{id}/analyze` and `POST /api/v1/pr/parse-diff` with Supabase JWT bearer token authentication. Built modular `PRDiffViewer.tsx` featuring collapsible file accordions, file search/filter bar, change status pills (Added, Modified, Deleted, Renamed, Binary), additions/deletions counts, 1-indexed line numbers, color-coded line rows, and credential redaction alerts (`[REDACTED_SECRET]`). Built full visualizer page `pr-defense/page.tsx` with dual ingestion modes (GitHub PR URL and raw patch text), executive change scorecards (Files, +Adds, -Dels, Net Impact), PR narrative banner, and direct CTA to launch PR defense interviews. Updated `ProjectNavHeader.tsx` adding the "PR Defense" navigation tab. Verified 100% via `tsc --noEmit` (0 errors), Next.js 15 production build (`next build` compiling all 14 routes cleanly with 5.58 kB bundle for `/projects/[id]/pr-defense`), 10/10 backend regression tests passing, and strict <= 300 LOC limit across all files (types 65 LOC, api 79 LOC, diff viewer 288 LOC, page 265 LOC, nav header 197 LOC). Concludes Milestone 3.1 (PR Fetch & Analysis).
+- **Key Files**: `frontend/src/types/prAnalysis.ts`, `frontend/src/lib/prAnalysisApi.ts`, `frontend/src/components/domain/PRDiffViewer.tsx`, `frontend/src/app/projects/[id]/pr-defense/page.tsx`, `frontend/src/components/domain/ProjectNavHeader.tsx`, `docs/specs/step-3-1b-pr-diff-viewer-ui.md`
 
 ### [2026-11-08] — Step 3.1a: GitHub PR Fetcher, Diff Parser & REST API
 - **Scope / Module**: Backend PR Diff Parser & REST API (ackend/app/schemas/pr_analysis.py, ackend/app/analyzers/diff_parser.py, ackend/app/api/v1/pull_requests.py, ackend/app/main.py, ackend/tests/test_pr_diff_parser.py, docs/specs/step-3-1a-pr-diff-parser.md)

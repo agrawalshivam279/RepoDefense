@@ -475,7 +475,7 @@ gantt
 - **Goal:** Analyze specific Pull Requests instead of whole repos.
 - **Sub-tasks:**
   - [x] **Step 3.1a: GitHub PR Fetcher, Diff Parser & REST API** (schemas/pr_analysis.py, analyzers/diff_parser.py, api/v1/pull_requests.py, 10/10 tests)
-  - [ ] **Step 3.1b: Next.js 15 PR Ingestion & Diff Viewer UI** (prAnalysis.ts, PRDiffViewer.tsx, /projects/[id]/pr-defense, diff hunk visualization)
+  - [x] **Step 3.1b: Next.js 15 PR Ingestion & Diff Viewer UI** (prAnalysis.ts, PRDiffViewer.tsx, /projects/[id]/pr-defense, diff hunk visualization)
 - **Components:** GitHub API integration, Diff parsing.
 - **Dependencies:** 1.4
 - **AI Coding Prompt:** "Create a FastAPI endpoint that takes a GitHub PR URL, fetches the diff via the GitHub REST API, and parses the added/removed lines into a structured format."
