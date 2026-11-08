@@ -490,6 +490,9 @@ gantt
 
 ### Milestone 3.3: Commit Defense
 - **Goal:** Similar to PR, but for a single commit hash.
+- **Sub-tasks:**
+  - [x] **Step 3.3a: Commit Defense Schemas, Commit Diff Parser & REST API** (schemas/commit_defense.py, analyzers/commit_fetcher.py, api/v1/commit_defense.py, 14/14 tests passing)
+  - [ ] **Step 3.3b: Next.js 15 Commit Defense UI & Commit History Integration** (commitDefense.ts, CommitDefenseSession.tsx, /projects/[id]/commit-defense)
 
 ### Milestone 3.4: Incident/Failure Simulation Engine
 - **Goal:** Generate hypothetical failure scenarios.
