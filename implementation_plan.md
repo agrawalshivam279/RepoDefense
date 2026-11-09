@@ -496,6 +496,9 @@ gantt
 
 ### Milestone 3.4: Incident/Failure Simulation Engine
 - **Goal:** Generate hypothetical failure scenarios.
+- **Sub-tasks:**
+  - [x] **Step 3.4a: Backend Incident Simulation Engine, Chaos Scenario Generator & REST API** (schemas/incident.py, ai/incident_generator.py, api/v1/incident_simulation.py, 9/9 tests passing)
+  - [ ] **Step 3.4b: Next.js 15 Incident Simulation War Room UI & Scenario Defense Flow** (incident.ts, IncidentWarRoom.tsx, /projects/[id]/incident-simulation)
 - **Components:** "What breaks if X fails?" LLM logic.
 - **Dependencies:** 2.8
 - **AI Coding Prompt:** "Given a database model or API endpoint evidence, prompt the LLM to generate a hypothetical production incident (e.g., 'The DB connection drops here') and ask the user how the current code handles it."
