@@ -43,7 +43,8 @@ def test_evidence_composite_index_metadata():
 
 def test_migration_phase2_indexes_module_attributes():
     """Verify Alembic migration revision identifiers and lineage."""
-    migration_file = Path("backend/alembic/versions/2a3f8b9c1d2e_add_phase2_performance_indexes.py")
+    versions_dir = Path(__file__).resolve().parent.parent / "alembic" / "versions"
+    migration_file = versions_dir / "2a3f8b9c1d2e_add_phase2_performance_indexes.py"
     assert migration_file.exists(), f"Migration file missing: {migration_file}"
 
     spec = importlib.util.spec_from_file_location("migration_phase2", str(migration_file))
@@ -59,7 +60,8 @@ def test_migration_phase2_indexes_module_attributes():
 
 def test_migration_upgrade_and_downgrade_operations():
     """Verify migration upgrade and downgrade invoke Alembic op methods correctly."""
-    migration_file = Path("backend/alembic/versions/2a3f8b9c1d2e_add_phase2_performance_indexes.py")
+    versions_dir = Path(__file__).resolve().parent.parent / "alembic" / "versions"
+    migration_file = versions_dir / "2a3f8b9c1d2e_add_phase2_performance_indexes.py"
     spec = importlib.util.spec_from_file_location("migration_phase2_ops", str(migration_file))
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)

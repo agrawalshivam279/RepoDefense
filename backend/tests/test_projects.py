@@ -30,10 +30,10 @@ def create_test_jwt(
 
 
 @pytest.fixture(scope="module", autouse=True)
-async def cleanup_db_engine():
-    """Ensure clean connection pool lifecycle across test modules."""
+def cleanup_db_engine():
+    """Ensure clean connection pool lifecycle across test runs."""
     yield
-    await engine.dispose()
+    engine.sync_engine.dispose()
 
 
 @pytest.mark.anyio

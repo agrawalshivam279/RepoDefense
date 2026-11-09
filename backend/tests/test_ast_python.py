@@ -12,10 +12,10 @@ from app.models.project import Project, RepositorySnapshot, User
 
 
 @pytest.fixture(autouse=True)
-async def cleanup_db_engine():
+def cleanup_db_engine():
     """Ensure clean connection pool lifecycle across test runs."""
     yield
-    await engine.dispose()
+    engine.sync_engine.dispose()
 
 
 # --- Unit Tests: Python AST Parser ---

@@ -165,6 +165,12 @@ async def start_defense_session(
 
 
 @router.post(
+    "/defense/sessions/{session_id}/answer",
+    response_model=DefenseSessionState,
+    status_code=status.HTTP_200_OK,
+    include_in_schema=False,
+)
+@router.post(
     "/defense/sessions/{session_id}/turn",
     response_model=DefenseSessionState,
     status_code=status.HTTP_200_OK,
