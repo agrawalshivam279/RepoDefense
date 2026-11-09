@@ -69,7 +69,7 @@ jobs:
 
       - name: Backend Unit Tests (pytest)
         run: |
-          python -m pytest backend/tests/ -v --cov=app --cov-report=term-missing
+          cd backend && python -m pytest tests/ -v --cov=app --cov-report=term-missing
 
   frontend:
     name: Frontend Typecheck & Production Build (Next.js 15)
