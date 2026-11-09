@@ -14,6 +14,7 @@ from app.api.v1.claims import (
 from app.api.v1.commit_defense import router as commit_defense_router
 from app.api.v1.defense import router as defense_router
 from app.api.v1.diagram import router as diagram_router
+from app.api.v1.incident_simulation import router as incident_simulation_router
 from app.api.v1.pr_defense import router as pr_defense_router
 from app.api.v1.projects import router as projects_router
 from app.api.v1.pull_requests import router as pr_router
@@ -62,6 +63,9 @@ app.include_router(tech_audit_router, prefix=f"{settings.API_V1_STR}/v1")
 app.include_router(pr_router, prefix=f"{settings.API_V1_STR}/v1")
 app.include_router(pr_defense_router, prefix=f"{settings.API_V1_STR}/v1/pr-defense")
 app.include_router(commit_defense_router, prefix=f"{settings.API_V1_STR}/v1/commit-defense")
+app.include_router(
+    incident_simulation_router, prefix=f"{settings.API_V1_STR}/v1/incident-simulation"
+)
 
 
 @app.get("/", tags=["System"])
