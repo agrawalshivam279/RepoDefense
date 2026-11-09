@@ -6,10 +6,19 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   backend:
     name: Backend Lint & Tests (Python 3.12)
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql+asyncpg://repouser:repopassword@127.0.0.1:5433/repodefense
+      REDIS_URL: redis://127.0.0.1:6379/0
+      TESTING: "true"
+      SUPABASE_JWT_SECRET: testing-supabase-jwt-secret-min-32-chars-long
     services:
       postgres:
         image: pgvector/pgvector:pg17
@@ -54,19 +63,13 @@ jobs:
           python -m ruff check backend/app backend/tests
 
       - name: Run Database Migrations (alembic)
-        env:
-          DATABASE_URL: postgresql+asyncpg://repouser:repopassword@127.0.0.1:5433/repodefense
         run: |
           cd backend
           python -m alembic upgrade head
 
       - name: Backend Unit Tests (pytest)
-        env:
-          DATABASE_URL: postgresql+asyncpg://repouser:repopassword@127.0.0.1:5433/repodefense
-          REDIS_URL: redis://127.0.0.1:6379/0
-          SUPABASE_JWT_SECRET: testing-supabase-jwt-secret-min-32-chars-long
         run: |
-          pytest backend/tests/ -v --cov=backend/app --cov-report=term
+          python -m pytest backend/tests/ -v --cov=app --cov-report=term-missing
 
   frontend:
     name: Frontend Typecheck & Production Build (Next.js 15)
