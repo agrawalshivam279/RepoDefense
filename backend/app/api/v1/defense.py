@@ -44,8 +44,16 @@ async def _get_completed_session(
             detail=f"Defense session '{session_id}' not found.",
         )
 
+    try:
+        project_uuid = uuid.UUID(session.project_id)
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Invalid project ID '{session.project_id}'.",
+        )
+
     proj_stmt = select(Project).where(
-        Project.id == uuid.UUID(session.project_id),
+        Project.id == project_uuid,
         Project.user_id == current_user.id,
     )
     project = (await db.execute(proj_stmt)).scalar_one_or_none()
@@ -190,8 +198,16 @@ async def submit_defense_turn_endpoint(
             detail=f"Defense session '{session_id}' not found.",
         )
 
+    try:
+        project_uuid = uuid.UUID(session.project_id)
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Invalid project ID '{session.project_id}'.",
+        )
+
     proj_stmt = select(Project).where(
-        Project.id == uuid.UUID(session.project_id),
+        Project.id == project_uuid,
         Project.user_id == current_user.id,
     )
     project = (await db.execute(proj_stmt)).scalar_one_or_none()
