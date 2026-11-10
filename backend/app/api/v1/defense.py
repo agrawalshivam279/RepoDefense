@@ -226,10 +226,7 @@ async def submit_defense_turn_endpoint(
     try:
         updated_session = await submit_defense_turn(
             session_id=session_id,
-            user_response=payload.answer,
-            model=payload.model,
-            api_key=payload.api_key,
-            base_url=payload.base_url,
+            candidate_answer=payload.answer,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

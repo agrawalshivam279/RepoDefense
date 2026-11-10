@@ -151,6 +151,9 @@ class StartDefenseRequest(BaseModel):
         None,
         description="Optional subset of categories to prioritize",
     )
+    model: Optional[str] = Field(default=None, description="Optional LLM model override")
+    api_key: Optional[str] = Field(default=None, description="Optional LLM API key override")
+    base_url: Optional[str] = Field(default=None, description="Optional LLM base URL override")
 
 
 class SubmitAnswerRequest(BaseModel):
@@ -162,6 +165,9 @@ class SubmitAnswerRequest(BaseModel):
         max_length=5000,
         description="Candidate's architectural defense or response",
     )
+    model: Optional[str] = Field(default=None, description="Optional LLM model override")
+    api_key: Optional[str] = Field(default=None, description="Optional LLM API key override")
+    base_url: Optional[str] = Field(default=None, description="Optional LLM base URL override")
 
 
 class EvaluationOutput(BaseModel):

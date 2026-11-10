@@ -229,10 +229,12 @@ def _branch_to_stress_or_mentor(
 
 async def submit_defense_turn(
     session_id: str,
-    candidate_answer: str,
+    candidate_answer: str = "",
     store: Optional[DefenseSessionStore] = None,
+    user_response: Optional[str] = None,
 ) -> DefenseSessionState:
     """Executes a single turn of the defense state machine for a candidate's answer."""
+    candidate_answer = candidate_answer or user_response or ""
     target_store = store or defense_store
     session = await target_store.get(session_id)
     if not session:
