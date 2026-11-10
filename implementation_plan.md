@@ -505,7 +505,10 @@ gantt
 
 ### Milestone 3.5: Stress Test / What-If Mode
 - **Goal:** Questions focused on scale and constraints.
-- **Components:** Scaling-focused question templates.
+- **Sub-tasks:**
+  - [x] **Step 3.5a: Backend Stress Test Engine, Scaling Scenario Generator & REST API** (schemas/stress_test.py, ai/stress_test_generator.py, api/v1/stress_test.py, 7/7 tests passing)
+  - [ ] **Step 3.5b: Next.js 15 Stress Test / What-If Mode UI & Interactive Scaling Defense Flow** (stressTest.ts, StressTestSession.tsx, /projects/[id]/stress-test)
+- **Components:** Scaling-focused question templates and what-if defense FSM.
 - **Dependencies:** 1.13
 
 ### Milestone 3.6: Architecture Defense Mode

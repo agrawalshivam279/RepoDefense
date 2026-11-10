@@ -19,6 +19,7 @@ from app.api.v1.pr_defense import router as pr_defense_router
 from app.api.v1.projects import router as projects_router
 from app.api.v1.pull_requests import router as pr_router
 from app.api.v1.questions import router as questions_router
+from app.api.v1.stress_test import router as stress_test_router
 from app.api.v1.tech_audit import router as tech_audit_router
 from app.core.config import settings
 from app.core.redis import close_arq_redis_pool
@@ -66,6 +67,7 @@ app.include_router(commit_defense_router, prefix=f"{settings.API_V1_STR}/v1/comm
 app.include_router(
     incident_simulation_router, prefix=f"{settings.API_V1_STR}/v1/incident-simulation"
 )
+app.include_router(stress_test_router, prefix=f"{settings.API_V1_STR}/v1/stress-test")
 
 
 @app.get("/", tags=["System"])
