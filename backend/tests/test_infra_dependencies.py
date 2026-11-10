@@ -17,10 +17,10 @@ from app.workers.cloner import clone_and_sanitize_repository
 
 
 @pytest.fixture(autouse=True)
-async def cleanup_db_engine():
+def cleanup_db_engine():
     """Ensure clean connection pool lifecycle across test runs."""
     yield
-    await engine.dispose()
+    engine.sync_engine.dispose()
 
 
 def test_parse_dockerfile_multi_stage():

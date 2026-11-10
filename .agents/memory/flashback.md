@@ -4,7 +4,7 @@
 > **Tagline**: "Prove that you understand — and can defend — the software you built."  
 > **Core Loop**: Evidence → Claim → Defense → Stress Test → Evaluation → Mentor → Re-test  
 > **Status**: 🟢 Phase 1 (Core MVP) Complete — Ready for Phase 2 (Differentiation)  
-> **Last Synchronized**: 2026-11-06  
+> **Last Synchronized**: 2026-11-10  
 
 ---
 
@@ -37,6 +37,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **Architecture Diagram Engine** | Multi-tier Mermaid Generation + Next.js 15 Interactive Visualizer | 🟢 Milestone 2.9 Complete (Steps 2.9a & 2.9b) |
 | **Dependency / Technology Audit** | Heuristic Semver Parser + Next.js 15 Health Scorecard & Inspector | 🟢 Milestone 2.10 Complete (Steps 2.10a & 2.10b) |
 | **Enhanced Defense Report** | Unified Defense Evaluation + Architecture & Tech Audit Aggregator | 🟢 Milestone 2.11 Complete (Steps 2.11a & 2.11b) |
+| **Incident Simulation & War Room** | SRE Chaos Engine + Next.js 15 War Room UI | 🟢 Milestone 3.4 Complete (Steps 3.4a & 3.4b) |
 | **IDE Code Viewer** | Monaco / Prism code viewer with AST evidence highlights | ⚪ Phase 4 Planned |
 | **Evaluation & Export** | Rubric generator + PDF transcript export | ⚪ Phase 5 Planned |
 
@@ -129,6 +130,11 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-11-10] — Step 3.4b: Next.js 15 Incident Simulation War Room UI, Scenario Defense Flow & CI Backend Fix
+- **Scope / Module**: Frontend Incident Simulation War Room & CI Pipeline (`frontend/src/types/incident.ts`, `frontend/src/lib/incidentApi.ts`, `frontend/src/components/domain/ProjectNavHeader.tsx`, `frontend/src/components/domain/IncidentScenarioCard.tsx`, `frontend/src/components/domain/IncidentTurnTranscript.tsx`, `frontend/src/components/domain/IncidentWarRoom.tsx`, `frontend/src/app/projects/[id]/incident-simulation/page.tsx`, `.github/workflows/ci.yml`, `docs/specs/step-3-4b-incident-simulation-war-room.md`)
+- **Details**: Constructed the complete user-facing SRE Incident Simulation War Room interface and scenario defense progression flow under strict zero code execution invariants. Defined comprehensive TypeScript data contracts (`incident.ts`) mirroring backend models (`FailureCategory`, `IncidentSeverity`, `IncidentStage`, `ChaosTarget`, `IncidentScenario`, `IncidentDefenseTurn`, `IncidentDefenseSessionState`). Built robust REST API client (`incidentApi.ts`) consuming `/api/v1/incident-simulation` with Supabase JWT Bearer authentication headers. Registered the War Room tab in `ProjectNavHeader.tsx` with dedicated icon and route. Engineered modular domain components: `IncidentScenarioCard.tsx` rendering chaos failure scenarios with severity badges (P0 Critical, P1 High, P2 Medium) and code anchors; `IncidentTurnTranscript.tsx` displaying conversational turns with SRE challenge prompts, candidate mitigations, depth scores, and cascading chaos escalations; and `IncidentWarRoom.tsx` orchestrating catalog selection, active incident response, live telemetry symptoms, candidate defense submissions, and postmortem resolution scorecards. Implemented protected Next.js 15 App Router page at `/projects/[id]/incident-simulation`. Fixed CI GitHub Actions workflow (`.github/workflows/ci.yml`) ensuring pytest runs inside `backend/` for hermetic coverage analysis, resolved test suite reliability (synchronous pytest engine disposal, alembic migration path resolution, and defense turn contract alignment with optional LLM override schemas). Verified 100% via Next.js 15 production build (`npm run build`), TypeScript typecheck (`tsc --noEmit`), and 266/266 full backend test suite passing in CI. Concludes Milestone 3.4 (Incident / Failure Simulation Engine).
+- **Key Files**: `frontend/src/types/incident.ts`, `frontend/src/lib/incidentApi.ts`, `frontend/src/components/domain/ProjectNavHeader.tsx`, `frontend/src/components/domain/IncidentScenarioCard.tsx`, `frontend/src/components/domain/IncidentTurnTranscript.tsx`, `frontend/src/components/domain/IncidentWarRoom.tsx`, `frontend/src/app/projects/[id]/incident-simulation/page.tsx`, `.github/workflows/ci.yml`, `docs/specs/step-3-4b-incident-simulation-war-room.md`
 
 ### [2026-11-10] — Step 3.4a: Backend Incident Simulation Engine, Chaos Scenario Generator & REST API
 - **Scope / Module**: Backend Incident Simulation Engine (ackend/app/schemas/incident.py, ackend/app/ai/incident_generator.py, ackend/app/api/v1/incident_simulation.py, ackend/app/main.py, ackend/tests/test_incident_simulation.py, docs/specs/step-3-4a-incident-simulation-engine.md)

@@ -44,8 +44,16 @@ async def _get_completed_session(
             detail=f"Defense session '{session_id}' not found.",
         )
 
+    try:
+        project_uuid = uuid.UUID(session.project_id)
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Invalid project ID '{session.project_id}'.",
+        )
+
     proj_stmt = select(Project).where(
-        Project.id == uuid.UUID(session.project_id),
+        Project.id == project_uuid,
         Project.user_id == current_user.id,
     )
     project = (await db.execute(proj_stmt)).scalar_one_or_none()
@@ -165,6 +173,12 @@ async def start_defense_session(
 
 
 @router.post(
+    "/defense/sessions/{session_id}/answer",
+    response_model=DefenseSessionState,
+    status_code=status.HTTP_200_OK,
+    include_in_schema=False,
+)
+@router.post(
     "/defense/sessions/{session_id}/turn",
     response_model=DefenseSessionState,
     status_code=status.HTTP_200_OK,
@@ -184,8 +198,16 @@ async def submit_defense_turn_endpoint(
             detail=f"Defense session '{session_id}' not found.",
         )
 
+    try:
+        project_uuid = uuid.UUID(session.project_id)
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Invalid project ID '{session.project_id}'.",
+        )
+
     proj_stmt = select(Project).where(
-        Project.id == uuid.UUID(session.project_id),
+        Project.id == project_uuid,
         Project.user_id == current_user.id,
     )
     project = (await db.execute(proj_stmt)).scalar_one_or_none()
@@ -204,10 +226,7 @@ async def submit_defense_turn_endpoint(
     try:
         updated_session = await submit_defense_turn(
             session_id=session_id,
-            user_response=payload.answer,
-            model=payload.model,
-            api_key=payload.api_key,
-            base_url=payload.base_url,
+            candidate_answer=payload.answer,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
