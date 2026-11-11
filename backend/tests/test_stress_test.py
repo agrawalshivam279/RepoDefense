@@ -1,14 +1,17 @@
 """Hermetic unit and integration tests for Step 3.5a: Stress Test & What-If Mode."""
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import HTTPException
+from pydantic import ValidationError
 
 from app.ai.stress_test_generator import (
     build_deterministic_stress_evaluation,
     build_deterministic_stress_scenarios,
+    evaluate_stress_defense,
+    generate_stress_scenarios,
 )
 from app.api.v1.stress_test import (
     get_or_generate_stress_scenarios,
@@ -128,6 +131,46 @@ class TestStressGeneratorAndFallbacks:
         assert out.depth_score <= 5
         assert out.follow_up_constraint is None
         assert out.is_terminal is True
+
+    def test_deterministic_network_latency_jitter(self):
+        scenarios = build_deterministic_stress_scenarios(
+            project_name="RepoDefense",
+            constraint_type=StressConstraintType.NETWORK_LATENCY_JITTER,
+            max_scenarios=2,
+        )
+        assert len(scenarios) == 1
+        assert scenarios[0].constraint_type == StressConstraintType.NETWORK_LATENCY_JITTER
+
+    def test_base_url_allowlist_and_key_leak_guards(self):
+        for bad_url in ("http://169.254.169.254/latest", "https://evil.example.com/v1"):
+            with pytest.raises(ValidationError):
+                GenerateStressScenariosRequest(base_url=bad_url)
+            with pytest.raises(ValueError):
+                _drive_coro(
+                    generate_stress_scenarios("RepoDefense", base_url=bad_url, api_key="user-k")
+                )
+
+        scenario = build_deterministic_stress_scenarios("RepoDefense")[0]
+        with (
+            patch("app.ai.stress_test_generator.settings.FREELLMAPI_API_KEY", "server-secret"),
+            patch("app.ai.stress_test_generator.litellm.acompletion") as mock_completion,
+        ):
+            gen_res = _drive_coro(
+                generate_stress_scenarios(
+                    "RepoDefense", base_url="https://api.openai.com/v1", api_key=None
+                )
+            )
+            eval_res = _drive_coro(
+                evaluate_stress_defense(
+                    scenario,
+                    "Use connection pooling and Redis.",
+                    base_url="https://api.openai.com/v1",
+                    api_key=None,
+                )
+            )
+        mock_completion.assert_not_called()
+        assert len(gen_res) >= 1
+        assert eval_res.depth_score >= 4
 
 
 class TestStressEndpoints:

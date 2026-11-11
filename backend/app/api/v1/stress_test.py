@@ -114,8 +114,9 @@ async def get_or_generate_stress_scenarios(
     evidence_version = compute_evidence_version(project, evidence_items)
     invalidate_if_evidence_changed(project_id, evidence_version)
 
+    has_llm_override = any(v is not None for v in (req.model, req.api_key, req.base_url))
     scenarios = None
-    if not req.constraint_type:
+    if not req.constraint_type and not has_llm_override:
         scenarios = get_cached_unfiltered_scenarios(
             project_id, req.max_scenarios, evidence_version=evidence_version
         )
@@ -141,8 +142,9 @@ async def get_or_generate_stress_scenarios(
             invalidate_if_evidence_changed(project_id, post_version)
             project, evidence_items, evidence_version = post_project, post_evidence, post_version
         else:
-            return StressScenarioListResponse(
-                project_id=str(project_id), total_scenarios=len(scenarios), scenarios=scenarios
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Repository evidence changed concurrently; please retry.",
             )
 
         if not has_view or record_active_view_seq(
@@ -151,7 +153,7 @@ async def get_or_generate_stress_scenarios(
             cache_project_scenarios(
                 project_id,
                 scenarios,
-                is_unfiltered=req.constraint_type is None,
+                is_unfiltered=(req.constraint_type is None and not has_llm_override),
                 requested_limit=req.max_scenarios,
                 evidence_version=evidence_version,
             )

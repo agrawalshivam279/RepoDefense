@@ -3,7 +3,7 @@
 import json
 import os
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import structlog
 
@@ -14,7 +14,7 @@ litellm.telemetry = False
 litellm.drop_params = True
 
 from app.ai.llm import clean_json_response  # noqa: E402
-from app.core.config import settings  # noqa: E402
+from app.core.config import settings, validate_llm_base_url  # noqa: E402
 from app.schemas.stress_test import (  # noqa: E402
     StressConstraintType,
     StressEvaluationOutput,
@@ -72,16 +72,9 @@ def build_deterministic_stress_scenarios(
 ) -> List[StressTestScenario]:
     """Generates deterministic, evidence-grounded stress scenarios without remote LLM calls."""
     evidence_list = evidence_items or []
-    target_file = (
-        evidence_list[0].get("file_path", "app/api/v1/router.py")
-        if evidence_list
-        else "app/main.py"
-    )
-    target_sym = (
-        evidence_list[0].get("symbol_name", "handle_request")
-        if evidence_list
-        else "app_router"
-    )
+    first = evidence_list[0] if evidence_list else None
+    target_file = first.get("file_path", "app/api/v1/router.py") if first else "app/main.py"
+    target_sym = first.get("symbol_name", "handle_request") if first else "app_router"
 
     all_specs = [
         (
@@ -112,11 +105,17 @@ def build_deterministic_stress_scenarios(
             f"Under strict 256MB RAM limits, how do you process data in {target_sym} without OOM?",
             ["Throughput throttling", "Streaming complexity"],
         ),
+        (
+            StressConstraintType.NETWORK_LATENCY_JITTER,
+            f"Tail Latency & Packet Jitter on {target_sym}",
+            "Upstream RPC latency spikes to 2,500ms p99 with 15% packet loss.",
+            f"Under 2.5s jitter, how does {target_sym} in {target_file} avoid timeouts?",
+            ["Aggressive timeout drops", "Retry storm amplification"],
+        ),
     ]
 
     selected = [s for s in all_specs if constraint_type is None or s[0] == constraint_type]
     scenarios: List[StressTestScenario] = []
-
     for c_type, title, ctx, prompt, tradeoffs in selected[:max_scenarios]:
         scenarios.append(
             StressTestScenario(
@@ -171,16 +170,15 @@ def build_deterministic_stress_evaluation(
             "bottleneck or concrete mitigation strategy."
         )
 
-    if stage == StressSessionStage.SCENARIO_ACTIVE and score >= 6:
-        follow_up = (
+    is_term = not (stage == StressSessionStage.SCENARIO_ACTIVE and score >= 6)
+    follow_up = (
+        None
+        if is_term
+        else (
             "What happens if your Redis cache experiences eviction thrashing "
             "or network partition during this peak?"
         )
-        is_term = False
-    else:
-        follow_up = None
-        is_term = True
-
+    )
     return StressEvaluationOutput(
         depth_score=score,
         bottleneck_identified=identified,
@@ -190,6 +188,19 @@ def build_deterministic_stress_evaluation(
         follow_up_constraint=follow_up,
         is_terminal=is_term,
     )
+
+
+def _resolve_llm_credentials(
+    api_key: Optional[str], base_url: Optional[str]
+) -> Optional[Tuple[str, str]]:
+    """Validate overrides and return (key, base_url), or None for offline fallback."""
+    validated_base = validate_llm_base_url(base_url)
+    if validated_base is not None and api_key is None:
+        return None
+    effective_key = api_key if api_key is not None else settings.FREELLMAPI_API_KEY
+    if not effective_key:
+        return None
+    return effective_key, validated_base or settings.FREELLMAPI_BASE_URL
 
 
 async def generate_stress_scenarios(
@@ -202,14 +213,14 @@ async def generate_stress_scenarios(
     base_url: Optional[str] = None,
 ) -> List[StressTestScenario]:
     """Generates scaling stress test scenarios using LiteLLM or deterministic fallback."""
-    effective_key = api_key if api_key is not None else settings.FREELLMAPI_API_KEY
-    if not effective_key:
+    creds = _resolve_llm_credentials(api_key, base_url)
+    if creds is None:
         return build_deterministic_stress_scenarios(
             project_name, evidence_items, constraint_type, max_scenarios
         )
 
+    effective_key, effective_base = creds
     effective_model = model or settings.LLM_MODEL
-    effective_base = base_url or settings.FREELLMAPI_BASE_URL
     ev_text = json.dumps(evidence_items or [], indent=2)
     user_prompt = (
         f"Project: {project_name}\nConstraint Filter: {constraint_type}\n"
@@ -249,12 +260,12 @@ async def evaluate_stress_defense(
     base_url: Optional[str] = None,
 ) -> StressEvaluationOutput:
     """Evaluates candidate response to scaling constraint using LiteLLM or fallback."""
-    effective_key = api_key if api_key is not None else settings.FREELLMAPI_API_KEY
-    if not effective_key:
+    creds = _resolve_llm_credentials(api_key, base_url)
+    if creds is None:
         return build_deterministic_stress_evaluation(scenario, candidate_answer, stage)
 
+    effective_key, effective_base = creds
     effective_model = model or settings.LLM_MODEL
-    effective_base = base_url or settings.FREELLMAPI_BASE_URL
     user_prompt = (
         f"Scenario: {scenario.title}\nConstraint: {scenario.constraint_type.value}\n"
         f"Prompt: {scenario.hypothetical_prompt}\nStage: {stage.value}\n"

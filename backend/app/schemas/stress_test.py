@@ -5,7 +5,9 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from app.core.config import validate_llm_base_url
 
 
 class StressConstraintType(str, Enum):
@@ -155,7 +157,20 @@ class StressDefenseSessionState(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
 
-class GenerateStressScenariosRequest(BaseModel):
+class _LLMOverrideBase(BaseModel):
+    """Shared optional LLM override fields with strict base URL allowlist validation."""
+
+    model: Optional[str] = Field(default=None, description="Optional LLM model override")
+    api_key: Optional[str] = Field(default=None, description="Optional LLM API key override")
+    base_url: Optional[str] = Field(default=None, description="Optional LLM base URL override")
+
+    @field_validator("base_url")
+    @classmethod
+    def _validate_base_url(cls, value: Optional[str]) -> Optional[str]:
+        return validate_llm_base_url(value)
+
+
+class GenerateStressScenariosRequest(_LLMOverrideBase):
     """Request payload to generate scaling stress test scenarios."""
 
     constraint_type: Optional[StressConstraintType] = Field(
@@ -185,7 +200,7 @@ class StressScenarioListResponse(BaseModel):
     scenarios: List[StressTestScenario]
 
 
-class StartStressDefenseRequest(BaseModel):
+class StartStressDefenseRequest(_LLMOverrideBase):
     """Request payload to initiate a stress defense session."""
 
     scenario_id: str = Field(..., description="ID of chosen scenario to defend")
@@ -194,7 +209,7 @@ class StartStressDefenseRequest(BaseModel):
     base_url: Optional[str] = Field(default=None, description="Optional LLM base URL override")
 
 
-class SubmitStressAnswerRequest(BaseModel):
+class SubmitStressAnswerRequest(_LLMOverrideBase):
     """Candidate's submitted response to a scaling challenge or follow-up constraint."""
 
     answer: str = Field(

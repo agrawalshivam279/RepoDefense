@@ -27,6 +27,7 @@ from app.services.stress_cache import (
     clear_all_stress_state,
     compute_evidence_version,
     get_cached_unfiltered_scenarios,
+    record_active_view_seq,
     restore_stress_state,
     snapshot_stress_state,
 )
@@ -191,9 +192,14 @@ class TestStressScenarioCacheIsolation:
             requested_limit=4,
             evidence_version=ver,
         )
-        project_stress_cache[self.project_id] = unfiltered[:2]
-        assert get_cached_unfiltered_scenarios(self.project_id, 4, evidence_version=ver) is None
+        for v in range(5):
+            batch = [base.model_copy(update={"id": f"view-{v}-{i}"}) for i in range(6)]
+            record_active_view_seq(self.project_id, f"view-{v}", 1, {s.id for s in batch})
+            cache_project_scenarios(
+                self.project_id, batch, is_unfiltered=False, requested_limit=6
+            )
         assert self.project_id not in _unfiltered_catalog_meta
+        assert get_cached_unfiltered_scenarios(self.project_id, 4, evidence_version=ver) is None
 
     def test_unfiltered_cache_invalidates_when_evidence_changes(self):
         ev_new = SimpleNamespace(
@@ -202,25 +208,27 @@ class TestStressScenarioCacheIsolation:
             title="get_pool",
             evidence_type="database",
         )
-        # Call 1 (initial + post-recheck = []); Call 2 ([ev_new]) -> invalidates cache
-        db = self._mock_db(evidence_batches=[[], [], [ev_new]])
-        _drive_coro(
-            get_or_generate_stress_scenarios(
-                self.project_id,
-                GenerateStressScenariosRequest(max_scenarios=2, api_key=""),
-                current_user=self.user,
-                db=db,
+        # Call 1 ([]), Call 2 cache hit ([]), Call 3 ([ev_new]) invalidates stale cache
+        db = self._mock_db(evidence_batches=[[], [], [], [ev_new]])
+        with patch("app.ai.stress_test_generator.settings.FREELLMAPI_API_KEY", ""):
+            req = GenerateStressScenariosRequest(max_scenarios=2)
+            resp1 = _drive_coro(
+                get_or_generate_stress_scenarios(
+                    self.project_id, req, current_user=self.user, db=db
+                )
             )
-        )
-        resp2 = _drive_coro(
-            get_or_generate_stress_scenarios(
-                self.project_id,
-                GenerateStressScenariosRequest(max_scenarios=2, api_key=""),
-                current_user=self.user,
-                db=db,
+            resp2 = _drive_coro(
+                get_or_generate_stress_scenarios(
+                    self.project_id, req, current_user=self.user, db=db
+                )
             )
-        )
-        assert str(ev_new.id) in resp2.scenarios[0].cited_evidence_ids
+            resp3 = _drive_coro(
+                get_or_generate_stress_scenarios(
+                    self.project_id, req, current_user=self.user, db=db
+                )
+            )
+        assert [s.id for s in resp2.scenarios] == [s.id for s in resp1.scenarios]
+        assert str(ev_new.id) in resp3.scenarios[0].cited_evidence_ids
 
     def test_inflight_generation_does_not_cache_stale_evidence_catalog(self):
         ev_late = SimpleNamespace(
@@ -250,3 +258,26 @@ class TestStressScenarioCacheIsolation:
             )
         assert seen_evidence_counts == [0, 1]
         assert str(ev_late.id) in resp.scenarios[0].cited_evidence_ids
+
+    def _gen(self, req, db):
+        return _drive_coro(
+            get_or_generate_stress_scenarios(self.project_id, req, current_user=self.user, db=db)
+        )
+
+    def test_llm_override_bypasses_and_preserves_unfiltered_cache(self):
+        db = self._mock_db()
+        with patch("app.ai.stress_test_generator.settings.FREELLMAPI_API_KEY", ""):
+            default_resp = self._gen(GenerateStressScenariosRequest(max_scenarios=2), db)
+            override_req = GenerateStressScenariosRequest(max_scenarios=2, model="custom-model")
+            override_resp = self._gen(override_req, db)
+            cached_again = self._gen(GenerateStressScenariosRequest(max_scenarios=2), db)
+        assert [s.id for s in override_resp.scenarios] != [s.id for s in default_resp.scenarios]
+        assert [s.id for s in cached_again.scenarios] == [s.id for s in default_resp.scenarios]
+
+    def test_repeated_inflight_evidence_mutation_returns_409(self):
+        ev1 = SimpleNamespace(id=uuid.uuid4(), file_path="a.py", title="fn_a", evidence_type="fn")
+        ev2 = SimpleNamespace(id=uuid.uuid4(), file_path="b.py", title="fn_b", evidence_type="fn")
+        db = self._mock_db(evidence_batches=[[], [ev1], [ev2]])
+        with pytest.raises(HTTPException) as exc_info:
+            self._gen(GenerateStressScenariosRequest(max_scenarios=2, api_key=""), db)
+        assert exc_info.value.status_code == 409
