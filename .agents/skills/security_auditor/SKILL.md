@@ -2,11 +2,12 @@
 name: security_auditor
 version: '1.0'
 description: >-
-  Untrusted Repository Sanitizer & Zero Code Execution Auditor for RepoDefense.
+  Untrusted Repository Sanitizer, Database Perimeter & Zero Code Execution Auditor for RepoDefense.
   Audits static analysis safety, asserts zero code execution (no eval, exec, or container run on user code),
   validates path traversal defenses (Path.is_relative_to), audits 500MB/10k file ingestion limits,
-  and inspects secret redaction regex patterns. Connected to doctor, verify_step, and code_reviewer.
-  Use whenever reviewing security, testing ingestion pipelines, or calling /security_auditor.
+  inspects secret redaction regex patterns, and verifies Supabase public schema Row-Level Security (RLS) lockdown.
+  Connected to doctor, db_migrator, verify_step, and code_reviewer.
+  Use whenever reviewing security, testing ingestion pipelines, auditing migrations, or calling /security_auditor.
 ---
 
 # 🛡️ Security Auditor — Untrusted Repository Sanitizer & Invariants Inspector
@@ -19,21 +20,23 @@ description: >-
 
 ```mermaid
 flowchart TD
-    A["Untrusted GitHub Repository"] --> B["🛡️ security_auditor"]
+    A["Untrusted Input & Public DB Perimeter"] --> B["🛡️ security_auditor"]
     B --> C["1. Zero Code Execution Gate (Static Analysis Only)"]
     B --> D["2. Path Traversal & Boundary Containment (Path.is_relative_to)"]
     B --> E["3. Ingestion Limits & DoS Defense (500MB / 10k files / 1MB file)"]
     B --> F["4. Secret Detection & Redaction (Regex API Keys & Tokens)"]
     B --> G["5. Prompt Injection Defense (Delimiter Isolation)"]
+    B --> K["6. Supabase Public Schema RLS & PostgREST Lockdown"]
     
     C --> H["Connected to doctor: Audits preflight security invariants"]
-    D --> I["Connected to verify_step (Stage 0.5): Halts on sandbox escapes"]
-    E --> J["Connected to code_reviewer: Enforces static security checklist"]
+    D --> I["Connected to verify_step (Stage 0.5): Halts on sandbox escapes or exposed tables"]
+    E --> J["Connected to code_reviewer: Enforces static & DB perimeter checklist"]
+    K --> L["Connected to db_migrator: Enforces RLS + anon/authenticated revoke"]
 ```
 
 ---
 
-## 🔒 The 5 Non-Negotiable Security Invariants
+## 🔒 The 6 Non-Negotiable Security Invariants
 
 ### 1. Zero Arbitrary Code Execution (Static Analysis Only)
 - **Rule**: RepoDefense NEVER runs, compiles, or executes ingested code.
@@ -79,6 +82,11 @@ flowchart TD
   ```
 - User README/markdown files are treated with extra suspicion.
 
+### 6. Supabase Public Schema RLS & PostgREST Perimeter Lockdown
+- Because Supabase automatically exposes every table in the `public` schema over PostgREST using `NEXT_PUBLIC_SUPABASE_ANON_KEY`, every `public` table **must** have Row-Level Security enabled before shipping (`ALTER TABLE public.<table> ENABLE ROW LEVEL SECURITY;`).
+- Backend-only tables accessed exclusively via FastAPI / SQLAlchemy / ARQ / Alembic must also revoke `anon` and `authenticated` privileges (`REVOKE ALL ON TABLE public.<table> FROM anon, authenticated;`) and omit permissive `anon`/`authenticated` RLS policies unless PostgREST access is explicitly designed and verified.
+- Never apply `FORCE ROW LEVEL SECURITY` to backend-only tables if `postgres`/table-owner sessions need `BYPASSRLS` without explicit policies; apply RLS to infrastructure tables like `public.alembic_version` as well.
+
 ---
 
 ## 📤 Standard Security Audit Report
@@ -95,6 +103,7 @@ flowchart TD
 | **Ingestion Limits** | 🟢 PASS | 500MB / 10k files / 1MB limits enforced |
 | **Secret Redaction** | 🟢 PASS | Regex scrubber active before DB / LLM |
 | **Prompt Delimiters** | 🟢 PASS | Untrusted code wrapped in strict markers |
+| **Public Schema RLS Lockdown** | 🟢 PASS | RLS enabled + `anon`/`authenticated` revoked |
 
 ---
 

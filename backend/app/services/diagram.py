@@ -90,9 +90,9 @@ async def generate_project_architecture_diagram(
     )
 
     # 5. Attempt LLM generation if configured
-    effective_model = model or settings.LLM_MODEL
-    effective_key = api_key or settings.FREELLMAPI_API_KEY
-    effective_base_url = base_url or settings.FREELLMAPI_BASE_URL
+    effective_model = model if model is not None else settings.LLM_MODEL
+    effective_key = api_key if api_key is not None else settings.FREELLMAPI_API_KEY
+    effective_base_url = base_url if base_url is not None else settings.FREELLMAPI_BASE_URL
 
     if effective_key:
         try:

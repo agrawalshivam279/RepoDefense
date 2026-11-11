@@ -1,0 +1,156 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# CodeRabbit v2 Configuration for RepoDefense
+# Schema reference: https://docs.coderabbit.ai/reference/configuration
+
+language: "en-US"
+early_access: false
+enable_free_tier: true
+
+reviews:
+  # Use "chill" (over "assertive") to prioritize high-signal bugs, security flaws,
+  # async race conditions, and architectural drift without stylistic nitpick fatigue
+  # (e.g., keeps Ruff focused on real bugs/security and React Doctor on errors only).
+  profile: "chill"
+
+  # Keep PR descriptions untouched by placing the concise summary inside the
+  # collapsible walkthrough comment instead of appending to the PR body.
+  high_level_summary: true
+  high_level_summary_in_walkthrough: true
+  high_level_summary_instructions: >-
+    Keep the summary concise (max 5 bullet points, under 100 words), focusing on
+    API/schema changes, state-machine behavior, and security boundaries.
+  collapse_walkthrough: true
+  changed_files_summary: true
+  sequence_diagrams: false
+  estimate_code_review_effort: true
+  assess_linked_issues: false
+  related_issues: true
+  related_prs: true
+  suggested_labels: true
+  auto_apply_labels: false
+  suggested_reviewers: false
+  auto_assign_reviewers: false
+  review_status: true
+  review_details: false
+  in_progress_fortune: false
+  poem: false
+  enable_prompt_for_ai_agents: true
+  abort_on_close: true
+
+  auto_review:
+    enabled: true
+    auto_incremental_review: true
+    auto_pause_after_reviewed_commits: 5
+    drafts: false
+    ignore_title_keywords:
+      - "WIP"
+      - "DO NOT MERGE"
+
+  # Pre-merge quality gates
+  pre_merge_checks:
+    # Disable Docstring Coverage check to eliminate false-positive failures on
+    # FastAPI routes, Pydantic models, and Next.js components (observed on PR #59).
+    docstrings:
+      mode: "off"
+    title:
+      mode: "warning"
+      requirements: >-
+        Use a concise Conventional Commits style title (e.g., feat:, fix:, chore:,
+        docs:, refactor:, test:) that accurately reflects the PR changes.
+    description:
+      mode: "warning"
+    issue_assessment:
+      mode: "off"
+
+  # Exclusion-only filters keep all other repository source files eligible for review.
+  path_filters:
+    - "!docs/**"
+    - "!.agents/**"
+    - "!**/__pycache__/**"
+    - "!**/.pytest_cache/**"
+    - "!**/.ruff_cache/**"
+    - "!**/.mypy_cache/**"
+    - "!**/*.egg-info/**"
+    - "!**/htmlcov/**"
+    - "!**/.coverage"
+    - "!**/package-lock.json"
+    - "!**/*.lock"
+    - "!**/yarn.lock"
+    - "!**/pnpm-lock.yaml"
+    - "!**/.next/**"
+    - "!**/node_modules/**"
+    - "!**/*.tsbuildinfo"
+    - "!**/next-env.d.ts"
+    - "!storage/**"
+    - "!scratch/**"
+    - "!flashback.md"
+    - "!implementation_plan.md"
+
+  # Path-specific instructions encoding Gemini.md invariants & PR learnings
+  path_instructions:
+    - path: "backend/app/**/*.py"
+      instructions: |
+        Enforce RepoDefense's Gemini.md architecture and security invariants:
+        - Canonical stack only: FastAPI async (Python 3.12+), Pydantic v2, SQLAlchemy 2.0 (asyncpg + pgvector), ARQ async Redis workers, LiteLLM with deterministic offline fallbacks, local all-MiniLM-L6-v2 embeddings, and Tree-sitter AST static analysis. Flag drift toward unapproved tech (e.g., Celery, Pinecone, MongoDB, microservices).
+        - ZERO arbitrary code execution: Strictly flag eval(), exec(), compile(), dynamic code loading, or subprocess/container execution on ingested repository files (100% static analysis only).
+        - Untrusted repository & security boundaries: Verify path traversal checks (Path.resolve() + Path.is_relative_to()), ingestion size/file limits, secret redaction before LLM prompts/storage, and XML delimiter isolation (<evidence_context>, <candidate_defense>) against prompt injection.
+        - Database & API hygiene: Require parameterized SQL / SQLAlchemy ORM queries (no raw string interpolation), clean async/greenlet usage, and multi-tenant ownership enforcement (get_current_user) on protected endpoints.
+        - Contracts & modularity: Verify route handlers wire all declared request fields (e.g., model, api_key, base_url) through to service/AI functions rather than silently dropping them, reuse existing schemas/helpers, and target <= ~300 LOC per file.
+
+    - path: "frontend/src/**/*.{ts,tsx}"
+      instructions: |
+        Enforce Next.js 15 App Router and strict TypeScript standards:
+        - Strict typing: Flag implicit `any`, unannotated `response.json()` returns (explicitly type parsed API responses), and accidental exposure of server secrets via NEXT_PUBLIC_* env vars.
+        - Async & lifecycle safety: Audit useEffect hooks and async handlers for race conditions—require cleanup/ignore flags or AbortController on fetch effects, verify returned session/resource IDs match the active selection, and invalidate pending submissions on exit or session replacement so stale finally/catch blocks cannot overwrite active state.
+        - UI resilience & schema parity: Ensure async views render explicit loading, empty, and inline error states (with clear recovery/retry without forcing exit), and validate input bounds (including trimmed Unicode code-point counts and min/max lengths) matching backend Pydantic schemas.
+        - Modularity: Keep components, hooks, and API clients focused and concise (target <= ~300 LOC per file).
+
+    - path: "backend/tests/**/*.py"
+      instructions: |
+        Enforce hermetic, high-signal pytest practices:
+        - Zero network calls: Tests must remain fully offline (LITELLM_LOCAL_MODEL_COST_MAP=true, deterministic LLM fallbacks, mocked GitHub/Supabase/DB/Redis boundaries).
+        - Fixture & global state hygiene: Never clobber session-scoped fixtures (such as `hermetic_embedding_model` in `conftest.py`); always capture and restore mutated globals/singletons during teardown.
+        - Meaningful assertions: Ensure security boundaries (auth rejections, path traversal, schema validation limits) and state-machine transitions are tested without weakening existing assertions.
+
+    - path: "backend/alembic/versions/**/*.py"
+      instructions: |
+        Verify Alembic migrations are compatible with PostgreSQL 17, asyncpg, and pgvector (e.g., Vector(384), HNSW indexes), provide reversible upgrade() and downgrade() steps, and avoid unguarded destructive schema changes.
+        CRITICAL SECURITY CHECK: Any migration creating a new table in the `public` schema MUST enable Row-Level Security (`ENABLE ROW LEVEL SECURITY`) and revoke `anon`/`authenticated` PostgREST privileges (guarded by pg_roles existence checks for local/CI compatibility) so tables are never publicly accessible via Supabase's Data API (`0013_rls_disabled_in_public`).
+
+  # Static analysis, linting, and security tools (all keys verified against schema.v2.json)
+  tools:
+    ruff:
+      enabled: true
+      config_file: "backend/pyproject.toml"
+    eslint:
+      enabled: true
+    reactDoctor:
+      enabled: true
+    gitleaks:
+      enabled: true
+    ast-grep:
+      enabled: true
+      essential_rules: true
+    actionlint:
+      enabled: true
+    zizmor:
+      enabled: true
+    hadolint:
+      enabled: true
+    yamllint:
+      enabled: true
+    github-checks:
+      enabled: true
+
+chat:
+  art: false
+  auto_reply: true
+
+knowledge_base:
+  opt_out: false
+  web_search:
+    enabled: true
+  learnings:
+    scope: "local"
+  code_guidelines:
+    enabled: true

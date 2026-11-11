@@ -204,6 +204,7 @@ async def test_report_endpoint_incomplete_session_rejected():
 
 
 @pytest.mark.anyio
+@patch("app.ai.report_generator.settings.FREELLMAPI_API_KEY", "")
 async def test_report_endpoint_success():
     """Verify successful report generation for completed defense session."""
     user_id = uuid.uuid4()

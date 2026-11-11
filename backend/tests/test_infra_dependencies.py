@@ -169,7 +169,10 @@ async def test_cloner_worker_infra_and_manifest_pipeline():
         return test_commit_hash
 
     try:
-        with patch("app.workers.cloner.run_git_shallow_clone", side_effect=mock_clone):
+        with (
+            patch("app.workers.cloner.run_git_shallow_clone", side_effect=mock_clone),
+            patch("app.ai.llm.settings.FREELLMAPI_API_KEY", ""),
+        ):
             result = await clone_and_sanitize_repository({}, str(project_id))
             assert result["status"] == "cloned"
             assert result["commit_hash"] == test_commit_hash
