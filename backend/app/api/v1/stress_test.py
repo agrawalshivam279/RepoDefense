@@ -44,12 +44,8 @@ from app.services.stress_cache import (
 )
 
 __all__ = [
-    "MAX_CACHED_SCENARIOS_PER_PROJECT",
-    "_active_view_state",
-    "_unfiltered_catalog_meta",
-    "project_stress_cache",
-    "router",
-    "stress_session_store",
+    "MAX_CACHED_SCENARIOS_PER_PROJECT", "_active_view_state", "_unfiltered_catalog_meta",
+    "project_stress_cache", "router", "stress_session_store",
 ]
 
 logger = structlog.get_logger(__name__)
@@ -150,13 +146,17 @@ async def get_or_generate_stress_scenarios(
         if not has_view or record_active_view_seq(
             project_id, view_id, req_seq, {s.id for s in scenarios}
         ):
-            cache_project_scenarios(
+            if not cache_project_scenarios(
                 project_id,
                 scenarios,
                 is_unfiltered=(req.constraint_type is None and not has_llm_override),
                 requested_limit=req.max_scenarios,
                 evidence_version=evidence_version,
-            )
+            ):
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Scenario cache is saturated by active views; please retry.",
+                )
 
     return StressScenarioListResponse(
         project_id=str(project_id), total_scenarios=len(scenarios), scenarios=scenarios

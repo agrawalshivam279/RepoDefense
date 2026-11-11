@@ -128,8 +128,8 @@ def cache_project_scenarios(
     is_unfiltered: bool,
     requested_limit: int,
     evidence_version: str = "",
-) -> None:
-    """Merge scenarios into bounded project cache, protecting active views and unfiltered IDs."""
+) -> bool:
+    """Merge scenarios into bounded cache; return True if every new scenario stayed retained."""
     existing = {s.id: s for s in project_stress_cache.get(project_id, [])}
     for scenario in scenarios:
         existing.pop(scenario.id, None)
@@ -158,3 +158,4 @@ def cache_project_scenarios(
         _unfiltered_catalog_meta.pop(project_id, None)
 
     project_stress_cache[project_id] = list(existing.values())
+    return all(s.id in existing for s in scenarios)

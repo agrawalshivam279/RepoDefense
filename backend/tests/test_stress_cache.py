@@ -281,3 +281,14 @@ class TestStressScenarioCacheIsolation:
         with pytest.raises(HTTPException) as exc_info:
             self._gen(GenerateStressScenariosRequest(max_scenarios=2, api_key=""), db)
         assert exc_info.value.status_code == 409
+
+    def test_override_returns_409_when_protected_cache_saturated(self):
+        base = build_deterministic_stress_scenarios("CacheRepo")[0]
+        for v in range(5):
+            batch = [base.model_copy(update={"id": f"sat-{v}-{i}"}) for i in range(5)]
+            record_active_view_seq(self.project_id, f"sat-view-{v}", 1, {s.id for s in batch})
+            cache_project_scenarios(self.project_id, batch, is_unfiltered=False, requested_limit=5)
+        db = self._mock_db()
+        with pytest.raises(HTTPException) as exc_info:
+            self._gen(GenerateStressScenariosRequest(max_scenarios=2, api_key=""), db)
+        assert exc_info.value.status_code == 409
