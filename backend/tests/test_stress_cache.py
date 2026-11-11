@@ -1,7 +1,8 @@
 """Hermetic tests for bounded stress scenario caching and view isolation."""
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import HTTPException
@@ -12,6 +13,7 @@ from app.api.v1.stress_test import (
     project_stress_cache,
     start_stress_defense_session,
 )
+from app.models.analysis import Dependency, Evidence
 from app.models.project import Project, User
 from app.schemas.stress_test import (
     GenerateStressScenariosRequest,
@@ -20,8 +22,11 @@ from app.schemas.stress_test import (
 )
 from app.services.stress_cache import (
     MAX_CACHED_SCENARIOS_PER_PROJECT,
+    _unfiltered_catalog_meta,
     cache_project_scenarios,
     clear_all_stress_state,
+    compute_evidence_version,
+    get_cached_unfiltered_scenarios,
     restore_stress_state,
     snapshot_stress_state,
 )
@@ -29,7 +34,7 @@ from tests.test_stress_test import _drive_coro
 
 
 class TestStressScenarioCacheIsolation:
-    """Validates filtered scenario preservation, bounded eviction, and stale view protection."""
+    """Validates filtered preservation, eviction safety, stale view & evidence guards."""
 
     def setup_method(self):
         self._saved_state = snapshot_stress_state()
@@ -42,14 +47,27 @@ class TestStressScenarioCacheIsolation:
     def teardown_method(self):
         restore_stress_state(self._saved_state)
 
-    def _mock_db(self):
+    def _mock_db(self, evidence_batches=None, dependency_batches=None):
         db = AsyncMock()
-        exec_res = MagicMock()
-        exec_res.scalar_one_or_none.return_value = self.project
-        scalars_mock = MagicMock()
-        scalars_mock.all.return_value = []
-        exec_res.scalars.return_value = scalars_mock
-        db.execute = AsyncMock(return_value=exec_res)
+        ev_batches = list(evidence_batches) if evidence_batches is not None else [[]]
+        dep_batches = list(dependency_batches) if dependency_batches is not None else [[]]
+
+        def _execute(stmt):
+            res = MagicMock()
+            res.scalar_one_or_none.return_value = self.project
+            scalars_mock = MagicMock()
+            entity = stmt.column_descriptions[0].get("entity")
+            if entity is Evidence:
+                next_batch = ev_batches.pop(0) if len(ev_batches) > 1 else ev_batches[0]
+            elif entity is Dependency:
+                next_batch = dep_batches.pop(0) if len(dep_batches) > 1 else dep_batches[0]
+            else:
+                next_batch = []
+            scalars_mock.all.return_value = next_batch
+            res.scalars.return_value = scalars_mock
+            return res
+
+        db.execute = AsyncMock(side_effect=_execute)
         return db
 
     def test_start_session_preserves_filtered_scenario(self):
@@ -152,7 +170,6 @@ class TestStressScenarioCacheIsolation:
         cached_ids = {s.id for s in project_stress_cache[self.project_id]}
         assert active_ids.issubset(cached_ids)
 
-        # Even when unrelated scenarios fill capacity, active view scenarios stay protected
         base = build_deterministic_stress_scenarios("CacheRepo")[0]
         extras = [
             base.model_copy(update={"id": f"filler-{i}"})
@@ -162,3 +179,74 @@ class TestStressScenarioCacheIsolation:
         final_ids = {s.id for s in project_stress_cache[self.project_id]}
         assert active_ids.issubset(final_ids)
         assert len(project_stress_cache[self.project_id]) == MAX_CACHED_SCENARIOS_PER_PROJECT
+
+    def test_unfiltered_cache_misses_when_unfiltered_ids_evicted(self):
+        base = build_deterministic_stress_scenarios("CacheRepo")[0]
+        ver = compute_evidence_version(self.project, [])
+        unfiltered = [base.model_copy(update={"id": f"unfilt-{i}"}) for i in range(4)]
+        cache_project_scenarios(
+            self.project_id,
+            unfiltered,
+            is_unfiltered=True,
+            requested_limit=4,
+            evidence_version=ver,
+        )
+        project_stress_cache[self.project_id] = unfiltered[:2]
+        assert get_cached_unfiltered_scenarios(self.project_id, 4, evidence_version=ver) is None
+        assert self.project_id not in _unfiltered_catalog_meta
+
+    def test_unfiltered_cache_invalidates_when_evidence_changes(self):
+        ev_new = SimpleNamespace(
+            id=uuid.uuid4(),
+            file_path="app/db.py",
+            title="get_pool",
+            evidence_type="database",
+        )
+        # Call 1 (initial + post-recheck = []); Call 2 ([ev_new]) -> invalidates cache
+        db = self._mock_db(evidence_batches=[[], [], [ev_new]])
+        _drive_coro(
+            get_or_generate_stress_scenarios(
+                self.project_id,
+                GenerateStressScenariosRequest(max_scenarios=2, api_key=""),
+                current_user=self.user,
+                db=db,
+            )
+        )
+        resp2 = _drive_coro(
+            get_or_generate_stress_scenarios(
+                self.project_id,
+                GenerateStressScenariosRequest(max_scenarios=2, api_key=""),
+                current_user=self.user,
+                db=db,
+            )
+        )
+        assert str(ev_new.id) in resp2.scenarios[0].cited_evidence_ids
+
+    def test_inflight_generation_does_not_cache_stale_evidence_catalog(self):
+        ev_late = SimpleNamespace(
+            id=uuid.uuid4(),
+            file_path="app/cache.py",
+            title="redis_client",
+            evidence_type="cache",
+        )
+        batches = [[], [ev_late]]
+        db = self._mock_db(evidence_batches=batches)
+        seen_evidence_counts = []
+
+        async def _fake_gen(**kwargs):
+            seen_evidence_counts.append(len(kwargs["evidence_items"]))
+            return build_deterministic_stress_scenarios(
+                kwargs["project_name"], kwargs["evidence_items"], max_scenarios=2
+            )
+
+        with patch("app.api.v1.stress_test.generate_stress_scenarios", side_effect=_fake_gen):
+            resp = _drive_coro(
+                get_or_generate_stress_scenarios(
+                    self.project_id,
+                    GenerateStressScenariosRequest(max_scenarios=2, api_key=""),
+                    current_user=self.user,
+                    db=db,
+                )
+            )
+        assert seen_evidence_counts == [0, 1]
+        assert str(ev_late.id) in resp.scenarios[0].cited_evidence_ids

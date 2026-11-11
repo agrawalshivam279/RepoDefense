@@ -35,7 +35,9 @@ from app.services.stress_cache import (
     _unfiltered_catalog_meta,
     cache_project_scenarios,
     clear_project_meta,
+    compute_evidence_version,
     get_cached_unfiltered_scenarios,
+    invalidate_if_evidence_changed,
     project_stress_cache,
     record_active_view_seq,
     stress_session_store,
@@ -66,15 +68,15 @@ async def _get_owned_project(
 
 
 async def _gather_evidence_context(project_id: uuid.UUID, db: AsyncSession) -> List[dict]:
-    """Collects evidence and dependencies for context grounding."""
-    ev_stmt = select(Evidence).where(Evidence.project_id == project_id).limit(10)
-    evidences = (await db.execute(ev_stmt)).scalars().all()
+    """Collects deterministic ordered evidence and dependencies for context grounding."""
+    ev_q = select(Evidence).where(Evidence.project_id == project_id).order_by(Evidence.id)
+    evidences = (await db.execute(ev_q.limit(10))).scalars().all()
     items = [
         {"id": str(e.id), "file_path": e.file_path, "symbol_name": e.title, "type": e.evidence_type}
         for e in evidences
     ]
-    dep_stmt = select(Dependency).where(Dependency.project_id == project_id).limit(10)
-    deps = (await db.execute(dep_stmt)).scalars().all()
+    dep_q = select(Dependency).where(Dependency.project_id == project_id).order_by(Dependency.id)
+    deps = (await db.execute(dep_q.limit(10))).scalars().all()
     items.extend(
         {"id": str(d.id), "file_path": "manifest", "symbol_name": d.name, "type": "dependency"}
         for d in deps
@@ -94,7 +96,7 @@ async def get_or_generate_stress_scenarios(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> StressScenarioListResponse:
-    """Returns scaling scenarios grounded in repository architecture evidence."""
+    """Returns scaling scenarios grounded in committed repository evidence."""
     project = await _get_owned_project(project_id, current_user.id, db)
 
     req = payload or GenerateStressScenariosRequest()
@@ -108,36 +110,50 @@ async def get_or_generate_stress_scenarios(
             project_id=str(project_id), total_scenarios=0, scenarios=[]
         )
 
-    scenarios = (
-        get_cached_unfiltered_scenarios(project_id, req.max_scenarios)
-        if not req.constraint_type
-        else None
-    )
+    evidence_items = await _gather_evidence_context(project_id, db)
+    evidence_version = compute_evidence_version(project, evidence_items)
+    invalidate_if_evidence_changed(project_id, evidence_version)
+
+    scenarios = None
+    if not req.constraint_type:
+        scenarios = get_cached_unfiltered_scenarios(
+            project_id, req.max_scenarios, evidence_version=evidence_version
+        )
     if scenarios is not None:
         if has_view:
             record_active_view_seq(project_id, view_id, req_seq, {s.id for s in scenarios})
     else:
-        evidence_items = await _gather_evidence_context(project_id, db)
-        scenarios = await generate_stress_scenarios(
-            project_name=project.name,
-            evidence_items=evidence_items,
-            constraint_type=req.constraint_type,
-            max_scenarios=req.max_scenarios,
-            model=req.model,
-            api_key=req.api_key,
-            base_url=req.base_url,
-        )
-        is_current = (
-            record_active_view_seq(project_id, view_id, req_seq, {s.id for s in scenarios})
-            if has_view
-            else True
-        )
-        if is_current:
+        for _ in range(2):
+            scenarios = await generate_stress_scenarios(
+                project_name=project.name,
+                evidence_items=evidence_items,
+                constraint_type=req.constraint_type,
+                max_scenarios=req.max_scenarios,
+                model=req.model,
+                api_key=req.api_key,
+                base_url=req.base_url,
+            )
+            post_project = await _get_owned_project(project_id, current_user.id, db)
+            post_evidence = await _gather_evidence_context(project_id, db)
+            post_version = compute_evidence_version(post_project, post_evidence)
+            if post_version == evidence_version:
+                break
+            invalidate_if_evidence_changed(project_id, post_version)
+            project, evidence_items, evidence_version = post_project, post_evidence, post_version
+        else:
+            return StressScenarioListResponse(
+                project_id=str(project_id), total_scenarios=len(scenarios), scenarios=scenarios
+            )
+
+        if not has_view or record_active_view_seq(
+            project_id, view_id, req_seq, {s.id for s in scenarios}
+        ):
             cache_project_scenarios(
                 project_id,
                 scenarios,
                 is_unfiltered=req.constraint_type is None,
                 requested_limit=req.max_scenarios,
+                evidence_version=evidence_version,
             )
 
     return StressScenarioListResponse(

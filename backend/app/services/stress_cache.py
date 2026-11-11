@@ -1,5 +1,6 @@
 """Bounded in-memory cache and active-view sequence tracking for Stress Test Mode."""
 
+import hashlib
 import uuid
 from typing import Any, Dict, List, Optional, Set, Tuple
 
@@ -7,11 +8,27 @@ from app.schemas.stress_test import StressDefenseSessionState, StressTestScenari
 
 stress_session_store: Dict[str, StressDefenseSessionState] = {}
 project_stress_cache: Dict[uuid.UUID, List[StressTestScenario]] = {}
-_unfiltered_catalog_meta: Dict[uuid.UUID, Tuple[int, Set[str]]] = {}
+_unfiltered_catalog_meta: Dict[uuid.UUID, Tuple[int, Set[str], str]] = {}
 _active_view_state: Dict[Tuple[uuid.UUID, str], Tuple[int, Set[str]]] = {}
 
 MAX_CACHED_SCENARIOS_PER_PROJECT = 25
 MAX_ACTIVE_VIEWS_PER_PROJECT = 10
+
+
+def compute_evidence_version(project: Any, evidence_items: List[dict]) -> str:
+    """Compute a deterministic fingerprint of project analysis status and committed evidence."""
+    status_val = getattr(project, "status", "")
+    status_str = status_val.value if hasattr(status_val, "value") else str(status_val or "")
+    updated_val = getattr(project, "updated_at", "")
+    updated_str = str(updated_val or "")
+    parts = [status_str, updated_str]
+    rows = sorted(
+        f"{item.get('id', '')}|{item.get('file_path', '')}|"
+        f"{item.get('symbol_name', '')}|{item.get('type', '')}"
+        for item in evidence_items
+    )
+    parts.extend(rows)
+    return hashlib.sha256("\n".join(parts).encode("utf-8")).hexdigest()
 
 
 def snapshot_stress_state() -> Dict[str, Any]:
@@ -19,7 +36,10 @@ def snapshot_stress_state() -> Dict[str, Any]:
     return {
         "sessions": {k: v.model_copy(deep=True) for k, v in stress_session_store.items()},
         "cache": {k: list(v) for k, v in project_stress_cache.items()},
-        "meta": {k: (lim, set(ids)) for k, (lim, ids) in _unfiltered_catalog_meta.items()},
+        "meta": {
+            k: (lim, set(ids), ver)
+            for k, (lim, ids, ver) in _unfiltered_catalog_meta.items()
+        },
         "views": {k: (seq, set(ids)) for k, (seq, ids) in _active_view_state.items()},
     }
 
@@ -70,16 +90,32 @@ def record_active_view_seq(
     return True
 
 
+def invalidate_if_evidence_changed(project_id: uuid.UUID, evidence_version: str) -> None:
+    """Invalidate unfiltered catalog metadata when repository evidence changes."""
+    meta = _unfiltered_catalog_meta.get(project_id)
+    if meta is not None and meta[2] != evidence_version:
+        _unfiltered_catalog_meta.pop(project_id, None)
+
+
 def get_cached_unfiltered_scenarios(
-    project_id: uuid.UUID, max_scenarios: int
+    project_id: uuid.UUID,
+    max_scenarios: int,
+    *,
+    evidence_version: str,
 ) -> Optional[List[StressTestScenario]]:
-    """Return cached unfiltered scenarios for a project if limit satisfies request."""
+    """Return cached unfiltered catalog only if complete and matching current evidence."""
     cached_catalog = project_stress_cache.get(project_id)
     unfiltered_meta = _unfiltered_catalog_meta.get(project_id)
     if cached_catalog is None or unfiltered_meta is None:
         return None
-    prev_limit, unfiltered_ids = unfiltered_meta
+    prev_limit, unfiltered_ids, cached_version = unfiltered_meta
+    if cached_version != evidence_version:
+        _unfiltered_catalog_meta.pop(project_id, None)
+        return None
     matched = [s for s in cached_catalog if s.id in unfiltered_ids]
+    if len(matched) != len(unfiltered_ids):
+        _unfiltered_catalog_meta.pop(project_id, None)
+        return None
     if prev_limit >= max_scenarios or len(matched) >= max_scenarios:
         return matched[:max_scenarios]
     return None
@@ -91,6 +127,7 @@ def cache_project_scenarios(
     *,
     is_unfiltered: bool,
     requested_limit: int,
+    evidence_version: str = "",
 ) -> None:
     """Merge scenarios into bounded project cache, protecting active views and unfiltered IDs."""
     existing = {s.id: s for s in project_stress_cache.get(project_id, [])}
@@ -100,7 +137,7 @@ def cache_project_scenarios(
 
     if is_unfiltered:
         unfiltered_ids = {s.id for s in scenarios}
-        _unfiltered_catalog_meta[project_id] = (requested_limit, unfiltered_ids)
+        _unfiltered_catalog_meta[project_id] = (requested_limit, unfiltered_ids, evidence_version)
     else:
         meta = _unfiltered_catalog_meta.get(project_id)
         unfiltered_ids = meta[1] if meta else set()
@@ -115,4 +152,9 @@ def cache_project_scenarios(
         existing.pop(evictable.pop(0), None)
     while len(existing) > MAX_CACHED_SCENARIOS_PER_PROJECT:
         existing.pop(next(iter(existing)))
+
+    meta = _unfiltered_catalog_meta.get(project_id)
+    if meta is not None and not meta[1].issubset(existing.keys()):
+        _unfiltered_catalog_meta.pop(project_id, None)
+
     project_stress_cache[project_id] = list(existing.values())
