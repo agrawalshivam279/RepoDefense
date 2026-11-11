@@ -169,6 +169,14 @@ class GenerateStressScenariosRequest(BaseModel):
     base_url: Optional[str] = Field(default=None, description="Optional LLM base URL override")
 
 
+    view_id: Optional[str] = Field(
+        default=None, max_length=64, description="Optional active catalog view identifier"
+    )
+    request_seq: Optional[int] = Field(
+        default=None, ge=0, description="Optional monotonic request sequence for view deduplication"
+    )
+
+
 class StressScenarioListResponse(BaseModel):
     """Response containing synthesized scaling scenarios for a repository."""
 

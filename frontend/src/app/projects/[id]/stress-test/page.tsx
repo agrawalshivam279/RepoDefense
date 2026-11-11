@@ -44,6 +44,12 @@ export default function StressTestPage() {
 
   const overviewRequestRef = useRef(0);
   const latestRequestRef = useRef(0);
+  const scenarioAbortRef = useRef<AbortController | null>(null);
+  const viewIdRef = useRef(
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `stress-view-${Math.random().toString(36).slice(2)}`
+  );
 
   const getAuthToken = useCallback(async (): Promise<string | null> => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -78,41 +84,43 @@ export default function StressTestPage() {
 
   const loadScenarios = useCallback(async () => {
     if (!projectId) return;
+    scenarioAbortRef.current?.abort();
+    const controller = new AbortController();
+    scenarioAbortRef.current = controller;
     const requestId = ++latestRequestRef.current;
     setLoadingScenarios(true);
     setScenarioError(null);
     try {
       const token = await getAuthToken();
-      if (!token) return;
-      const res = await fetchStressScenarios(
-        projectId,
-        token,
-        selectedConstraint || undefined,
-        5
-      );
-      if (requestId === latestRequestRef.current) setScenarios(res.scenarios);
+      if (!token || controller.signal.aborted) return;
+      const res = await fetchStressScenarios(projectId, token, selectedConstraint || undefined, 5, {
+        signal: controller.signal,
+        viewId: viewIdRef.current,
+        requestSeq: requestId,
+      });
+      if (requestId === latestRequestRef.current && !controller.signal.aborted) {
+        setScenarios(res.scenarios);
+      }
     } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
       if (requestId === latestRequestRef.current) {
         setScenarioError(err instanceof Error ? err.message : "Failed to load stress test scenarios");
       }
     } finally {
-      if (requestId === latestRequestRef.current) {
-        setLoadingScenarios(false);
-      }
+      if (requestId === latestRequestRef.current) setLoadingScenarios(false);
     }
   }, [projectId, selectedConstraint, getAuthToken]);
 
   useEffect(() => {
     void fetchProjectInfo();
-    return () => {
-      overviewRequestRef.current += 1;
-    };
+    return () => { overviewRequestRef.current += 1; };
   }, [fetchProjectInfo]);
 
   useEffect(() => {
     void loadScenarios();
     return () => {
       latestRequestRef.current += 1;
+      scenarioAbortRef.current?.abort();
     };
   }, [loadScenarios]);
 
@@ -136,7 +144,7 @@ export default function StressTestPage() {
       <div className="min-h-screen bg-zinc-950 text-zinc-100 p-8 max-w-5xl mx-auto">
         <div role="alert" className="rounded-xl border border-rose-900/60 bg-rose-950/20 p-6 flex items-start gap-3">
           <AlertCircle className="h-5 w-5 text-rose-400 mt-0.5 flex-shrink-0" />
-          <div className="space-y-1">
+          <div>
             <h3 className="font-semibold text-rose-200">Unable to load project</h3>
             <p className="text-sm text-rose-300/80">Missing project identifier.</p>
           </div>
@@ -161,10 +169,7 @@ export default function StressTestPage() {
         />
 
         {overviewError && (
-          <div
-            role="alert"
-            className="rounded-xl border border-amber-800/50 bg-amber-950/20 px-4 py-3 flex flex-wrap items-center justify-between gap-3 text-xs text-amber-200"
-          >
+          <div role="alert" className="rounded-xl border border-amber-800/50 bg-amber-950/20 px-4 py-3 flex flex-wrap items-center justify-between gap-3 text-xs text-amber-200">
             <div className="flex items-center gap-2">
               <AlertCircle className="h-4 w-4 text-amber-400 shrink-0" />
               <span>Repository metadata unavailable: {overviewError}</span>
@@ -183,10 +188,7 @@ export default function StressTestPage() {
           <StressTestSession
             session={activeSession}
             onSessionUpdate={setActiveSession}
-            onExitSession={() => {
-              setActiveSession(null);
-              setScenarioError(null);
-            }}
+            onExitSession={() => { setActiveSession(null); setScenarioError(null); }}
           />
         ) : (
           <div className="space-y-6">

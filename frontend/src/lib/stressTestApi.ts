@@ -169,7 +169,7 @@ async function parseApiError(
 async function requestStressApi<T>(
   path: string,
   token: string,
-  options: { method: "GET" | "POST"; body?: unknown },
+  options: { method: "GET" | "POST"; body?: unknown; signal?: AbortSignal },
   defaultError: string,
   validate: (payload: unknown) => T
 ): Promise<T> {
@@ -184,6 +184,7 @@ async function requestStressApi<T>(
     method: options.method,
     headers,
     body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+    signal: options.signal,
   });
 
   if (!response.ok) {
@@ -201,16 +202,19 @@ export async function fetchStressScenarios(
   projectId: string,
   token: string,
   constraintType?: StressConstraintType,
-  maxScenarios: number = 5
+  maxScenarios: number = 5,
+  requestOptions?: { signal?: AbortSignal; viewId?: string; requestSeq?: number }
 ): Promise<StressScenarioListResponse> {
   const payload: GenerateStressScenariosRequest = {
     constraint_type: constraintType || null,
     max_scenarios: maxScenarios,
+    view_id: requestOptions?.viewId ?? null,
+    request_seq: requestOptions?.requestSeq ?? null,
   };
   return requestStressApi<StressScenarioListResponse>(
     `/projects/${projectId}/scenarios`,
     token,
-    { method: "POST", body: payload },
+    { method: "POST", body: payload, signal: requestOptions?.signal },
     "Failed to fetch scaling stress scenarios",
     validateScenarioListResponse
   );

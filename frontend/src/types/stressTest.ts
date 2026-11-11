@@ -72,6 +72,8 @@ export interface StressDefenseSessionState {
 export interface GenerateStressScenariosRequest {
   constraint_type?: StressConstraintType | null;
   max_scenarios?: number;
+  view_id?: string | null;
+  request_seq?: number | null;
 }
 
 export interface StressScenarioListResponse {
