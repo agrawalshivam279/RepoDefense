@@ -1,4 +1,6 @@
+import ipaddress
 from pathlib import Path
+from urllib.parse import urlparse
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -59,6 +61,17 @@ class Settings(BaseSettings):
         default="",
         description="API key for FreeLLMAPI / OpenAI-compatible endpoint",
     )
+    ALLOWED_LLM_BASE_HOSTS: list[str] = Field(
+        default_factory=lambda: [
+            "api.openai.com",
+            "api.groq.com",
+            "api.anthropic.com",
+            "generativelanguage.googleapis.com",
+            "openrouter.ai",
+            "api.together.xyz",
+        ],
+        description="Approved HTTPS hostnames for caller-supplied LLM base_url overrides",
+    )
     LLM_MODEL: str = Field(
         default="openai/auto",
         description="LiteLLM model identifier",
@@ -74,3 +87,32 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+def validate_llm_base_url(base_url: str | None) -> str | None:
+    """Validate optional caller-supplied LLM base URL against approved HTTPS hosts."""
+    if base_url is None:
+        return None
+    cleaned = base_url.strip()
+    if not cleaned:
+        raise ValueError("LLM base_url override cannot be empty")
+    parsed = urlparse(cleaned)
+    if parsed.scheme.lower() != "https":
+        raise ValueError("LLM base_url override must use HTTPS")
+    if parsed.username or parsed.password or not parsed.hostname:
+        raise ValueError("LLM base_url override must use a valid hostname without credentials")
+    host = parsed.hostname.lower()
+    is_ip = True
+    try:
+        ipaddress.ip_address(host)
+    except ValueError:
+        is_ip = False
+    if is_ip:
+        raise ValueError("LLM base_url override cannot target an IP address")
+    allowed = {h.strip().lower() for h in settings.ALLOWED_LLM_BASE_HOSTS if h.strip()}
+    srv = urlparse(settings.FREELLMAPI_BASE_URL)
+    if srv.scheme.lower() == "https" and srv.hostname:
+        allowed.add(srv.hostname.lower())
+    if host not in allowed:
+        raise ValueError(f"LLM base_url host '{host}' is not in the approved provider allowlist")
+    return cleaned

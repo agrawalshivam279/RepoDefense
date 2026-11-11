@@ -8,6 +8,7 @@ import {
   ExternalLink,
   FileCode,
   Flame,
+  Gauge,
   GitBranch,
   GitCommit,
   GitPullRequest,
@@ -29,7 +30,8 @@ export type ProjectNavTab =
   | "tech-audit"
   | "pr-defense"
   | "commit-defense"
-  | "incident-simulation";
+  | "incident-simulation"
+  | "stress-test";
 
 export interface ProjectNavHeaderProps {
   projectId: string;
@@ -61,6 +63,7 @@ const TABS: {
   { id: "pr-defense", label: "PR Defense", hrefSuffix: "/pr-defense", Icon: GitPullRequest, accentColor: "text-rose-400" },
   { id: "commit-defense", label: "Commit Defense", hrefSuffix: "/commit-defense", Icon: GitCommit, accentColor: "text-emerald-400" },
   { id: "incident-simulation", label: "War Room", hrefSuffix: "/incident-simulation", Icon: Flame, accentColor: "text-rose-400" },
+  { id: "stress-test", label: "Stress Test", hrefSuffix: "/stress-test", Icon: Gauge, accentColor: "text-amber-400" },
 ];
 
 export function ProjectNavHeader({

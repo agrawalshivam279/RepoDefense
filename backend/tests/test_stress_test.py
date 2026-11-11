@@ -1,21 +1,23 @@
 """Hermetic unit and integration tests for Step 3.5a: Stress Test & What-If Mode."""
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import HTTPException
+from pydantic import ValidationError
 
 from app.ai.stress_test_generator import (
     build_deterministic_stress_evaluation,
     build_deterministic_stress_scenarios,
+    evaluate_stress_defense,
+    generate_stress_scenarios,
 )
 from app.api.v1.stress_test import (
     get_or_generate_stress_scenarios,
     get_stress_session,
     project_stress_cache,
     start_stress_defense_session,
-    stress_session_store,
     submit_stress_defense_turn,
 )
 from app.models.project import Project, User
@@ -29,6 +31,11 @@ from app.schemas.stress_test import (
     StressTarget,
     StressTestScenario,
     SubmitStressAnswerRequest,
+)
+from app.services.stress_cache import (
+    clear_all_stress_state,
+    restore_stress_state,
+    snapshot_stress_state,
 )
 
 
@@ -125,17 +132,60 @@ class TestStressGeneratorAndFallbacks:
         assert out.follow_up_constraint is None
         assert out.is_terminal is True
 
+    def test_deterministic_network_latency_jitter(self):
+        scenarios = build_deterministic_stress_scenarios(
+            project_name="RepoDefense",
+            constraint_type=StressConstraintType.NETWORK_LATENCY_JITTER,
+            max_scenarios=2,
+        )
+        assert len(scenarios) == 1
+        assert scenarios[0].constraint_type == StressConstraintType.NETWORK_LATENCY_JITTER
+
+    def test_base_url_allowlist_and_key_leak_guards(self):
+        for bad_url in ("http://169.254.169.254/latest", "https://evil.example.com/v1"):
+            with pytest.raises(ValidationError):
+                GenerateStressScenariosRequest(base_url=bad_url)
+            with pytest.raises(ValueError):
+                _drive_coro(
+                    generate_stress_scenarios("RepoDefense", base_url=bad_url, api_key="user-k")
+                )
+
+        scenario = build_deterministic_stress_scenarios("RepoDefense")[0]
+        with (
+            patch("app.ai.stress_test_generator.settings.FREELLMAPI_API_KEY", "server-secret"),
+            patch("app.ai.stress_test_generator.litellm.acompletion") as mock_completion,
+        ):
+            gen_res = _drive_coro(
+                generate_stress_scenarios(
+                    "RepoDefense", base_url="https://api.openai.com/v1", api_key=None
+                )
+            )
+            eval_res = _drive_coro(
+                evaluate_stress_defense(
+                    scenario,
+                    "Use connection pooling and Redis.",
+                    base_url="https://api.openai.com/v1",
+                    api_key=None,
+                )
+            )
+        mock_completion.assert_not_called()
+        assert len(gen_res) >= 1
+        assert eval_res.depth_score >= 4
+
 
 class TestStressEndpoints:
     """Integration tests for FastAPI stress test endpoints."""
 
     def setup_method(self):
-        stress_session_store.clear()
-        project_stress_cache.clear()
+        self._saved_state = snapshot_stress_state()
+        clear_all_stress_state()
         self.user_id = uuid.uuid4()
         self.user = User(id=self.user_id, email="dev@repodefense.dev")
         self.project_id = uuid.uuid4()
         self.project = Project(id=self.project_id, user_id=self.user_id, name="ScalingRepo")
+
+    def teardown_method(self):
+        restore_stress_state(self._saved_state)
 
     def _mock_db(self, project_found=True):
         db = AsyncMock()
@@ -149,7 +199,7 @@ class TestStressEndpoints:
 
     def test_get_or_generate_scenarios_success(self):
         db = self._mock_db(project_found=True)
-        req = GenerateStressScenariosRequest(max_scenarios=3)
+        req = GenerateStressScenariosRequest(max_scenarios=3, api_key="")
         resp = _drive_coro(
             get_or_generate_stress_scenarios(self.project_id, req, current_user=self.user, db=db)
         )
@@ -169,25 +219,29 @@ class TestStressEndpoints:
 
     def test_full_stress_defense_flow(self):
         db = self._mock_db(project_found=True)
-        # 1. Generate scenarios
         scen_resp = _drive_coro(
-            get_or_generate_stress_scenarios(self.project_id, None, current_user=self.user, db=db)
+            get_or_generate_stress_scenarios(
+                self.project_id,
+                GenerateStressScenariosRequest(api_key=""),
+                current_user=self.user,
+                db=db,
+            )
         )
         scenario = scen_resp.scenarios[0]
-
-        # 2. Start session
-        start_req = StartStressDefenseRequest(scenario_id=scenario.id)
         session = _drive_coro(
-            start_stress_defense_session(self.project_id, start_req, current_user=self.user, db=db)
+            start_stress_defense_session(
+                self.project_id,
+                StartStressDefenseRequest(scenario_id=scenario.id),
+                current_user=self.user,
+                db=db,
+            )
         )
         assert session.stage == StressSessionStage.SCENARIO_ACTIVE
         assert len(session.turns) == 1
 
-        # 3. Get session
         fetched = _drive_coro(get_stress_session(session.session_id, current_user=self.user))
         assert fetched.session_id == session.session_id
 
-        # 4. Turn 1 strong answer -> advances to FOLLOW_UP_CONSTRAINED
         strong_ans = (
             "We configure an async connection pool with size 20, use Redis cache for "
             "read replicas, and shed excess traffic with a token bucket rate limiter "
@@ -196,29 +250,29 @@ class TestStressEndpoints:
         t1_resp = _drive_coro(
             submit_stress_defense_turn(
                 session.session_id,
-                SubmitStressAnswerRequest(answer=strong_ans),
+                SubmitStressAnswerRequest(answer=strong_ans, api_key=""),
                 current_user=self.user,
             )
         )
         assert t1_resp.stage == StressSessionStage.FOLLOW_UP_CONSTRAINED
         assert len(t1_resp.turns) == 3
 
-        # 5. Turn 2 answer -> completes session
         t2_ans = "We implement Redis stale-while-revalidate and circuit breaker fallback to memory."
         t2_resp = _drive_coro(
             submit_stress_defense_turn(
-                session.session_id, SubmitStressAnswerRequest(answer=t2_ans), current_user=self.user
+                session.session_id,
+                SubmitStressAnswerRequest(answer=t2_ans, api_key=""),
+                current_user=self.user,
             )
         )
         assert t2_resp.stage == StressSessionStage.COMPLETED
         assert t2_resp.overall_score is not None
 
-        # 6. Subsequent submission rejected with 400
         with pytest.raises(HTTPException) as exc_info:
             _drive_coro(
                 submit_stress_defense_turn(
                     session.session_id,
-                    SubmitStressAnswerRequest(answer="Extra answer"),
+                    SubmitStressAnswerRequest(answer="Extra answer", api_key=""),
                     current_user=self.user,
                 )
             )
