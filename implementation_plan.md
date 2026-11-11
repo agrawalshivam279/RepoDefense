@@ -507,7 +507,7 @@ gantt
 - **Goal:** Questions focused on scale and constraints.
 - **Sub-tasks:**
   - [x] **Step 3.5a: Backend Stress Test Engine, Scaling Scenario Generator & REST API** (schemas/stress_test.py, ai/stress_test_generator.py, api/v1/stress_test.py, 7/7 tests passing)
-  - [ ] **Step 3.5b: Next.js 15 Stress Test / What-If Mode UI & Interactive Scaling Defense Flow** (stressTest.ts, StressTestSession.tsx, /projects/[id]/stress-test)
+  - [x] **Step 3.5b: Next.js 15 Stress Test / What-If Mode UI & Interactive Scaling Defense Flow** (stressTest.ts, stressTestApi.ts, StressTurnTranscript.tsx, StressTestSession.tsx, /projects/[id]/stress-test)
 - **Components:** Scaling-focused question templates and what-if defense FSM.
 - **Dependencies:** 1.13
 

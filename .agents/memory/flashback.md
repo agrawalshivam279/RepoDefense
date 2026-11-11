@@ -3,7 +3,7 @@
 > **Product**: RepoDefense  
 > **Tagline**: "Prove that you understand — and can defend — the software you built."  
 > **Core Loop**: Evidence → Claim → Defense → Stress Test → Evaluation → Mentor → Re-test  
-> **Status**: 🟢 Phase 1 & 2 Complete — Phase 3 In Progress (Milestones 3.1–3.4 & Step 3.5a Complete)  
+> **Status**: 🟢 Phase 1 & 2 Complete — Phase 3 In Progress (Milestones 3.1–3.5 Complete)  
 > **Last Synchronized**: 2026-11-12  
 
 ---
@@ -38,6 +38,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **Dependency / Technology Audit** | Heuristic Semver Parser + Next.js 15 Health Scorecard & Inspector | 🟢 Milestone 2.10 Complete (Steps 2.10a & 2.10b) |
 | **Enhanced Defense Report** | Unified Defense Evaluation + Architecture & Tech Audit Aggregator | 🟢 Milestone 2.11 Complete (Steps 2.11a & 2.11b) |
 | **Incident Simulation & War Room** | SRE Chaos Engine + Next.js 15 War Room UI | 🟢 Milestone 3.4 Complete (Steps 3.4a & 3.4b) |
+| **Stress Test / What-If Mode** | Scaling Scenario Generator & Next.js 15 Arena UI | 🟢 Milestone 3.5 Complete (Steps 3.5a & 3.5b) |
 | **IDE Code Viewer** | Monaco / Prism code viewer with AST evidence highlights | ⚪ Phase 4 Planned |
 | **Evaluation & Export** | Rubric generator + PDF transcript export | ⚪ Phase 5 Planned |
 
@@ -130,13 +131,18 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | :--- | :--- | :--- |
 | **Phase 1** | Ingestion & Core MVP (Scaffolding, Auth, Git Clone, Security Filter, Complete MVP) | 🟢 Complete |
 | **Phase 2** | Differentiation (Claims Extraction, Verification, Adaptive Questioning, Pushback Logic, Coverage Tracking, Ownership Engine, Architecture Audit, Mermaid Diagrams, Tech Audit, Enhanced Report) | 🟢 Complete (Milestones 2.1 - 2.12 Complete) |
-| **Phase 3** | The State Machine & Advanced Defense (PR Fetch & Diff Defense, Stress Testing, Incident Simulation) | 🟡 In Progress (Milestones 3.1 - 3.4 & Step 3.5a Complete) |
+| **Phase 3** | The State Machine & Advanced Defense (PR Fetch & Diff Defense, Stress Testing, Incident Simulation) | 🟡 In Progress (Milestones 3.1 - 3.5 Complete) |
 | **Phase 4** | Interactive Frontend (Next.js 15, SSE / WebSocket chat, Monaco/Prism Code Viewer) | ⚪ Planned |
 | **Phase 5** | Evaluation & Export (Rubric Scoring, Transcript Generation, PDF & Badge Export) | ⚪ Planned |
 
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-11-12] — Step 3.5b: Next.js 15 Stress Test / What-If Mode UI & Interactive Scaling Defense Flow
+- **Scope / Module**: Frontend Stress Test & What-If Mode UI (`frontend/src/types/stressTest.ts`, `frontend/src/lib/stressTestApi.ts`, `frontend/src/components/domain/StressTurnTranscript.tsx`, `frontend/src/components/domain/StressTestSession.tsx`, `frontend/src/app/projects/[id]/stress-test/page.tsx`, `frontend/src/components/domain/ProjectNavHeader.tsx`, `docs/specs/step-3-5b-stress-test-what-if-ui.md`)
+- **Details**: Designed and implemented the complete Next.js 15 App Router interactive Stress Test / What-If scaling defense experience (`/projects/[id]/stress-test`). Defined 1:1 TypeScript data contracts in `stressTest.ts` mirroring `backend/app/schemas/stress_test.py` (`StressConstraintType`, `StressSeverity`, `StressSessionStage`, `StressTarget`, `StressTestScenario`, `StressDefenseTurn`, `StressEvaluationOutput`, `StressDefenseSessionState`). Built typed REST API client `stressTestApi.ts` integrating `/api/v1/stress-test` (`fetchStressScenarios`, `startStressSession`, `getStressSession`, `submitStressAnswer`) via shared `requestStressApi` helper with Supabase JWT Bearer authorization. Extracted reusable `StressTurnTranscript.tsx` (rendering `CONSTRAINT_LABELS`, `StressSeverityBadge`, `SCENARIO_ACTIVE`, `FOLLOW_UP_CONSTRAINED` secondary escalation turns with `depth_score`, `candidate` turns, and `system` evaluation summaries). Built interactive `StressTestSession.tsx` featuring grounded `StressTarget` citation display (`file_path`, `symbol_name`, `line_range`, `component_type`), collapsible tradeoff checkpoints, `5`–`5000` char validated response textarea with `Ctrl+Enter` shortcut, and final scorecard (`overall_score`, `bottleneck_identified`, `feedback`). Built `/projects/[id]/stress-test/page.tsx` with constraint filter dropdown, stale async request race protection, scenario catalog cards, and session transition, and registered the `"Stress Test"` tab in `ProjectNavHeader.tsx`. Verified via `tsc --noEmit` (0 errors), Next.js 15 production build (`npm run build` compiling all 18 routes cleanly with `9.31 kB` route bundle), `ruff check`, `pytest tests/test_stress_test.py` (`7 passed`), and strict `<= 300 LOC` limit across all files (`stressTest.ts` 89 LOC, `stressTestApi.ts` 129 LOC, `StressTurnTranscript.tsx` 141 LOC, `StressTestSession.tsx` 256 LOC, `stress-test/page.tsx` 280 LOC, `ProjectNavHeader.tsx` 206 LOC). Concludes Milestone 3.5 (Stress Test / What-If Mode).
+- **Key Files**: `frontend/src/types/stressTest.ts`, `frontend/src/lib/stressTestApi.ts`, `frontend/src/components/domain/StressTurnTranscript.tsx`, `frontend/src/components/domain/StressTestSession.tsx`, `frontend/src/app/projects/[id]/stress-test/page.tsx`, `frontend/src/components/domain/ProjectNavHeader.tsx`, `docs/specs/step-3-5b-stress-test-what-if-ui.md`
 
 ### [2026-11-12] — Risk-Tiered CodeRabbit Gate & Check-Runs Automation in Shipping Skills
 - **Scope / Module**: Engineering Workflow Skills (`.agents/skills/ship_step/SKILL.md`, `.agents/skills/update-github/SKILL.md`, `.agents/skills/auto_cycle/SKILL.md`)
