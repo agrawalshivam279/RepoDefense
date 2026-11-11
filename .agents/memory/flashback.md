@@ -4,7 +4,7 @@
 > **Tagline**: "Prove that you understand — and can defend — the software you built."  
 > **Core Loop**: Evidence → Claim → Defense → Stress Test → Evaluation → Mentor → Re-test  
 > **Status**: 🟢 Phase 1 & 2 Complete — Phase 3 In Progress (Milestones 3.1–3.4 & Step 3.5a Complete)  
-> **Last Synchronized**: 2026-11-11  
+> **Last Synchronized**: 2026-11-12  
 
 ---
 
@@ -137,6 +137,11 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-11-12] — Risk-Tiered CodeRabbit Gate & Check-Runs Automation in Shipping Skills
+- **Scope / Module**: Engineering Workflow Skills (`.agents/skills/ship_step/SKILL.md`, `.agents/skills/update-github/SKILL.md`, `.agents/skills/auto_cycle/SKILL.md`)
+- **Details**: Automated CodeRabbit PR review handling across the release pipeline using a risk-tiered gate. Added automatic changed-path risk classification distinguishing High-Risk PRs (`backend/alembic/**`, `backend/app/models/**`, `backend/app/api/**`, `backend/app/core/**`, `backend/app/security/**`, `backend/app/ai/**`, `backend/app/workers/**`, `.github/workflows/**`, `.coderabbit.yaml`) from Low-Risk UI/docs fast-path PRs. Updated polling instructions to query GitHub Check Runs (`/commits/<head_sha>/check-runs`) via `schedule` timers instead of relying solely on legacy commit statuses. Configured High-Risk PRs to stay open until `CodeRabbit` completes (preventing `abort_on_close: true` cancellation), automatically halting before merge on `Critical`/`Major`/`Potential issue` or inline functional/security/stability `Minor` findings while ignoring collapsible `Nitpick`/`Additional comments` and `warning` pre-merge title/description notices. Aligned `update-github` PR titles with `.coderabbit.yaml` Conventional Commits rules and adjusted `auto_cycle` `ship_step` stage timeout budgets (`4 min` Fast-Path / `15 min` High-Risk). Verified via YAML frontmatter/link contract checks, `ruff check`, `pytest --collect-only` (`279` collected), `pytest tests/test_health.py` (`3 passed`), and Next.js `tsc --noEmit`.
+- **Key Files**: `.agents/skills/ship_step/SKILL.md`, `.agents/skills/update-github/SKILL.md`, `.agents/skills/auto_cycle/SKILL.md`
 
 ### [2026-11-11] — Security Hardening (Supabase RLS Lockdown), PR #59 Bug Fixes & CodeRabbit Config
 - **Scope / Module**: Security & Database Migrations, Backend API & AI FSM, Frontend War Room UI, CI/Review Tooling (`.coderabbit.yaml`, `backend/alembic/versions/3b7c9d4e2f1a_enable_rls_and_lockdown_public_tables.py`, `backend/tests/test_db_rls.py`, `backend/app/api/v1/defense.py`, `backend/app/ai/fsm.py`, `backend/app/services/diagram.py`, `backend/tests/test_defense_routes.py`, `backend/tests/test_embeddings.py`, `backend/tests/test_defense_report.py`, `backend/tests/test_infra_dependencies.py`, `frontend/src/components/domain/IncidentWarRoom.tsx`, `frontend/src/components/domain/IncidentPostmortemCard.tsx`, `frontend/src/app/projects/[id]/incident-simulation/page.tsx`, `.agents/skills/{security_auditor,db_migrator,code_reviewer,verify_step}/SKILL.md`)

@@ -106,7 +106,7 @@ Report:
 
 Use GitHub MCP (or GitHub CLI `gh pr create`) to create a PR from `CURRENT_BRANCH` into `main`.
 
-- **PR Title**: Plain English feature/fix title (e.g. `Implement Tree-sitter Python AST Symbol Extractor`).
+- **PR Title**: Concise Conventional Commits title matching `.coderabbit.yaml` (e.g., `feat: implement tree-sitter python ast symbol extractor`).
 - **PR Description Template**:
 
 ```markdown
@@ -133,19 +133,31 @@ Report:
 
 ---
 
-### Step 6 — Verify CI Status Checks & Merge
+### Step 6 — Verify Actions CI, Run Risk-Tiered CodeRabbit Gate & Merge
 
-Before merging, verify that the project CI passes:
+Before merging, inspect PR risk from the changed files and verify CI + CodeRabbit:
 
-1. Wait 30–60 seconds for GitHub Actions to trigger.
-2. Check PR check status via GitHub MCP `get_pull_request_status` or `gh pr checks`.
-3. If checks are pending, poll up to 3 times (30s intervals).
-4. If CI fails, **HALT IMMEDIATELY** and notify developer.
-5. Once CI is green, execute **Squash Merge** into `main` via GitHub MCP (`merge_pull_request`) or `gh pr merge --squash`.
+1. **Classify PR Risk Tier** (inspect committed diff against `main`):
+   - **High-Risk PR** if any changed file is in `backend/alembic/**`, `backend/app/models/**`, `backend/app/api/**`, `backend/app/core/**`, `backend/app/security/**`, `backend/app/ai/**`, `backend/app/workers/**`, `.github/workflows/**`, or `.coderabbit.yaml` (or if the developer explicitly asked to wait for CodeRabbit).
+   - **Low-Risk / UI Fast-Path PR** otherwise (e.g., `frontend/**`, `docs/**`, `.agents/**`, unit tests, or markdown updates).
+2. **Wait & Poll GitHub Check Runs (`schedule` timers — never shell `sleep`)**:
+   - Wait 45–60 seconds after creating the PR, then query the **GitHub Check Runs API** (`/repos/<owner>/<repo>/commits/<head_sha>/check-runs` via REST fetch or `gh pr checks`) as well as `get_pull_request_status` (because GitHub Actions and CodeRabbit report to check-runs, whereas `get_pull_request_status` only checks legacy commit statuses).
+   - Poll every 45–60s until GitHub Actions (`Backend Lint & Tests (Python 3.12)`, `Frontend Typecheck & Production Build (Next.js 15)`) finish. If any GitHub Actions check fails (`failure`, `cancelled`, `timed_out`), **HALT IMMEDIATELY** and notify the developer.
+3. **CodeRabbit Gate (Keep PR Open Until Finished on High-Risk PRs)**:
+   - Because `.coderabbit.yaml` sets `abort_on_close: true`, merging a PR immediately cancels any still-running `CodeRabbit` check (`Review failed: The pull request is closed`).
+   - On **High-Risk PRs**: keep the PR open and poll with 60–90s `schedule` timers until the `CodeRabbit` check-run reaches `completed` (up to ~12 minutes from PR creation; if still pending at 12 minutes, stop and ask the developer whether to keep waiting or merge now).
+   - On **Low-Risk Fast-Path PRs**: do not wait for CodeRabbit once GitHub Actions CI passes; still check its comments if CodeRabbit already finished before Actions completed.
+4. **Filter CodeRabbit Comments by Severity** (whenever `CodeRabbit` completed):
+   - Fetch inline review comments (`get_pull_request_comments` / `/pulls/<number>/comments`) and review bodies (`/pulls/<number>/reviews`) authored by `coderabbitai[bot]`.
+   - **Action Required (HALT Merge)**: Any unresolved inline comment marked **`Critical`**, **`Major`**, **`Potential issue`**, or inline **`Minor`** categorized under `Security`, `Functional Correctness`, `Stability & Availability`, or `Data Integrity`. Report the file, lines, summary, and CodeRabbit `Prompt for AI Agents` to the developer and await confirmation to fix before merging.
+   - **Auto-Ignore (Non-Blocking)**: Ignore collapsible `Nitpick comments` / `Additional comments`, formatting/style suggestions, and `warning` pre-merge checks (`title`/`description`).
+5. **Squash Merge**:
+   - Once CI passes and the CodeRabbit gate is clear (or bypassed via Low-Risk Fast-Path), execute **Squash Merge** into `main` via GitHub MCP `merge_pull_request` (`merge_method: "squash"`) or `gh pr merge --squash`.
 
 Report:
 ```text
-✓ CI checks passed
+✓ CI checks passed (Backend & Frontend)
+✓ CodeRabbit gate — <0 Critical/Major (ignored N nitpicks) | Fast-Path skipped>
 ✓ PR merged to main (Squash Merge)
 ```
 
@@ -219,6 +231,7 @@ Invoke [`next_step`](file:///d:/RepoDefense/.agents/skills/next_step/SKILL.md) t
 ✓ Committed — <message>
 ✓ Pushed — <branch>
 ✓ CI checks passed
+✓ CodeRabbit gate (<status>)
 ✓ PR created and merged (#<PR_NUMBER>)
 ✓ Remote branch preserved on GitHub (origin/<branch>)
 ✓ Switched to main (up to date)
@@ -237,6 +250,6 @@ Invoke [`next_step`](file:///d:/RepoDefense/.agents/skills/next_step/SKILL.md) t
 2. **Always squash merge**: Keeps `main` commit history clean and linear.
 3. **Never delete remote branches**: Only remove the local branch.
 4. **Push Upstream Handling**: If push fails due to missing upstream, use `git push --set-upstream origin CURRENT_BRANCH`.
-5. **CI & PR Failures**: If PR creation or CI checks fail, stop immediately and report the error without attempting to merge.
+5. **CI & High-Risk CodeRabbit Gate**: Never squash-merge if GitHub Actions CI fails. On High-Risk PRs (migrations, auth/security, backend API/core, AI FSM, workers, CI/CodeRabbit configs), wait for `CodeRabbit` to finish before merging and halt if it posts `Critical` / `Major` / `Potential issue` findings (ignoring collapsible `Nitpick` / `Additional comments`).
 6. **Gitignore Safety**: Always validate `.gitignore` coverage before `git add .` to prevent accidental commits of secrets, virtualenvs, or caches.
 7. **Pull Conflict Recovery**: If `git pull origin main` fails after squash merge, stash $\rightarrow$ pull $\rightarrow$ pop $\rightarrow$ resolve.
