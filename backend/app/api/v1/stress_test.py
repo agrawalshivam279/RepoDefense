@@ -37,6 +37,7 @@ router = APIRouter(tags=["Stress Test / What-If Mode"])
 stress_session_store: Dict[str, StressDefenseSessionState] = {}
 project_stress_cache: Dict[uuid.UUID, List[StressTestScenario]] = {}
 _unfiltered_catalog_meta: Dict[uuid.UUID, Tuple[int, Set[str]]] = {}
+MAX_CACHED_SCENARIOS_PER_PROJECT = 25
 
 
 def _cache_project_scenarios(
@@ -46,13 +47,27 @@ def _cache_project_scenarios(
     is_unfiltered: bool,
     requested_limit: int,
 ) -> None:
-    """Merge generated scenarios into project cache and record unfiltered catalog IDs."""
+    """Merge scenarios into bounded project cache, keeping unfiltered catalog IDs."""
     existing = {s.id: s for s in project_stress_cache.get(project_id, [])}
     for scenario in scenarios:
+        existing.pop(scenario.id, None)
         existing[scenario.id] = scenario
-    project_stress_cache[project_id] = list(existing.values())
+
     if is_unfiltered:
-        _unfiltered_catalog_meta[project_id] = (requested_limit, {s.id for s in scenarios})
+        unfiltered_ids = {s.id for s in scenarios}
+        _unfiltered_catalog_meta[project_id] = (requested_limit, unfiltered_ids)
+    else:
+        meta = _unfiltered_catalog_meta.get(project_id)
+        unfiltered_ids = meta[1] if meta else set()
+
+    if len(existing) > MAX_CACHED_SCENARIOS_PER_PROJECT:
+        evictable = [sid for sid in existing if sid not in unfiltered_ids]
+        while len(existing) > MAX_CACHED_SCENARIOS_PER_PROJECT and evictable:
+            existing.pop(evictable.pop(0), None)
+        while len(existing) > MAX_CACHED_SCENARIOS_PER_PROJECT:
+            existing.pop(next(iter(existing)))
+
+    project_stress_cache[project_id] = list(existing.values())
 
 
 async def _gather_evidence_context(project_id: uuid.UUID, db: AsyncSession) -> List[dict]:

@@ -11,6 +11,8 @@ from app.ai.stress_test_generator import (
     build_deterministic_stress_scenarios,
 )
 from app.api.v1.stress_test import (
+    MAX_CACHED_SCENARIOS_PER_PROJECT,
+    _cache_project_scenarios,
     get_or_generate_stress_scenarios,
     get_stress_session,
     project_stress_cache,
@@ -229,6 +231,7 @@ class TestStressEndpoints:
         filtered_req = GenerateStressScenariosRequest(
             constraint_type=StressConstraintType.DB_CONNECTION_STARVATION,
             max_scenarios=2,
+            api_key="",
         )
         filtered_resp = _drive_coro(
             get_or_generate_stress_scenarios(
@@ -239,7 +242,12 @@ class TestStressEndpoints:
         target_id = filtered_resp.scenarios[0].id
 
         unfiltered_resp = _drive_coro(
-            get_or_generate_stress_scenarios(self.project_id, None, current_user=self.user, db=db)
+            get_or_generate_stress_scenarios(
+                self.project_id,
+                GenerateStressScenariosRequest(api_key=""),
+                current_user=self.user,
+                db=db,
+            )
         )
         assert unfiltered_resp.total_scenarios >= 2
 
@@ -257,7 +265,12 @@ class TestStressEndpoints:
     def test_start_session_unknown_scenario_returns_404(self):
         db = self._mock_db(project_found=True)
         _drive_coro(
-            get_or_generate_stress_scenarios(self.project_id, None, current_user=self.user, db=db)
+            get_or_generate_stress_scenarios(
+                self.project_id,
+                GenerateStressScenariosRequest(api_key=""),
+                current_user=self.user,
+                db=db,
+            )
         )
         with pytest.raises(HTTPException) as exc_info:
             _drive_coro(
@@ -269,3 +282,16 @@ class TestStressEndpoints:
                 )
             )
         assert exc_info.value.status_code == 404
+
+    def test_project_scenario_cache_is_bounded(self):
+        base = build_deterministic_stress_scenarios("ScalingRepo")[0]
+        extra = MAX_CACHED_SCENARIOS_PER_PROJECT + 5
+        for idx in range(extra):
+            clone = base.model_copy(update={"id": f"stress-extra-{idx}"})
+            _cache_project_scenarios(
+                self.project_id, [clone], is_unfiltered=False, requested_limit=1
+            )
+        cached = project_stress_cache[self.project_id]
+        assert len(cached) == MAX_CACHED_SCENARIOS_PER_PROJECT
+        assert cached[-1].id == f"stress-extra-{extra - 1}"
+        assert cached[0].id == "stress-extra-5"
