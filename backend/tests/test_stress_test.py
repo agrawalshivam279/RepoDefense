@@ -223,3 +223,49 @@ class TestStressEndpoints:
                 )
             )
         assert exc_info.value.status_code == 400
+
+    def test_start_session_preserves_filtered_scenario(self):
+        db = self._mock_db(project_found=True)
+        filtered_req = GenerateStressScenariosRequest(
+            constraint_type=StressConstraintType.DB_CONNECTION_STARVATION,
+            max_scenarios=2,
+        )
+        filtered_resp = _drive_coro(
+            get_or_generate_stress_scenarios(
+                self.project_id, filtered_req, current_user=self.user, db=db
+            )
+        )
+        assert filtered_resp.total_scenarios >= 1
+        target_id = filtered_resp.scenarios[0].id
+
+        unfiltered_resp = _drive_coro(
+            get_or_generate_stress_scenarios(self.project_id, None, current_user=self.user, db=db)
+        )
+        assert unfiltered_resp.total_scenarios >= 2
+
+        session = _drive_coro(
+            start_stress_defense_session(
+                self.project_id,
+                StartStressDefenseRequest(scenario_id=target_id),
+                current_user=self.user,
+                db=db,
+            )
+        )
+        assert session.scenario.id == target_id
+        assert session.scenario.constraint_type == StressConstraintType.DB_CONNECTION_STARVATION
+
+    def test_start_session_unknown_scenario_returns_404(self):
+        db = self._mock_db(project_found=True)
+        _drive_coro(
+            get_or_generate_stress_scenarios(self.project_id, None, current_user=self.user, db=db)
+        )
+        with pytest.raises(HTTPException) as exc_info:
+            _drive_coro(
+                start_stress_defense_session(
+                    self.project_id,
+                    StartStressDefenseRequest(scenario_id="unknown-scenario-999"),
+                    current_user=self.user,
+                    db=db,
+                )
+            )
+        assert exc_info.value.status_code == 404

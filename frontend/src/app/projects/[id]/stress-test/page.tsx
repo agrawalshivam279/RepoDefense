@@ -6,10 +6,7 @@ import { AlertCircle, Code2, Gauge, Loader2, RotateCcw, Zap } from "lucide-react
 
 import { ProjectNavHeader } from "@/components/domain/ProjectNavHeader";
 import { StressTestSession } from "@/components/domain/StressTestSession";
-import {
-  CONSTRAINT_LABELS,
-  StressSeverityBadge,
-} from "@/components/domain/StressTurnTranscript";
+import { CONSTRAINT_LABELS, StressSeverityBadge } from "@/components/domain/StressTurnTranscript";
 import { getProjectOverview } from "@/lib/projectApi";
 import { fetchStressScenarios, startStressSession } from "@/lib/stressTestApi";
 import { supabase } from "@/lib/supabase";
@@ -35,8 +32,8 @@ export default function StressTestPage() {
   const projectId = params?.id as string;
 
   const [project, setProject] = useState<ProjectOverviewResponse | null>(null);
-  const [pageLoading, setPageLoading] = useState(true);
-  const [pageError, setPageError] = useState<string | null>(null);
+  const [overviewLoading, setOverviewLoading] = useState(true);
+  const [overviewError, setOverviewError] = useState<string | null>(null);
 
   const [scenarios, setScenarios] = useState<StressTestScenario[]>([]);
   const [selectedConstraint, setSelectedConstraint] = useState<StressConstraintType | "">("");
@@ -45,6 +42,7 @@ export default function StressTestPage() {
   const [activeSession, setActiveSession] = useState<StressDefenseSessionState | null>(null);
   const [startingSession, setStartingSession] = useState(false);
 
+  const overviewRequestRef = useRef(0);
   const latestRequestRef = useRef(0);
 
   const getAuthToken = useCallback(async (): Promise<string | null> => {
@@ -58,21 +56,23 @@ export default function StressTestPage() {
 
   const fetchProjectInfo = useCallback(async () => {
     if (!projectId) {
-      setPageError("Missing project identifier.");
-      setPageLoading(false);
+      setOverviewLoading(false);
       return;
     }
-    setPageLoading(true);
-    setPageError(null);
+    const requestId = ++overviewRequestRef.current;
+    setOverviewLoading(true);
+    setOverviewError(null);
     try {
       const token = await getAuthToken();
-      if (!token) return;
+      if (!token || requestId !== overviewRequestRef.current) return;
       const overview = await getProjectOverview(projectId, token);
-      setProject(overview);
+      if (requestId === overviewRequestRef.current) setProject(overview);
     } catch (err) {
-      setPageError(err instanceof Error ? err.message : "Failed to load project");
+      if (requestId === overviewRequestRef.current) {
+        setOverviewError(err instanceof Error ? err.message : "Failed to load project metadata");
+      }
     } finally {
-      setPageLoading(false);
+      if (requestId === overviewRequestRef.current) setOverviewLoading(false);
     }
   }, [projectId, getAuthToken]);
 
@@ -104,6 +104,9 @@ export default function StressTestPage() {
 
   useEffect(() => {
     void fetchProjectInfo();
+    return () => {
+      overviewRequestRef.current += 1;
+    };
   }, [fetchProjectInfo]);
 
   useEffect(() => {
@@ -128,23 +131,14 @@ export default function StressTestPage() {
     }
   };
 
-  if (pageLoading) {
-    return (
-      <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col items-center justify-center gap-3">
-        <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
-        <p className="text-sm font-mono text-zinc-400">Loading Stress Test Arena...</p>
-      </div>
-    );
-  }
-
-  if (pageError) {
+  if (!projectId) {
     return (
       <div className="min-h-screen bg-zinc-950 text-zinc-100 p-8 max-w-5xl mx-auto">
         <div role="alert" className="rounded-xl border border-rose-900/60 bg-rose-950/20 p-6 flex items-start gap-3">
           <AlertCircle className="h-5 w-5 text-rose-400 mt-0.5 flex-shrink-0" />
           <div className="space-y-1">
             <h3 className="font-semibold text-rose-200">Unable to load project</h3>
-            <p className="text-sm text-rose-300/80">{pageError}</p>
+            <p className="text-sm text-rose-300/80">Missing project identifier.</p>
           </div>
         </div>
       </div>
@@ -156,7 +150,7 @@ export default function StressTestPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         <ProjectNavHeader
           projectId={projectId}
-          projectName={project?.name || "Repository"}
+          projectName={project?.name || (overviewLoading ? "Loading..." : "Repository")}
           githubUrl={project?.github_url}
           defaultBranch={project?.default_branch}
           commitHash={project?.commit_hash}
@@ -165,6 +159,25 @@ export default function StressTestPage() {
           onRefresh={!activeSession ? loadScenarios : undefined}
           isRefreshing={loadingScenarios}
         />
+
+        {overviewError && (
+          <div
+            role="alert"
+            className="rounded-xl border border-amber-800/50 bg-amber-950/20 px-4 py-3 flex flex-wrap items-center justify-between gap-3 text-xs text-amber-200"
+          >
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-amber-400 shrink-0" />
+              <span>Repository metadata unavailable: {overviewError}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => void fetchProjectInfo()}
+              className="rounded-md border border-amber-700/60 bg-amber-900/30 hover:bg-amber-900/50 px-2.5 py-1 font-medium text-amber-100 transition-colors"
+            >
+              Retry Overview
+            </button>
+          </div>
+        )}
 
         {activeSession ? (
           <StressTestSession

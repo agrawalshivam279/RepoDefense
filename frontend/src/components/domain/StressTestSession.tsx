@@ -15,17 +15,17 @@ import {
   ShieldAlert,
 } from "lucide-react";
 
-import {
-  CONSTRAINT_LABELS,
-  StressSeverityBadge,
-  StressTurnTranscript,
-} from "@/components/domain/StressTurnTranscript";
+import { CONSTRAINT_LABELS, StressSeverityBadge, StressTurnTranscript } from "@/components/domain/StressTurnTranscript";
 import { submitStressAnswer } from "@/lib/stressTestApi";
 import { supabase } from "@/lib/supabase";
 import type { StressDefenseSessionState } from "@/types/stressTest";
 
 const MIN_ANSWER_LENGTH = 5;
 const MAX_ANSWER_LENGTH = 5000;
+
+function countCodePoints(text: string): number {
+  return Array.from(text).length;
+}
 
 interface StressTestSessionProps {
   session: StressDefenseSessionState;
@@ -43,36 +43,70 @@ export function StressTestSession({
   const [error, setError] = useState<string | null>(null);
   const [showTradeoffs, setShowTradeoffs] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const activeSessionIdRef = useRef(session.session_id);
+  const submitRequestIdRef = useRef(0);
+  const isMountedRef = useRef(true);
 
   const isCompleted = session.stage === "COMPLETED";
-  const trimmedLength = answer.trim().length;
+  const trimmedAnswer = answer.trim();
+  const trimmedLength = countCodePoints(trimmedAnswer);
+  const displayLength = countCodePoints(answer);
+  const isAnswerTooLong = trimmedLength > MAX_ANSWER_LENGTH;
   const isAnswerInvalid =
-    trimmedLength < MIN_ANSWER_LENGTH || trimmedLength > MAX_ANSWER_LENGTH;
+    trimmedLength < MIN_ANSWER_LENGTH || isAnswerTooLong;
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      submitRequestIdRef.current += 1;
+    };
+  }, []);
+
+  useEffect(() => {
+    activeSessionIdRef.current = session.session_id;
+    submitRequestIdRef.current += 1;
+    setSubmitting(false);
+    setError(null);
+  }, [session.session_id]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [session.turns, submitting]);
 
+  const handleExitSession = () => {
+    submitRequestIdRef.current += 1;
+    onExitSession();
+  };
+
   const submitCurrentAnswer = async () => {
     if (submitting || isAnswerInvalid || isCompleted) return;
+    const targetSessionId = session.session_id;
+    const requestId = ++submitRequestIdRef.current;
+    const isStale = () =>
+      !isMountedRef.current ||
+      submitRequestIdRef.current !== requestId ||
+      activeSessionIdRef.current !== targetSessionId;
+
     setSubmitting(true);
     setError(null);
     try {
-      const {
-        data: { session: authSession },
-      } = await supabase.auth.getSession();
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      if (isStale()) return;
       if (!authSession) throw new Error("Authentication required. Please log in.");
       const updated = await submitStressAnswer(
-        session.session_id,
-        answer.trim(),
+        targetSessionId,
+        trimmedAnswer,
         authSession.access_token
       );
+      if (isStale()) return;
       onSessionUpdate(updated);
       setAnswer("");
     } catch (err) {
+      if (isStale()) return;
       setError(err instanceof Error ? err.message : "Failed to submit scaling defense");
     } finally {
-      setSubmitting(false);
+      if (!isStale()) setSubmitting(false);
     }
   };
 
@@ -94,7 +128,7 @@ export function StressTestSession({
         <div className="flex items-center gap-3 min-w-0">
           <button
             type="button"
-            onClick={onExitSession}
+            onClick={handleExitSession}
             aria-label="Exit Stress Test"
             className="p-2 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors"
             title="Return to scenario catalog"
@@ -196,7 +230,7 @@ export function StressTestSession({
           )}
           <button
             type="button"
-            onClick={onExitSession}
+            onClick={handleExitSession}
             className="inline-flex items-center gap-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-100 px-4 py-2 text-xs font-medium transition-colors"
           >
             <RotateCcw className="h-3.5 w-3.5" /> Test Another Scenario
@@ -226,26 +260,26 @@ export function StressTestSession({
             value={answer}
             onChange={(e) => setAnswer(e.target.value)}
             onKeyDown={handleKeyDown}
-            maxLength={MAX_ANSWER_LENGTH}
             disabled={submitting}
             placeholder="Specify exact bottlenecks, pooling/caching/indexing mechanisms, and consistency or cost tradeoffs..."
             rows={4}
             className="w-full rounded-lg border border-zinc-800 bg-zinc-900 p-3 text-sm text-zinc-200 focus:outline-none focus:border-amber-500 disabled:opacity-50 resize-y"
           />
           <div className="flex items-center justify-between">
-            <span className="text-xs text-zinc-500 font-mono">
-              {answer.length}/{MAX_ANSWER_LENGTH} chars
+            <span
+              className={`text-xs font-mono ${
+                isAnswerTooLong ? "text-rose-400" : "text-zinc-500"
+              }`}
+            >
+              {displayLength}/{MAX_ANSWER_LENGTH} chars
+              {isAnswerTooLong ? " (exceeds 5,000 char limit)" : ""}
             </span>
             <button
               type="submit"
               disabled={submitting || isAnswerInvalid}
               className="inline-flex items-center gap-2 rounded-lg bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white font-medium px-4 py-2 text-xs transition-colors"
             >
-              {submitting ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Send className="h-3.5 w-3.5" />
-              )}
+              {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
               {submitting ? "Evaluating..." : "Submit Scaling Defense"}
             </button>
           </div>

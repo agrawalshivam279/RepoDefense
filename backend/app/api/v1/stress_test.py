@@ -8,7 +8,7 @@ Endpoints:
 """
 
 import uuid
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Set, Tuple
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -36,6 +36,23 @@ router = APIRouter(tags=["Stress Test / What-If Mode"])
 
 stress_session_store: Dict[str, StressDefenseSessionState] = {}
 project_stress_cache: Dict[uuid.UUID, List[StressTestScenario]] = {}
+_unfiltered_catalog_meta: Dict[uuid.UUID, Tuple[int, Set[str]]] = {}
+
+
+def _cache_project_scenarios(
+    project_id: uuid.UUID,
+    scenarios: List[StressTestScenario],
+    *,
+    is_unfiltered: bool,
+    requested_limit: int,
+) -> None:
+    """Merge generated scenarios into project cache and record unfiltered catalog IDs."""
+    existing = {s.id: s for s in project_stress_cache.get(project_id, [])}
+    for scenario in scenarios:
+        existing[scenario.id] = scenario
+    project_stress_cache[project_id] = list(existing.values())
+    if is_unfiltered:
+        _unfiltered_catalog_meta[project_id] = (requested_limit, {s.id for s in scenarios})
 
 
 async def _gather_evidence_context(project_id: uuid.UUID, db: AsyncSession) -> List[dict]:
@@ -81,8 +98,20 @@ async def get_or_generate_stress_scenarios(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
 
     req = payload or GenerateStressScenariosRequest()
-    if project_id in project_stress_cache and not req.constraint_type:
-        scenarios = project_stress_cache[project_id]
+    if project_id not in project_stress_cache:
+        _unfiltered_catalog_meta.pop(project_id, None)
+
+    cached_catalog = project_stress_cache.get(project_id)
+    unfiltered_meta = _unfiltered_catalog_meta.get(project_id)
+    cached_unfiltered: Optional[List[StressTestScenario]] = None
+    if not req.constraint_type and cached_catalog is not None and unfiltered_meta is not None:
+        prev_limit, unfiltered_ids = unfiltered_meta
+        matched = [s for s in cached_catalog if s.id in unfiltered_ids]
+        if prev_limit >= req.max_scenarios or len(matched) >= req.max_scenarios:
+            cached_unfiltered = matched[: req.max_scenarios]
+
+    if cached_unfiltered is not None:
+        scenarios = cached_unfiltered
     else:
         evidence_items = await _gather_evidence_context(project_id, db)
         scenarios = await generate_stress_scenarios(
@@ -94,8 +123,12 @@ async def get_or_generate_stress_scenarios(
             api_key=req.api_key,
             base_url=req.base_url,
         )
-        if not req.constraint_type:
-            project_stress_cache[project_id] = scenarios
+        _cache_project_scenarios(
+            project_id,
+            scenarios,
+            is_unfiltered=req.constraint_type is None,
+            requested_limit=req.max_scenarios,
+        )
 
     return StressScenarioListResponse(
         project_id=str(project_id),
@@ -125,17 +158,9 @@ async def start_stress_defense_session(
     cached_list = project_stress_cache.get(project_id, [])
     target_scenario = next((s for s in cached_list if s.id == payload.scenario_id), None)
     if not target_scenario:
-        evidence_items = await _gather_evidence_context(project_id, db)
-        fresh_scenarios = await generate_stress_scenarios(
-            project_name=project.name,
-            evidence_items=evidence_items,
-            max_scenarios=4,
-            model=payload.model,
-            api_key=payload.api_key,
-            base_url=payload.base_url,
-        )
-        target_scenario = next(
-            (s for s in fresh_scenarios if s.id == payload.scenario_id), fresh_scenarios[0]
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Stress scenario '{payload.scenario_id}' not found. Generate scenarios first.",
         )
 
     session_id = str(uuid.uuid4())
