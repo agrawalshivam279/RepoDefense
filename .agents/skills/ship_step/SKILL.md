@@ -22,10 +22,14 @@ flowchart TD
     B --> C["🔍 Inspect Git Changes & Generate Conventional Commit (<100 chars)"]
     C --> D["🌿 git push -u origin feat/<slug>"]
     D --> E["🐙 Create GitHub Pull Request via MCP / gh CLI"]
-    E --> F["⏳ Poll CI Status Checks (wait 30-60s, max 3 retries)"]
-    F --> G{"CI Passed?"}
+    E --> F["⏳ Poll Actions CI Check Runs via timer (Backend & Frontend)"]
+    F --> G{"Actions CI Passed?"}
     G -- "❌ CI Failing / Timeout" --> H["🛑 HARD STOP: Report CI failure & await developer fix"]
-    G -- "✅ CI Passed" --> I["🔀 Squash Merge PR to main"]
+    G -- "✅ CI Passed" --> G2{"High-Risk Files Touched?"}
+    G2 -- "Yes (Wait CodeRabbit ~8-12m)" --> G3{"Critical/Major Issues?"}
+    G3 -- "Yes" --> H2["🛑 HARD STOP: Report Critical/Major findings & AI fix prompts"]
+    G3 -- "No (Only Nitpicks/Clean)" --> I["🔀 Squash Merge PR to main"]
+    G2 -- "No (Low-Risk Fast-Path)" --> I
     I --> J{"⚠️ Merge Conflict?"}
 
     J -- "Yes" --> K["🛑 HARD STOP: Report exact conflict & await human guidance"]
@@ -79,13 +83,20 @@ flowchart TD
 5. **Create Pull Request**:
    - Creates Pull Request into `main` via GitHub MCP / `gh pr create`.
    - Embeds verification metrics in the PR description (pytest count, type check, lint status, security checks).
-6. **CI Status Check & Polling Protocol**:
-   - After creating the PR, wait 30–60 seconds for CI to trigger.
-   - Poll PR status via GitHub MCP `get_pull_request_status` or `gh pr checks`.
-   - If CI is still `pending`, wait 30s and re-check (up to 3 polling intervals).
-   - **Hard Stop**: If CI fails (`failure` or `error`), **HALT IMMEDIATELY**. Do NOT merge.
+6. **Risk-Tiered CI & CodeRabbit Gate Protocol**:
+   - **Classify PR Risk from Changed Files**:
+     - **High-Risk PR** (touches `backend/alembic/**`, `backend/app/models/**`, `backend/app/api/**`, `backend/app/core/**`, `backend/app/security/**`, `backend/app/ai/**`, `backend/app/workers/**`, `.github/workflows/**`, or `.coderabbit.yaml`): **MUST keep the PR open** until the `CodeRabbit` check-run completes (merging early cancels CodeRabbit because `abort_on_close: true`).
+     - **Low-Risk / UI Fast-Path PR** (touches only `frontend/**`, `docs/**`, `.agents/**`, tests, or root markdown): merge as soon as GitHub Actions CI passes (still inspect CodeRabbit comments if it already finished before Actions completed).
+   - **Poll Check Runs (`schedule` timers, never shell `sleep`)**:
+     - GitHub Actions and CodeRabbit report to GitHub's Check Runs API (`/repos/<owner>/<repo>/commits/<head_sha>/check-runs`), not just legacy `get_pull_request_status`. Wait 45–60s after PR creation, then poll check-runs.
+     - Verify required GitHub Actions workflows (`Backend Lint & Tests (Python 3.12)`, `Frontend Typecheck & Production Build (Next.js 15)`) reach `completed` + `success`. **Hard Stop** immediately if any Actions check fails (`failure`, `cancelled`, `timed_out`).
+     - On **High-Risk PRs**, continue polling via 60–90s `schedule` timers until the `CodeRabbit` check-run finishes (up to ~12 minutes total from PR open). If still pending after 12 minutes, ask the developer whether to keep waiting or merge now.
+   - **Automated CodeRabbit Comment Severity Filter**:
+     - Once `CodeRabbit` completes (if finished before merge), fetch `coderabbitai[bot]` inline review comments (`/pulls/<number>/comments`) and review summaries (`/pulls/<number>/reviews`).
+     - **STOP & Report Before Merging** on any actionable inline comment marked **`Critical`**, **`Major`**, **`Potential issue`**, or inline **`Minor`** tagged `Security`, `Functional Correctness`, `Stability & Availability`, or `Data Integrity`. Present each with file, line range, severity, summary, and CodeRabbit's `Prompt for AI Agents`.
+     - **Auto-Ignore & Proceed**: Ignore collapsible `Nitpick comments` / `Additional comments`, wording/style tweaks, and `warning`-mode title/description notices. Note the ignored nitpick count cleanly in the ship summary.
 7. **Squash Merge**:
-   - Executes **Squash Merge** into `main` via GitHub MCP / `gh pr merge --squash`.
+   - Execute **Squash Merge** into `main` via GitHub MCP `merge_pull_request` (`merge_method: "squash"`) or `gh pr merge --squash`.
 8. **Local Cleanup & Remote Retention**:
    - Switches to `main`: `git checkout main && git pull origin main`.
    - _Git Recovery_: If `git pull` encounters conflict with uncommitted local work: `git stash` $\rightarrow$ `git pull origin main` $\rightarrow$ `git stash pop` $\rightarrow$ resolve.
@@ -110,7 +121,9 @@ flowchart TD
 
 - **Commit**: `<type>: <description>` _(Under 100 characters)_
 - **Pull Request**: `PR #<NUMBER> — <PR Title>`
-- **CI Status**: `✅ Passed (All workflows green)`
+- **Risk Tier**: `High-Risk (Waited CodeRabbit)` | `Low-Risk (Fast-Path)`
+- **CI Status**: `✅ Passed (Backend & Frontend workflows green)`
+- **CodeRabbit Gate**: `✅ 0 Critical/Major findings (ignored N nitpicks)` | `⏭️ Skipped/Cancelled via Fast-Path`
 - **Merge Strategy**: `Squash & Merge` ➔ `main` (Up to date)
 - **Branch Status**:
   - `✓` Remote branch preserved on GitHub: `origin/feat/<feature-slug>`

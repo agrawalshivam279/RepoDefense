@@ -67,7 +67,7 @@ To guarantee stability, preserve architectural integrity, and eliminate runaway 
 | **2. Context Window Gate** | Turn token consumption exceeds $\sim 75,000$ tokens. | Completes current atomic step, ships PR, and **pauses to start a fresh turn**, preserving 40–50% headroom. |
 | **3. Test & Contract Failure Gate** | Any pytest failure, type error (`tsc --noEmit` / `mypy`), lint failure, or Pydantic/Zod contract discrepancy during verification. | **Hard stop**. Does NOT review or ship. Outputs failure analysis and single-turn fix prompt. |
 | **4. Subagent Boundary Rule** | Subagents are used for parallel testing and code review. | **Subagents never touch Git directly**. All Git commits, pushes, and PR merges are strictly synchronous on the primary agent. |
-| **5. Stage Timeout Circuit Breaker** | Any stage exceeds its time threshold: `doctor` (1 min), `plan_step` (5 min), Code Synthesis (10 min), `verify_step` (**10 min**), `ship_step` (**8 min** including CI polling). | **Interrupts hung process**, logs timeout diagnostic, and asks developer to resume or inspect. |
+| **5. Stage Timeout Circuit Breaker** | Any stage exceeds its time threshold: `doctor` (1 min), `plan_step` (5 min), Code Synthesis (10 min), `verify_step` (**10 min**), `ship_step` (**4 min** Low-Risk Fast-Path / **15 min** High-Risk PRs awaiting CodeRabbit). | **Interrupts hung process**, logs timeout diagnostic, and asks developer to resume or inspect. |
 
 ---
 
@@ -130,7 +130,7 @@ To guarantee stability, preserve architectural integrity, and eliminate runaway 
 
 1. Executes [`ship_step`](file:///d:/RepoDefense/.agents/skills/ship_step/SKILL.md).
 2. Logs milestone in [`.agents/memory/flashback.md`](file:///d:/RepoDefense/.agents/memory/flashback.md) and marks task `[x]` in [`implementation_plan.md`](file:///d:/RepoDefense/implementation_plan.md).
-3. Creates a conventional commit ($<100$ chars), pushes to GitHub, creates PR, polls CI status checks until green, and executes **Squash Merge** into `main`.
+3. Creates a conventional commit ($<100$ chars), pushes to GitHub, creates PR, polls GitHub Actions check-runs + risk-tiered CodeRabbit gate (`Critical`/`Major` blocker, `Nitpick` ignored), and executes **Squash Merge** into `main`.
 4. Cleans up local branch, retains remote branch on GitHub, and queues up the next atomic step.
 
 ---
