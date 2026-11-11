@@ -1,21 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  ArrowLeft,
-  CheckCircle2,
-  Clock,
-  FileCode,
-  Flame,
-  Loader2,
-  RotateCcw,
-  Send,
-} from "lucide-react";
+import { ArrowLeft, Clock, FileCode, Flame, Loader2, RotateCcw, Send } from "lucide-react";
 
-import {
-  IncidentScenarioCard,
-  SeverityBadge,
-} from "@/components/domain/IncidentScenarioCard";
+import { IncidentPostmortemCard } from "@/components/domain/IncidentPostmortemCard";
+import { IncidentScenarioCard, SeverityBadge } from "@/components/domain/IncidentScenarioCard";
 import { IncidentTurnTranscript } from "@/components/domain/IncidentTurnTranscript";
 import {
   fetchProjectScenarios,
@@ -23,15 +12,14 @@ import {
   submitIncidentAnswer,
 } from "@/lib/incidentApi";
 import { supabase } from "@/lib/supabase";
-import type {
-  FailureCategory,
-  IncidentDefenseSessionState,
-  IncidentScenario,
-} from "@/types/incident";
+import type { FailureCategory, IncidentDefenseSessionState, IncidentScenario } from "@/types/incident";
 
 interface IncidentWarRoomProps {
   projectId: string;
 }
+
+const MIN_ANSWER_LENGTH = 10;
+const MAX_ANSWER_LENGTH = 5000;
 
 const CATEGORIES: { label: string; value: FailureCategory | "" }[] = [
   { label: "All Categories", value: "" },
@@ -54,6 +42,7 @@ export function IncidentWarRoom({ projectId }: IncidentWarRoomProps) {
   const [error, setError] = useState<string | null>(null);
 
   const bottomRef = useRef<HTMLDivElement>(null);
+  const latestRequestRef = useRef(0);
 
   const getAuthToken = useCallback(async () => {
     const { data: { session: authSession } } = await supabase.auth.getSession();
@@ -62,6 +51,7 @@ export function IncidentWarRoom({ projectId }: IncidentWarRoomProps) {
   }, []);
 
   const loadScenarios = useCallback(async () => {
+    const requestId = ++latestRequestRef.current;
     setLoadingScenarios(true);
     setError(null);
     try {
@@ -72,21 +62,31 @@ export function IncidentWarRoom({ projectId }: IncidentWarRoomProps) {
         selectedCategory || undefined,
         4
       );
-      setScenarios(res.scenarios);
+      if (requestId === latestRequestRef.current) setScenarios(res.scenarios);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load scenarios");
+      if (requestId === latestRequestRef.current) {
+        setError(err instanceof Error ? err.message : "Failed to load scenarios");
+      }
     } finally {
-      setLoadingScenarios(false);
+      if (requestId === latestRequestRef.current) setLoadingScenarios(false);
     }
   }, [projectId, selectedCategory, getAuthToken]);
 
   useEffect(() => {
     loadScenarios();
+    return () => {
+      latestRequestRef.current += 1;
+    };
   }, [loadScenarios]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [session?.turns, submitting]);
+
+  const handleResetSession = () => {
+    setSession(null);
+    setError(null);
+  };
 
   const handleStartSession = async (scenarioId: string) => {
     setStartingSession(true);
@@ -103,9 +103,13 @@ export function IncidentWarRoom({ projectId }: IncidentWarRoomProps) {
     }
   };
 
+  const trimmedLength = answer.trim().length;
+  const isAnswerInvalid =
+    trimmedLength < MIN_ANSWER_LENGTH || trimmedLength > MAX_ANSWER_LENGTH;
+
   const handleSubmitAnswer = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!session || submitting || answer.trim().length < 10) return;
+    if (!session || submitting || isAnswerInvalid) return;
     setSubmitting(true);
     setError(null);
     try {
@@ -119,6 +123,15 @@ export function IncidentWarRoom({ projectId }: IncidentWarRoomProps) {
       setSubmitting(false);
     }
   };
+
+  const errorBanner = error ? (
+    <div
+      role="alert"
+      className="rounded-lg border border-rose-800/40 bg-rose-950/30 p-4 text-xs text-rose-300"
+    >
+      {error}
+    </div>
+  ) : null;
 
   if (!session) {
     return (
@@ -139,6 +152,7 @@ export function IncidentWarRoom({ projectId }: IncidentWarRoomProps) {
             </p>
           </div>
           <select
+            aria-label="Filter scenarios by failure category"
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value as FailureCategory | "")}
             className="rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-rose-500"
@@ -149,16 +163,25 @@ export function IncidentWarRoom({ projectId }: IncidentWarRoomProps) {
           </select>
         </div>
 
-        {error && (
-          <div className="rounded-lg border border-rose-800/40 bg-rose-950/30 p-4 text-xs text-rose-300">
-            {error}
-          </div>
-        )}
+        {errorBanner}
 
         {loadingScenarios ? (
           <div className="flex flex-col items-center justify-center py-16 gap-3 text-zinc-400">
             <Loader2 className="h-8 w-8 animate-spin text-rose-500" />
             <p className="text-sm font-mono">Synthesizing chaos scenarios from repository AST...</p>
+          </div>
+        ) : scenarios.length === 0 ? (
+          <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-8 text-center space-y-3">
+            <p className="text-sm text-zinc-300">
+              No chaos scenarios available{selectedCategory ? " for this failure category" : ""}.
+            </p>
+            <button
+              type="button"
+              onClick={loadScenarios}
+              className="inline-flex items-center gap-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-100 px-3 py-1.5 text-xs font-medium transition-colors"
+            >
+              <RotateCcw className="h-3.5 w-3.5" /> Retry Synthesis
+            </button>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -176,8 +199,6 @@ export function IncidentWarRoom({ projectId }: IncidentWarRoomProps) {
     );
   }
 
-  const isPostmortem = session.stage === "POSTMORTEM";
-
   return (
     <div className="space-y-5">
       {/* War Room Alert Bar */}
@@ -185,7 +206,8 @@ export function IncidentWarRoom({ projectId }: IncidentWarRoomProps) {
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() => setSession(null)}
+            onClick={handleResetSession}
+            aria-label="Exit War Room"
             className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors"
             title="Exit War Room"
           >
@@ -231,48 +253,35 @@ export function IncidentWarRoom({ projectId }: IncidentWarRoomProps) {
       {/* Turns Dialogue Transcript */}
       <IncidentTurnTranscript turns={session.turns} />
 
-      {/* Postmortem Showcase */}
-      {isPostmortem ? (
-        <div className="rounded-xl border border-emerald-500/40 bg-gradient-to-b from-emerald-950/30 to-zinc-950 p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-emerald-400 font-semibold text-base">
-              <CheckCircle2 className="h-5 w-5" /> Incident Resolved & Postmortem Published
-            </div>
-            <div className="text-right">
-              <span className="text-2xl font-bold font-mono text-emerald-300">{session.overall_score ?? 0}</span>
-              <span className="text-xs text-zinc-400">/100</span>
-            </div>
-          </div>
-          <p className="text-xs text-zinc-300 leading-relaxed bg-zinc-900/60 p-4 rounded-lg border border-zinc-800">
-            {session.postmortem_summary}
-          </p>
-          <button
-            type="button"
-            onClick={() => setSession(null)}
-            className="flex items-center gap-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-100 px-4 py-2 text-xs font-medium transition-colors"
-          >
-            <RotateCcw className="h-3.5 w-3.5" /> Simulate Another Incident
-          </button>
-        </div>
+      {errorBanner}
+
+      {session.stage === "POSTMORTEM" ? (
+        <IncidentPostmortemCard
+          overallScore={session.overall_score}
+          postmortemSummary={session.postmortem_summary}
+          onSimulateAnother={handleResetSession}
+        />
       ) : (
         <form onSubmit={handleSubmitAnswer} className="rounded-xl border border-zinc-800 bg-zinc-950 p-4 space-y-3">
           <div className="flex items-center justify-between text-xs text-zinc-400">
             <span className="font-semibold text-zinc-300">Your Architectural Defense & Mitigation:</span>
-            <span>Min 10 characters</span>
+            <span>Min {MIN_ANSWER_LENGTH} · Max {MAX_ANSWER_LENGTH.toLocaleString()} chars</span>
           </div>
           <textarea
+            aria-label="Architectural defense and mitigation response"
             value={answer}
             onChange={(e) => setAnswer(e.target.value)}
+            maxLength={MAX_ANSWER_LENGTH}
             disabled={submitting}
             placeholder="Explain how your code mitigates this failure, what safeguards exist (retries, timeouts, pools, caches), or propose an architectural fix..."
             rows={4}
             className="w-full rounded-lg border border-zinc-800 bg-zinc-900 p-3 text-sm text-zinc-200 focus:outline-none focus:border-rose-500 disabled:opacity-50 resize-y"
           />
           <div className="flex items-center justify-between">
-            <span className="text-xs text-zinc-500 font-mono">{answer.length} chars</span>
+            <span className="text-xs text-zinc-500 font-mono">{answer.length}/{MAX_ANSWER_LENGTH} chars</span>
             <button
               type="submit"
-              disabled={submitting || answer.trim().length < 10}
+              disabled={submitting || isAnswerInvalid}
               className="flex items-center gap-2 rounded-lg bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white font-medium px-4 py-2 text-xs transition-colors shadow-lg shadow-rose-950/40"
             >
               {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}

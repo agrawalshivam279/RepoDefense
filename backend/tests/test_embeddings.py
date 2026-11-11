@@ -27,12 +27,12 @@ class DummyEmbeddingModel:
 
 
 @pytest.fixture(autouse=True)
-def mock_embedding_model():
+def mock_embedding_model(hermetic_embedding_model):
     """Ensure tests run hermetically with dummy model unless explicitly overridden."""
     dummy = DummyEmbeddingModel()
     set_embedding_model(dummy)
     yield dummy
-    set_embedding_model(None)
+    set_embedding_model(hermetic_embedding_model)
 
 
 def test_embedding_constants_and_schemas():

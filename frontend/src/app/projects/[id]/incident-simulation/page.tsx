@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { AlertCircle, Flame, Loader2 } from "lucide-react";
+import { AlertCircle, Loader2 } from "lucide-react";
 
 import { IncidentWarRoom } from "@/components/domain/IncidentWarRoom";
 import { ProjectNavHeader } from "@/components/domain/ProjectNavHeader";
@@ -19,31 +19,30 @@ export default function IncidentSimulationPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const getSessionToken = async () => {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (!session) {
-      router.push("/login");
-      return null;
-    }
-    return session.access_token;
-  };
-
   const fetchProjectInfo = useCallback(async () => {
-    if (!projectId) return;
+    if (!projectId) {
+      setError("Missing project identifier.");
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setError(null);
     try {
-      const token = await getSessionToken();
-      if (token) {
-        const data = await getProjectOverview(projectId, token);
-        setProject(data);
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) {
+        router.push("/login");
+        return;
       }
-    } catch {
-      // Graceful fallback if project overview endpoint fails
+      const data = await getProjectOverview(projectId, session.access_token);
+      setProject(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load project");
     } finally {
       setLoading(false);
     }
-  }, [projectId]);
+  }, [projectId, router]);
 
   useEffect(() => {
     fetchProjectInfo();

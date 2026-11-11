@@ -80,11 +80,11 @@ Before invoking testing subagents, execute a fast static compilation sweep:
 _(Triggered conditionally when the milestone touches schemas, analyzers, models, AI prompts, or security)_
 
 1. **Target Modules Audited**:
-   - `backend/app/schemas/`, `backend/app/models/`, `backend/app/analyzers/`, `backend/app/security/`, `backend/app/ai/`.
+   - `backend/app/schemas/`, `backend/app/models/`, `backend/app/analyzers/`, `backend/app/security/`, `backend/app/ai/`, `backend/alembic/versions/`.
 2. **Domain Skill Invariants Enforced**:
-   - **`security_auditor`**: Asserts strict zero dynamic code execution (`eval/exec`), path traversal containment (`Path.is_relative_to`), and secret redactions.
+   - **`security_auditor`**: Asserts strict zero dynamic code execution (`eval/exec`), path traversal containment (`Path.is_relative_to`), secret redactions, and Supabase `public` schema RLS + `anon`/`authenticated` privilege lockdown.
    - **`ast_inspector`**: Asserts Tree-sitter AST symbol boundaries preserved without mid-statement splits and exact 1-indexed line spans.
-   - **`db_migrator`**: Asserts PostgreSQL 17 + `Vector(384)` schema conformity, HNSW cosine distance index parameter integrity, and asyncpg transaction handling.
+   - **`db_migrator`**: Asserts PostgreSQL 17 + `Vector(384)` schema conformity, HNSW cosine distance index parameter integrity, `public` table RLS lockdown (`ENABLE ROW LEVEL SECURITY`), and asyncpg transaction handling.
    - **`eval_rag`**: Asserts token budgeting on chunks (~500 max tokens) and pgvector cosine distance `<=>` search ranking accuracy.
    - **`eval_persona`**: Asserts Principal Engineer persona calibration, XML boundary sanitization against prompt injection, and Pydantic v2 structured output conformance.
    - **File Length Gate**: Strictly $\le 300$ LOC per file across all application and test modules.

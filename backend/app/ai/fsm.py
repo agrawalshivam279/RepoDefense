@@ -162,9 +162,10 @@ async def _process_secondary_turn(
     answer: str,
     prompt_context: str,
     is_stress: bool,
+    model: Optional[str] = None, api_key: Optional[str] = None, base_url: Optional[str] = None,
 ) -> None:
     """Helper to process stress test or mentor secondary turns without code duplication."""
-    secondary_out = await evaluate_secondary_turn(prompt_context, answer)
+    secondary_out = await evaluate_secondary_turn(prompt_context, answer, model, api_key, base_url)
     initial = prog.defense_score or (5 if is_stress else 3)
     w_init, w_sec = (0.6, 0.4) if is_stress else (0.4, 0.6)
     prog.final_score = int(round(w_init * initial + w_sec * secondary_out.follow_up_score))
@@ -232,6 +233,7 @@ async def submit_defense_turn(
     candidate_answer: str = "",
     store: Optional[DefenseSessionStore] = None,
     user_response: Optional[str] = None,
+    model: Optional[str] = None, api_key: Optional[str] = None, base_url: Optional[str] = None,
 ) -> DefenseSessionState:
     """Executes a single turn of the defense state machine for a candidate's answer."""
     candidate_answer = candidate_answer or user_response or ""
@@ -243,12 +245,13 @@ async def submit_defense_turn(
         raise ValueError("Cannot submit an answer to an already completed defense session.")
 
     prog = session.questions[session.current_question_index]
+    llm_kw = {"model": model, "api_key": api_key, "base_url": base_url}
     session.turns.append(
         DefenseTurn(role=TurnRole.CANDIDATE, content=candidate_answer, stage=session.status)
     )
 
     if session.status == DefenseStage.QUESTION_ACTIVE:
-        eval_out = await evaluate_candidate_defense(prog.question, candidate_answer)
+        eval_out = await evaluate_candidate_defense(prog.question, candidate_answer, **llm_kw)
         prog.initial_defense = candidate_answer
         prog.defense_score = eval_out.depth_score
         prog.feedback = eval_out.feedback
@@ -276,18 +279,18 @@ async def submit_defense_turn(
 
     elif session.status == DefenseStage.PUSHBACK_ACTIVE:
         prog.pushback_response = candidate_answer
-        eval_out = await evaluate_candidate_defense(prog.question, candidate_answer)
+        eval_out = await evaluate_candidate_defense(prog.question, candidate_answer, **llm_kw)
         prog.defense_score = eval_out.depth_score
         prog.feedback = eval_out.feedback
         _branch_to_stress_or_mentor(session, prog, eval_out)
 
-    elif session.status == DefenseStage.STRESS_TEST_ACTIVE:
-        prompt_ctx = prog.stress_test_prompt or prog.question.question_text
-        await _process_secondary_turn(session, prog, candidate_answer, prompt_ctx, is_stress=True)
-
-    elif session.status == DefenseStage.MENTOR_ACTIVE:
-        prompt_ctx = prog.retest_question or prog.question.question_text
-        await _process_secondary_turn(session, prog, candidate_answer, prompt_ctx, is_stress=False)
+    elif session.status in (DefenseStage.STRESS_TEST_ACTIVE, DefenseStage.MENTOR_ACTIVE):
+        is_stress = session.status == DefenseStage.STRESS_TEST_ACTIVE
+        raw_ctx = prog.stress_test_prompt if is_stress else prog.retest_question
+        prompt_ctx = raw_ctx or prog.question.question_text
+        await _process_secondary_turn(
+            session, prog, candidate_answer, prompt_ctx, is_stress, **llm_kw
+        )
 
     else:
         raise ValueError(f"Cannot submit candidate turn in state '{session.status}'.")

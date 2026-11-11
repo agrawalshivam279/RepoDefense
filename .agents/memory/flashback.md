@@ -3,8 +3,8 @@
 > **Product**: RepoDefense  
 > **Tagline**: "Prove that you understand — and can defend — the software you built."  
 > **Core Loop**: Evidence → Claim → Defense → Stress Test → Evaluation → Mentor → Re-test  
-> **Status**: 🟢 Phase 1 (Core MVP) Complete — Ready for Phase 2 (Differentiation)  
-> **Last Synchronized**: 2026-11-10  
+> **Status**: 🟢 Phase 1 & 2 Complete — Phase 3 In Progress (Milestones 3.1–3.4 & Step 3.5a Complete)  
+> **Last Synchronized**: 2026-11-11  
 
 ---
 
@@ -16,7 +16,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | :--- | :--- | :--- |
 | **Frontend Core** | Next.js 15 (App Router) + TypeScript + Tailwind + shadcn/ui | 🟢 Phase 1 & Step 2.1b Complete |
 | **Backend API** | FastAPI (Python 3.12+) + Pydantic v2 + structlog | 🟢 Milestone 1.1 Complete |
-| **Database & Vectors** | PostgreSQL 17 + pgvector (Supabase) + SQLAlchemy asyncpg | 🟢 Milestone 1.2 & Step 2.12a Complete |
+| **Database & Vectors** | PostgreSQL 17 + pgvector (Supabase) + SQLAlchemy asyncpg | 🟢 Milestone 1.2, Step 2.12a & RLS Lockdown (`3b7c9d4e2f1a`) Complete |
 | **Authentication** | Supabase Auth (GitHub OAuth + Email/Password) | 🟢 Milestone 1.3 Complete |
 | **Background Queue** | ARQ (asyncio + Upstash Redis) | 🟢 Milestone 1.5 Complete |
 | **Static Code Ingestion & Cataloging** | Shallow Git Clone + Security Filter + File Scanner | 🟢 Milestone 1.5 & 1.6 Complete |
@@ -115,6 +115,13 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 - **Decision**: Enforce strict input sanitization (500MB max, 10k files max, binary exclusion, path traversal checks, secret redaction). In prompts, wrap untrusted code in strict boundary delimiters and mandate: *"Every question and evaluation must map to an AST symbol or verified code chunk"*.
 - **Consequences**: Bulletproof prompt isolation and hallucination-free interviews.
 
+### ADR-011: Supabase Public Schema RLS Lockdown & Data API Grant Revocation
+- **Date**: 2026-11-11
+- **Status**: Accepted
+- **Context**: Supabase flagged `rls_disabled_in_public` on public PostgreSQL tables exposed to PostgREST (`anon` and `authenticated` roles), because RepoDefense manages tenancy exclusively in the FastAPI backend via direct `asyncpg`/SQLAlchemy connections rather than client-side PostgREST queries.
+- **Decision**: Enable Row-Level Security (`ALTER TABLE ... ENABLE ROW LEVEL SECURITY`) with zero permissive client policies and revoke `ALL` privileges from `anon` and `authenticated` roles across all public application tables and `alembic_version` via Alembic migration `3b7c9d4e2f1a` (without setting `FORCE ROW LEVEL SECURITY` so owner/service roles continue uninterrupted), enforced by contract tests in `backend/tests/test_db_rls.py` and skill guardrails (`security_auditor`, `db_migrator`, `code_reviewer`, `verify_step`).
+- **Consequences**: Complete elimination of unauthorized PostgREST/Supabase Data API access while keeping backend SQLAlchemy queries and migrations working without policy overhead.
+
 ---
 
 ## 3. Implementation Phase Tracker
@@ -123,13 +130,18 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | :--- | :--- | :--- |
 | **Phase 1** | Ingestion & Core MVP (Scaffolding, Auth, Git Clone, Security Filter, Complete MVP) | 🟢 Complete |
 | **Phase 2** | Differentiation (Claims Extraction, Verification, Adaptive Questioning, Pushback Logic, Coverage Tracking, Ownership Engine, Architecture Audit, Mermaid Diagrams, Tech Audit, Enhanced Report) | 🟢 Complete (Milestones 2.1 - 2.12 Complete) |
-| **Phase 3** | The State Machine & Advanced Defense (PR Fetch & Diff Defense, Stress Testing, Incident Simulation) | 🟡 In Progress (Milestone 3.1 Complete) |
+| **Phase 3** | The State Machine & Advanced Defense (PR Fetch & Diff Defense, Stress Testing, Incident Simulation) | 🟡 In Progress (Milestones 3.1 - 3.4 & Step 3.5a Complete) |
 | **Phase 4** | Interactive Frontend (Next.js 15, SSE / WebSocket chat, Monaco/Prism Code Viewer) | ⚪ Planned |
 | **Phase 5** | Evaluation & Export (Rubric Scoring, Transcript Generation, PDF & Badge Export) | ⚪ Planned |
 
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-11-11] — Security Hardening (Supabase RLS Lockdown), PR #59 Bug Fixes & CodeRabbit Config
+- **Scope / Module**: Security & Database Migrations, Backend API & AI FSM, Frontend War Room UI, CI/Review Tooling (`.coderabbit.yaml`, `backend/alembic/versions/3b7c9d4e2f1a_enable_rls_and_lockdown_public_tables.py`, `backend/tests/test_db_rls.py`, `backend/app/api/v1/defense.py`, `backend/app/ai/fsm.py`, `backend/app/services/diagram.py`, `backend/tests/test_defense_routes.py`, `backend/tests/test_embeddings.py`, `backend/tests/test_defense_report.py`, `backend/tests/test_infra_dependencies.py`, `frontend/src/components/domain/IncidentWarRoom.tsx`, `frontend/src/components/domain/IncidentPostmortemCard.tsx`, `frontend/src/app/projects/[id]/incident-simulation/page.tsx`, `.agents/skills/{security_auditor,db_migrator,code_reviewer,verify_step}/SKILL.md`)
+- **Details**: Resolved critical Supabase `rls_disabled_in_public` vulnerability via idempotent Alembic migration `3b7c9d4e2f1a` enabling RLS and revoking `anon`/`authenticated` table privileges across all public application tables and `alembic_version`, applied to live Supabase DB (`3b7c9d4e2f1a (head)`) and locked with contract tests (`test_db_rls.py`). Resolved open bugs from PR #59 and verification hardening: closed cross-user IDOR on `GET /api/v1/defense/sessions/{session_id}` via shared `_get_authorized_session` helper in `defense.py`, hardened `diagram.py` explicit empty `api_key` handling, isolated LLM API key settings in offline tests, refined `fsm.py`, `test_embeddings.py`, and frontend Incident War Room accessibility (`aria-label` attributes, extracted `IncidentPostmortemCard.tsx`, tightened `incident-simulation/page.tsx`). Added RepoDefense-tailored `.coderabbit.yaml` and updated security/migration/review/verify skill guardrails. Verified via `ruff check`, `279/279` backend pytest tests passing, Next.js 15 `typecheck && build` succeeding across all 17 routes, and live Supabase role/catalog verification.
+- **Key Files**: `.coderabbit.yaml`, `backend/alembic/versions/3b7c9d4e2f1a_enable_rls_and_lockdown_public_tables.py`, `backend/tests/test_db_rls.py`, `backend/app/api/v1/defense.py`, `backend/tests/test_defense_routes.py`, `backend/app/ai/fsm.py`, `backend/app/services/diagram.py`, `frontend/src/components/domain/IncidentWarRoom.tsx`, `frontend/src/components/domain/IncidentPostmortemCard.tsx`, `frontend/src/app/projects/[id]/incident-simulation/page.tsx`, `.agents/skills/{security_auditor,db_migrator,code_reviewer,verify_step}/SKILL.md`
 
 ### [2026-11-10] — Step 3.5a: Backend Stress Test Engine, Scaling Scenario Generator & REST API
 - **Scope / Module**: Backend Stress Test Engine & Scaling Scenarios (`backend/app/schemas/stress_test.py`, `backend/app/ai/stress_test_generator.py`, `backend/app/api/v1/stress_test.py`, `backend/app/main.py`, `backend/tests/test_stress_test.py`, `docs/specs/step-3-5a-stress-test-what-if-backend.md`)

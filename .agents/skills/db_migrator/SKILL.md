@@ -81,6 +81,7 @@ def downgrade() -> None:
 - [ ] **Asyncpg Compatibility**: Alembic configured with `async_engine` in `env.py`.
 - [ ] **Vector Dimension Accuracy**: Column is strictly `Vector(384)` matching `all-MiniLM-L6-v2`.
 - [ ] **HNSW Index Operator**: Index explicitly specifies `vector_cosine_ops` to match the `<=>` cosine distance operator.
+- [ ] **Supabase Public Schema RLS Lockdown**: Every new table in `public` executes `ALTER TABLE public."<table>" ENABLE ROW LEVEL SECURITY;` and revokes `anon`/`authenticated` PostgREST grants (inside a `pg_roles` existence guard for CI/local parity) unless explicit RLS policies are intentionally required.
 - [ ] **Foreign Key Cascades**: Ingested code chunks cascade delete when a `Project` is deleted.
 - [ ] **Reversible Downgrade**: Every `upgrade()` has an exact, tested `downgrade()`.
 
