@@ -516,7 +516,7 @@ gantt
 - **Components:** Questions based on architecture diagrams.
 - **Tasks:**
   - [x] **Step 3.6a: Backend Architecture Defense Engine, Diagram-Grounded Interrogation & REST API** (schemas/arch_defense.py, ai/arch_defense_generator.py, api/v1/arch_defense.py, tests/test_arch_defense.py)
-  - [ ] **Step 3.6b: Next.js 15 Architecture Defense Mode UI & Interactive Diagram-Linked Defense Flow**
+  - [x] **Step 3.6b: Next.js 15 Architecture Defense Mode UI & Interactive Diagram-Linked Defense Flow** (archDefense.ts, archDefenseApi.ts, ArchTopologyPanel.tsx, ArchTopicCard.tsx, ArchDefenseSession.tsx, app/projects/[id]/arch-defense/page.tsx, ProjectNavHeader.tsx)
 - **Dependencies:** 2.9
 
 ### Milestone 3.7: Enhanced Analytics & Visualizations
