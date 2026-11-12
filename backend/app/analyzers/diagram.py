@@ -173,3 +173,95 @@ def build_deterministic_mermaid_diagram(
         f"incorporating {len(node_list)} components and {len(edges)} connections."
     )
     return mermaid_code, node_list, edges, summary
+
+
+_ARROW_RE = re.compile(
+    r"^\s*(.+?)\s*(-->|-.->|==>)(?:\s*\|\s*\"?([^|\"]+?)\"?\s*\|)?\s*(.+?)\s*$"
+)
+_OPEN_SHAPE = r"(?:\[\[|\(\(|\{\{|\[\(|\[|\(|\{)"
+_CLOSE_SHAPE = r"(?:\]\]|\)\)|\}\}|\)\]|\]|\)|\})"
+_LABEL_BODY = r'(?:\s*"([^"\n]+)"\s*|\s*([^\n\]\)\}]+?)\s*)'
+_ENDPOINT_RE = re.compile(
+    rf"^([A-Za-z0-9_]+)(?:\s*{_OPEN_SHAPE}{_LABEL_BODY}{_CLOSE_SHAPE})?$"
+)
+_NODE_DEF_RE = re.compile(
+    rf"^\s*([A-Za-z0-9_]+)\s*{_OPEN_SHAPE}{_LABEL_BODY}{_CLOSE_SHAPE}"
+)
+_SUBGRAPH_RE = re.compile(r'^\s*subgraph\s+([A-Za-z0-9_]+)(?:\s*\[\s*"?([^"\]]+)"?\s*\])?')
+
+
+def _parse_endpoint(expr: str) -> tuple[str, str | None] | None:
+    """Extract Mermaid node ID and optional inline label from an edge endpoint."""
+    m = _ENDPOINT_RE.match(expr.strip())
+    if not m:
+        id_m = re.match(r"^([A-Za-z0-9_]+)", expr.strip())
+        return (id_m.group(1), None) if id_m else None
+    quoted_lbl, unquoted_lbl = m.group(2), m.group(3)
+    raw_lbl = quoted_lbl if quoted_lbl is not None else (unquoted_lbl or "").strip()
+    return m.group(1), raw_lbl or None
+
+
+def extract_mermaid_nodes_and_edges(
+    mermaid_code: str,
+) -> tuple[list[DiagramNode], list[DiagramEdge]]:
+    """Derive DiagramNode and DiagramEdge objects directly from Mermaid flowchart syntax."""
+    nodes_by_id: dict[str, DiagramNode] = {}
+    defined_nodes: set[str] = set()
+    edges: list[DiagramEdge] = []
+    subgraph_stack: list[str] = []
+
+    def ensure_node(
+        node_id: str, raw_label: str | None = None, from_def: bool = False
+    ) -> None:
+        clean_lbl = raw_label.strip().strip('"')[:60] if raw_label else None
+        tier, n_type = classify_tier(clean_lbl or node_id)
+        if node_id in nodes_by_id:
+            existing = nodes_by_id[node_id]
+            if clean_lbl and existing.label == node_id:
+                existing.label = clean_lbl
+            if (from_def or clean_lbl) and node_id not in defined_nodes:
+                defined_nodes.add(node_id)
+                existing.node_type = n_type
+                if subgraph_stack:
+                    existing.subgraph = subgraph_stack[-1]
+            return
+        if from_def or clean_lbl:
+            defined_nodes.add(node_id)
+        current_sub = subgraph_stack[-1] if subgraph_stack else tier
+        nodes_by_id[node_id] = DiagramNode(
+            node_id=node_id, label=clean_lbl or node_id, node_type=n_type, subgraph=current_sub
+        )
+
+    for raw_line in mermaid_code.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith(("%%", "flowchart ", "classDef ", "class ", "style ")):
+            continue
+        sub_m = _SUBGRAPH_RE.match(line)
+        if sub_m:
+            subgraph_stack.append((sub_m.group(2) or sub_m.group(1)).strip())
+            continue
+        if line == "end":
+            if subgraph_stack:
+                subgraph_stack.pop()
+            continue
+        edge_m = _ARROW_RE.match(line)
+        if edge_m:
+            left_ep = _parse_endpoint(edge_m.group(1))
+            right_ep = _parse_endpoint(edge_m.group(4))
+            if left_ep and right_ep:
+                ensure_node(left_ep[0], left_ep[1], from_def=bool(left_ep[1]))
+                ensure_node(right_ep[0], right_ep[1], from_def=bool(right_ep[1]))
+                style = "dotted" if edge_m.group(2) == "-.->" else "solid"
+                lbl = edge_m.group(3)
+                edges.append(
+                    DiagramEdge(
+                        source_id=left_ep[0], target_id=right_ep[0],
+                        label=lbl.strip() if lbl else None, style=style,
+                    )
+                )
+            continue
+        node_m = _NODE_DEF_RE.match(line)
+        if node_m:
+            ensure_node(node_m.group(1), node_m.group(2) or node_m.group(3), from_def=True)
+
+    return list(nodes_by_id.values()), edges
