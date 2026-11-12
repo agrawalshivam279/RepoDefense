@@ -99,9 +99,10 @@ async def generate_arch_defense_topics(
         "focus_area_filter": focus_area.value if focus_area else None,
         "max_topics": max_topics,
     }
+    safe_ctx = sanitize_xml_content(json.dumps(ctx, indent=2), 16000)
     safe_mermaid = sanitize_xml_content(diagram.mermaid_code, _MAX_DIAGRAM_CHARS)
     prompt = (
-        f"<architecture_context>\n{json.dumps(ctx, indent=2)}\n</architecture_context>\n"
+        f"<architecture_context>\n{safe_ctx}\n</architecture_context>\n"
         f"<diagram_mermaid>\n{safe_mermaid}\n</diagram_mermaid>"
     )
     try:
@@ -130,9 +131,10 @@ async def evaluate_arch_defense(
         "target_nodes": [n.model_dump() for n in topic.target_nodes],
         "risk_references": topic.risk_references,
     }
+    safe_ctx = sanitize_xml_content(json.dumps(ctx, indent=2), 16000)
     safe_answer = sanitize_xml_content(candidate_answer, _MAX_ANSWER_CHARS)
     prompt = (
-        f"<architecture_context>\n{json.dumps(ctx, indent=2)}\n</architecture_context>\n"
+        f"<architecture_context>\n{safe_ctx}\n</architecture_context>\n"
         f"<candidate_defense>\n{safe_answer}\n</candidate_defense>"
     )
     try:

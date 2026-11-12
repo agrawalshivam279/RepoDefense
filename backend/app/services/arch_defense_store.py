@@ -5,7 +5,7 @@ import hashlib
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from fastapi import HTTPException, status
 
@@ -22,6 +22,7 @@ from app.schemas.diagram import DiagramResponse
 MAX_CACHED_PROJECTS = 100
 MAX_CACHED_TOPICS_PER_PROJECT = 50
 MAX_ACTIVE_SESSIONS = 500
+MAX_ACTIVE_SESSIONS_PER_USER = 10
 
 
 @dataclass
@@ -47,6 +48,7 @@ class ProjectCatalogEntry:
 arch_topic_catalog: Dict[uuid.UUID, ProjectCatalogEntry] = {}
 arch_session_store: Dict[str, Tuple[uuid.UUID, ArchDefenseSessionState]] = {}
 session_locks: Dict[str, asyncio.Lock] = {}
+project_locks: Dict[uuid.UUID, asyncio.Lock] = {}
 
 
 def compute_arch_fingerprint(project: object, report: ArchitectureReportResponse) -> str:
@@ -90,8 +92,22 @@ def store_topics_bounded(
         entry.topics.pop(evict_id, None)
 
 
-def ensure_session_capacity(max_sessions: int = MAX_ACTIVE_SESSIONS) -> None:
-    """Expire completed sessions before accepting new sessions; never evict active sessions."""
+def ensure_session_capacity(
+    user_id: Optional[uuid.UUID] = None,
+    max_sessions: int = MAX_ACTIVE_SESSIONS,
+    max_per_user: int = MAX_ACTIVE_SESSIONS_PER_USER,
+) -> None:
+    """Enforce per-user active cap and expire completed sessions; never evict active sessions."""
+    if user_id is not None:
+        user_active = sum(
+            1 for uid, sess in arch_session_store.values()
+            if uid == user_id and sess.stage != ArchDefenseStage.COMPLETED
+        )
+        if user_active >= max_per_user:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many active defense sessions for this user; complete one first.",
+            )
     if len(arch_session_store) < max_sessions:
         return
     completed_ids = [
@@ -118,10 +134,14 @@ def get_owned_session(session_id: str, user_id: uuid.UUID) -> ArchDefenseSession
 
 
 def advance_session_fsm(
-    session: ArchDefenseSessionState, eval_out: ArchDefenseEvaluationOutput
+    session: ArchDefenseSessionState,
+    eval_out: ArchDefenseEvaluationOutput,
+    candidate_turn: Optional[ArchDefenseTurn] = None,
 ) -> None:
-    """Apply deterministic FSM transition and multi-turn rubric aggregation."""
+    """Apply atomic candidate-turn persistence, FSM transition, and multi-turn scoring."""
     session.updated_at = datetime.now(timezone.utc).isoformat()
+    if candidate_turn is not None:
+        session.turns.append(candidate_turn)
     if (
         session.stage == ArchDefenseStage.TOPIC_ACTIVE
         and eval_out.follow_up_challenge

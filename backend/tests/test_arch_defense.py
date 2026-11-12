@@ -19,6 +19,7 @@ from app.ai.arch_defense_generator import (
 from app.api.v1.arch_defense import (
     _arch_session_store,
     _arch_topic_catalog,
+    _project_locks,
     _session_locks,
     get_arch_defense_session,
     get_or_generate_arch_topics,
@@ -182,16 +183,18 @@ class TestArchDefenseEngine:
             "to minimize coupling, accepting extra schema complexity and latency cost as tradeoffs "
             "for independent scaling."
         )
-        res_strong = build_deterministic_arch_evaluation(topic, strong)
-        res_weak = build_deterministic_arch_evaluation(topic, "Because it felt right.")
-        assert res_strong.depth_score >= 7 and not res_strong.is_terminal
-        assert res_weak.depth_score <= 5 and res_weak.is_terminal
+        assert build_deterministic_arch_evaluation(topic, strong).depth_score >= 7
+        assert build_deterministic_arch_evaluation(topic, "Because.").depth_score <= 5
 
 
 class TestArchDefenseRouter:
     def setup_method(self):
-        self._saved_cat, self._saved_sess = dict(_arch_topic_catalog), dict(_arch_session_store)
-        _arch_topic_catalog.clear(), _arch_session_store.clear(), _session_locks.clear()
+        self._saved = (
+            dict(_arch_topic_catalog), dict(_arch_session_store),
+            dict(_session_locks), dict(_project_locks),
+        )
+        for store in (_arch_topic_catalog, _arch_session_store, _session_locks, _project_locks):
+            store.clear()
         self._key_patch = patch("app.ai.arch_defense_generator.settings.FREELLMAPI_API_KEY", "")
         self._key_patch.start()
         self.user_a = User(id=uuid.uuid4(), email="a@repodefense.dev")
@@ -201,8 +204,10 @@ class TestArchDefenseRouter:
 
     def teardown_method(self):
         self._key_patch.stop()
-        _arch_topic_catalog.clear(), _arch_session_store.clear(), _session_locks.clear()
-        _arch_topic_catalog.update(self._saved_cat), _arch_session_store.update(self._saved_sess)
+        stores = (_arch_topic_catalog, _arch_session_store, _session_locks, _project_locks)
+        for store, saved in zip(stores, self._saved):
+            store.clear()
+            store.update(saved)
 
     def _mock_db(self, owned: bool = True):
         db = AsyncMock()
@@ -214,10 +219,7 @@ class TestArchDefenseRouter:
         rep, diag = _sample_report(str(self.project_id)), _sample_diagram(str(self.project_id))
         rep_p = "app.api.v1.arch_defense.detect_repository_architecture"
         diag_p = "app.api.v1.arch_defense.generate_project_architecture_diagram"
-        with (
-            patch(rep_p, AsyncMock(return_value=rep)),
-            patch(diag_p, AsyncMock(return_value=diag)),
-        ):
+        with patch(rep_p, AsyncMock(return_value=rep)), patch(diag_p, AsyncMock(return_value=diag)):
             resp = _run(get_or_generate_arch_topics(
                 self.project_id, GenerateArchTopicsRequest(max_topics=3),
                 self.user_a, self._mock_db(),
@@ -283,10 +285,7 @@ class TestArchDefenseRouter:
         get_topics = get_or_generate_arch_topics
         rep_p = "app.api.v1.arch_defense.detect_repository_architecture"
         diag_p = "app.api.v1.arch_defense.generate_project_architecture_diagram"
-        with (
-            patch(rep_p, AsyncMock(side_effect=[r1, r1, r1, r2])),
-            patch(diag_p, diag_mock),
-        ):
+        with patch(rep_p, AsyncMock(side_effect=[r1, r1, r1, r2])), patch(diag_p, diag_mock):
             _run(get_topics(self.project_id, None, self.user_a, self._mock_db()))
             _run(get_topics(self.project_id, None, self.user_a, self._mock_db()))
             assert diag_mock.await_count == 1

@@ -45,6 +45,9 @@ from app.services.arch_defense_store import (
     arch_topic_catalog as _arch_topic_catalog,
 )
 from app.services.arch_defense_store import (
+    project_locks as _project_locks,
+)
+from app.services.arch_defense_store import (
     session_locks as _session_locks,
 )
 from app.services.architecture import detect_repository_architecture
@@ -87,41 +90,51 @@ async def get_or_generate_arch_topics(
     req = payload or GenerateArchTopicsRequest()
     has_override = any(v is not None for v in (req.model, req.api_key, req.base_url))
 
-    report = await detect_repository_architecture(project, db)
-    fingerprint = compute_arch_fingerprint(project, report)
+    proj_lock = _project_locks.setdefault(project_id, asyncio.Lock())
+    async with proj_lock:
+        report = await detect_repository_architecture(project, db)
+        fingerprint = compute_arch_fingerprint(project, report)
 
-    entry = _arch_topic_catalog.get(project_id)
-    if entry is not None and entry.fingerprint != fingerprint:
-        _arch_topic_catalog.pop(project_id, None)
-        entry = None
+        entry = _arch_topic_catalog.get(project_id)
+        if entry is not None and entry.fingerprint != fingerprint:
+            _arch_topic_catalog.pop(project_id, None)
+            entry = None
 
-    if not has_override and entry is not None and req.focus_area is None:
-        if len(entry.unfiltered_ids) >= req.max_topics:
-            cached = [entry.topics[tid].topic for tid in entry.unfiltered_ids[: req.max_topics]
-                      if tid in entry.topics]
-            if len(cached) == req.max_topics:
-                return _build_topic_response(project, entry.report, entry.diagram, cached)
+        if not has_override and entry is not None and req.focus_area is None:
+            if len(entry.unfiltered_ids) >= req.max_topics:
+                cached = [
+                    entry.topics[tid].topic for tid in entry.unfiltered_ids[: req.max_topics]
+                    if tid in entry.topics
+                ]
+                if len(cached) == req.max_topics:
+                    return _build_topic_response(project, entry.report, entry.diagram, cached)
 
-    diag_creds = resolve_llm_credentials(req.api_key, req.base_url)
-    diagram = await generate_project_architecture_diagram(
-        project=project, db=db, model=req.model,
-        api_key=diag_creds[0] if diag_creds else "",
-        base_url=diag_creds[1] if diag_creds and req.base_url is not None else None,
-    )
-    topics = await generate_arch_defense_topics(
-        report=report, diagram=diagram, focus_area=req.focus_area, max_topics=req.max_topics,
-        model=req.model, api_key=req.api_key, base_url=req.base_url,
-    )
+        diag_creds = resolve_llm_credentials(req.api_key, req.base_url)
+        diagram = await generate_project_architecture_diagram(
+            project=project, db=db, model=req.model,
+            api_key=diag_creds[0] if diag_creds else "",
+            base_url=diag_creds[1] if diag_creds and req.base_url is not None else None,
+        )
+        topics = await generate_arch_defense_topics(
+            report=report, diagram=diagram, focus_area=req.focus_area, max_topics=req.max_topics,
+            model=req.model, api_key=req.api_key, base_url=req.base_url,
+        )
 
-    if entry is None:
-        while len(_arch_topic_catalog) >= MAX_CACHED_PROJECTS:
-            _arch_topic_catalog.pop(next(iter(_arch_topic_catalog)), None)
-        entry = ProjectCatalogEntry(fingerprint=fingerprint, report=report, diagram=diagram)
-        _arch_topic_catalog[project_id] = entry
+        entry = _arch_topic_catalog.get(project_id)
+        if entry is not None and entry.fingerprint != fingerprint:
+            _arch_topic_catalog.pop(project_id, None)
+            entry = None
+        if entry is None:
+            while len(_arch_topic_catalog) >= MAX_CACHED_PROJECTS:
+                evicted_pid = next(iter(_arch_topic_catalog))
+                _arch_topic_catalog.pop(evicted_pid, None)
+                _project_locks.pop(evicted_pid, None)
+            entry = ProjectCatalogEntry(fingerprint=fingerprint, report=report, diagram=diagram)
+            _arch_topic_catalog[project_id] = entry
 
-    keep_unfiltered = not has_override and req.focus_area is None
-    store_topics_bounded(entry, topics, report, diagram, set_unfiltered=keep_unfiltered)
-    return _build_topic_response(project, report, diagram, topics)
+        keep_unfiltered = not has_override and req.focus_area is None
+        store_topics_bounded(entry, topics, report, diagram, set_unfiltered=keep_unfiltered)
+        return _build_topic_response(project, report, diagram, topics)
 
 
 @router.post(
@@ -147,7 +160,7 @@ async def start_arch_defense_session(
             status_code=status.HTTP_404_NOT_FOUND, detail="Architecture defense topic not found"
         )
 
-    ensure_session_capacity()
+    ensure_session_capacity(user_id=current_user.id)
     target_topic = cached_rec.topic
     session_id = str(uuid.uuid4())
     initial_turn = ArchDefenseTurn(
@@ -193,20 +206,16 @@ async def submit_arch_defense_turn(
             )
         stage_before = session.stage
         turn_idx_before = session.current_turn_index
-        session.turns.append(
-            ArchDefenseTurn(role="candidate", content=payload.answer, stage=stage_before)
+        eval_out = await evaluate_arch_defense(
+            topic=session.topic, candidate_answer=payload.answer, stage=stage_before,
+            model=payload.model, api_key=payload.api_key, base_url=payload.base_url,
         )
-        try:
-            eval_out = await evaluate_arch_defense(
-                topic=session.topic, candidate_answer=payload.answer, stage=stage_before,
-                model=payload.model, api_key=payload.api_key, base_url=payload.base_url,
-            )
-        except Exception:
-            session.turns.pop()
-            raise
         if session.stage != stage_before or session.current_turn_index != turn_idx_before:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT, detail="Session state changed mid-evaluation"
             )
-        advance_session_fsm(session, eval_out)
+        candidate_turn = ArchDefenseTurn(
+            role="candidate", content=payload.answer, stage=stage_before
+        )
+        advance_session_fsm(session, eval_out, candidate_turn=candidate_turn)
         return session
