@@ -136,13 +136,13 @@ def test_reconcile_rejects_ungrounded_and_malformed_llm_fields():
 async def test_mermaid_extraction_inline_labels_and_late_subgraph():
     """#4, #5 & #6: Inline edge labels, unlabelled subgraph ID, late node subgraph update."""
     mermaid = (
-        'flowchart TD\n  api["FastAPI API"] --> worker\n'
-        '  subgraph core\n    worker["Queue Worker"]\n  end'
+        'flowchart TD\n  api["FastAPI (v2)"] --> worker\n'
+        '  subgraph core\n    worker["Queue Worker (ARQ)"]\n  end'
     )
     nodes, edges = extract_mermaid_nodes_and_edges(mermaid)
     by_id = {n.node_id: n for n in nodes}
-    assert by_id["api"].label == "FastAPI API"
-    assert by_id["worker"].label == "Queue Worker"
+    assert by_id["api"].label == "FastAPI (v2)"
+    assert by_id["worker"].label == "Queue Worker (ARQ)"
     assert by_id["worker"].subgraph == "core" and by_id["worker"].node_type == "queue"
     assert len(edges) == 1 and edges[0].source_id == "api" and edges[0].target_id == "worker"
 

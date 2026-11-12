@@ -178,13 +178,14 @@ def build_deterministic_mermaid_diagram(
 _ARROW_RE = re.compile(
     r"^\s*(.+?)\s*(-->|-.->|==>)(?:\s*\|\s*\"?([^|\"]+?)\"?\s*\|)?\s*(.+?)\s*$"
 )
+_OPEN_SHAPE = r"(?:\[\[|\(\(|\{\{|\[\(|\[|\(|\{)"
+_CLOSE_SHAPE = r"(?:\]\]|\)\)|\}\}|\)\]|\]|\)|\})"
+_LABEL_BODY = r'(?:\s*"([^"\n]+)"\s*|\s*([^\n\]\)\}]+?)\s*)'
 _ENDPOINT_RE = re.compile(
-    r"^([A-Za-z0-9_]+)\s*(?:\[\[|\(\(|\{\{|\[\(|\[\"|\[|\(\"?|\{)?"
-    r"(?:\s*([^\n\]\)\}]+?)\s*(?:\]\]|\)\)|\}\}|\)\]|\"\]|\]|\"\)|\)|\}))?$"
+    rf"^([A-Za-z0-9_]+)(?:\s*{_OPEN_SHAPE}{_LABEL_BODY}{_CLOSE_SHAPE})?$"
 )
 _NODE_DEF_RE = re.compile(
-    r"^\s*([A-Za-z0-9_]+)\s*(?:\[\[|\(\(|\{\{|\[\(|\[\"|\[|\(\"?|\{)"
-    r"\s*([^\n\]\)\}]+?)\s*(?:\]\]|\)\)|\}\}|\)\]|\"\]|\]|\"\)|\)|\})"
+    rf"^\s*([A-Za-z0-9_]+)\s*{_OPEN_SHAPE}{_LABEL_BODY}{_CLOSE_SHAPE}"
 )
 _SUBGRAPH_RE = re.compile(r'^\s*subgraph\s+([A-Za-z0-9_]+)(?:\s*\[\s*"?([^"\]]+)"?\s*\])?')
 
@@ -195,7 +196,8 @@ def _parse_endpoint(expr: str) -> tuple[str, str | None] | None:
     if not m:
         id_m = re.match(r"^([A-Za-z0-9_]+)", expr.strip())
         return (id_m.group(1), None) if id_m else None
-    raw_lbl = m.group(2).strip().strip('"') if m.group(2) else None
+    quoted_lbl, unquoted_lbl = m.group(2), m.group(3)
+    raw_lbl = quoted_lbl if quoted_lbl is not None else (unquoted_lbl or "").strip()
     return m.group(1), raw_lbl or None
 
 
@@ -260,6 +262,6 @@ def extract_mermaid_nodes_and_edges(
             continue
         node_m = _NODE_DEF_RE.match(line)
         if node_m:
-            ensure_node(node_m.group(1), node_m.group(2), from_def=True)
+            ensure_node(node_m.group(1), node_m.group(2) or node_m.group(3), from_def=True)
 
     return list(nodes_by_id.values()), edges
