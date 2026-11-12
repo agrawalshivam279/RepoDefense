@@ -522,6 +522,9 @@ gantt
 ### Milestone 3.7: Enhanced Analytics & Visualizations
 - **Goal:** Dashboard charts of performance.
 - **Components:** Recharts or similar Next.js library.
+- **Tasks:**
+  - [x] **Step 3.7a: Backend Cross-Mode Performance Analytics Service & REST API** (schemas/analytics.py, services/analytics_extractors.py, services/analytics.py, api/v1/analytics.py, tests/test_analytics.py)
+  - [ ] **Step 3.7b: Next.js 15 Enhanced Analytics & Visualizations Dashboard UI**
 - **Dependencies:** 1.16
 
 ### Milestone 3.8: Phase 3 Polish & Deploy
