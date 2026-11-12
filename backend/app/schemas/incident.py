@@ -1,6 +1,7 @@
 """Pydantic v2 schemas for Chaos Engineering and Incident Simulation Engine."""
 
 import uuid
+from datetime import datetime, timezone
 from enum import Enum
 from typing import List, Optional
 
@@ -154,6 +155,14 @@ class IncidentDefenseSessionState(BaseModel):
     )
     postmortem_summary: Optional[str] = Field(
         default=None, description="Final incident postmortem and architecture summary"
+    )
+    created_at: str = Field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat(),
+        description="Session creation timestamp",
+    )
+    updated_at: str = Field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat(),
+        description="Last updated timestamp",
     )
 
     model_config = ConfigDict(extra="ignore")

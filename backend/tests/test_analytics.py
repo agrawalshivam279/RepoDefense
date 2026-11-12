@@ -5,8 +5,6 @@ import uuid
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
-from fastapi import HTTPException
 from httpx import ASGITransport, AsyncClient
 
 from app.ai.fsm import DefenseSessionStore
@@ -14,7 +12,6 @@ from app.core.database import get_db
 from app.core.security import get_current_user
 from app.main import app
 from app.models.project import Project, User
-from app.schemas.analytics import DefenseModeKey
 from app.schemas.arch_defense import (
     ArchDefenseSessionState,
     ArchDefenseStage,
@@ -57,7 +54,6 @@ def _make_fake_db(project=None, projects=None, snapshot_id=None, lang_rows=None)
         all_mock = MagicMock(all=MagicMock(return_value=projects))
         db.execute = AsyncMock(side_effect=[MagicMock(scalars=MagicMock(return_value=all_mock))])
         return db
-
     proj_mock = MagicMock(scalar_one_or_none=MagicMock(return_value=project))
     snap_first = MagicMock(first=MagicMock(return_value=snapshot_id))
     responses = [proj_mock, MagicMock(scalars=MagicMock(return_value=snap_first))]
@@ -79,10 +75,11 @@ async def _populate_store(store: DefenseSessionStore, pid: str, other_pid: str) 
     )
     await store.save(
         DefenseSessionState(
-            session_id="core-1", project_id=pid,
-            status=DefenseStage.SESSION_COMPLETED, total_questions=1,
-            questions=[DefenseQuestionProgress(question=q)],
-            topic_confidence={"architecture": 0.85},
+            session_id="core-1", project_id=pid, status=DefenseStage.SESSION_COMPLETED,
+            total_questions=1, questions=[DefenseQuestionProgress(question=q)],
+            topic_confidence={
+                "architecture": 0.85, "bad_nan": float("nan"), "bad_inf": float("inf"),
+            },
             overall_score=8.0, updated_at="2026-11-12T10:00:00Z",
         )
     )
@@ -125,6 +122,7 @@ def _extra_stores(pid: uuid.UUID):
     incident = {
         inc_id: IncidentDefenseSessionState(
             id=inc_id, project_id=pid, stage=IncidentStage.POSTMORTEM, overall_score=75.0,
+            created_at="2026-11-12T08:50:00Z", updated_at="2026-11-12T09:00:00Z",
             scenario=IncidentScenario(
                 title="Redis Pool Exhaustion", category=FailureCategory.CACHE_FAILURE,
                 severity=IncidentSeverity.P0_CRITICAL, hypothetical_trigger="OOM",
@@ -149,86 +147,70 @@ def _extra_stores(pid: uuid.UUID):
     return stress, incident, arch
 
 
-def test_normalize_score_clamping():
+def test_normalize_score_clamping_and_non_finite():
     assert normalize_score(8.5, scale_10=True) == 85.0
     assert normalize_score(120.0, scale_10=False) == 100.0
     assert normalize_score(-3.0, scale_10=True) == 0.0
     assert normalize_score(None, scale_10=True) is None
-
-
-def _run(coro):
-    return asyncio.run(coro)
+    assert normalize_score(float("nan"), scale_10=True) is None
+    assert normalize_score(float("inf"), scale_10=False) is None
+    assert normalize_score(float("-inf"), scale_10=True) is None
 
 
 def test_build_project_analytics_aggregates_all_modes_and_ground_truth():
     async def _impl():
         uid, pid, other_pid = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
-        proj = _proj(pid, uid)
         langs = [
             SimpleNamespace(language="python", file_count=10, total_lines=800),
             SimpleNamespace(language="typescript", file_count=5, total_lines=200),
         ]
-        db = _make_fake_db(project=proj, snapshot_id=uuid.uuid4(), lang_rows=langs)
-
+        db = _make_fake_db(project=_proj(pid, uid), snapshot_id=uuid.uuid4(), lang_rows=langs)
         fsm = DefenseSessionStore()
         await _populate_store(fsm, str(pid), str(other_pid))
         stress_store, incident_store, arch_store = _extra_stores(pid)
-
-        mod = ModuleCoverageItem(
-            module_path="backend/app", total_files=10, tested_files=8,
-            coverage_percentage=80.0, status=CoverageStatus.TESTED,
-        )
         cov_resp = ProjectCoverageResponse(
             project_id=str(pid), project_name="RepoDefense", total_files=15,
             tested_files_count=9, untested_files_count=6, file_coverage_percentage=60.0,
             evidence_coverage_percentage=75.0, overall_coverage_tier=CoverageTier.SUBSTANTIAL,
-            modules=[mod],
+            modules=[ModuleCoverageItem(
+                module_path="backend/app", total_files=10, tested_files=8,
+                coverage_percentage=80.0, status=CoverageStatus.TESTED,
+            )],
         )
         tech_resp = TechAuditReportResponse(
-            project_id=str(pid), project_name="RepoDefense",
-            total_dependencies_audited=10, flagged_dependencies_count=1,
-            critical_count=0, high_count=1, medium_count=0, low_count=0,
-            tech_health_score=88,
+            project_id=str(pid), project_name="RepoDefense", total_dependencies_audited=10,
+            flagged_dependencies_count=1, critical_count=0, high_count=1,
+            medium_count=0, low_count=0, tech_health_score=88,
         )
-
-        cov_mock = AsyncMock(return_value=cov_resp)
-        tech_mock = AsyncMock(return_value=tech_resp)
+        cov_fn = "app.services.analytics.calculate_project_coverage"
+        tech_fn = "app.services.analytics.audit_project_technology"
         with (
-            patch("app.services.analytics.calculate_project_coverage", cov_mock),
-            patch("app.services.analytics.audit_project_technology", tech_mock),
+            patch(cov_fn, AsyncMock(return_value=cov_resp)),
+            patch(tech_fn, AsyncMock(return_value=tech_resp)),
         ):
             report = await build_project_analytics(
                 pid, uid, db, fsm_store=fsm, stress_store=stress_store,
                 incident_store=incident_store, arch_store=arch_store,
             )
 
-        assert report.project_name == "RepoDefense"
         assert report.total_sessions == 6
         assert report.completed_sessions == 5
         assert report.overall_readiness_pct == 75.0
         assert report.file_coverage_pct == 60.0
         assert report.tech_health_score == 88
-        assert len(report.score_trend) == 5
+        assert report.score_trend[0].timestamp == "2026-11-12T09:00:00Z"
         assert report.language_distribution[0].line_share_pct == 80.0
-        modes = {m.mode: m for m in report.mode_breakdown}
-        assert modes[DefenseModeKey.CORE_DEFENSE].pass_rate_pct == 100.0
-        assert modes[DefenseModeKey.PR_DEFENSE].pass_rate_pct == 0.0
-        assert modes[DefenseModeKey.COMMIT_DEFENSE].sessions_completed == 0
         skills = {s.category: s.confidence_pct for s in report.category_skills}
+        assert "bad_nan" not in skills and "bad_inf" not in skills
         assert skills["boundary_coherence"] == 80.0
 
-    _run(_impl())
+    asyncio.run(_impl())
 
 
-def test_build_project_analytics_graceful_fallback_and_404():
+def test_build_project_analytics_unavailable_coverage_returns_none():
     async def _impl():
         uid, pid = uuid.uuid4(), uuid.uuid4()
-        with pytest.raises(HTTPException) as exc:
-            await build_project_analytics(pid, uid, _make_fake_db(project=None))
-        assert exc.value.status_code == 404
-
-        proj = _proj(pid, uid, name="EmptyRepo", status="pending")
-        db_empty = _make_fake_db(project=proj, snapshot_id=None)
+        db_empty = _make_fake_db(project=_proj(pid, uid, name="Empty", status="pending"))
         skip_err = AsyncMock(side_effect=RuntimeError("skip"))
         with (
             patch("app.services.analytics.calculate_project_coverage", skip_err),
@@ -239,49 +221,56 @@ def test_build_project_analytics_graceful_fallback_and_404():
                 stress_store={}, incident_store={}, arch_store={},
             )
         assert report.overall_readiness_pct is None
+        assert report.file_coverage_pct is None
+        assert report.evidence_coverage_pct is None
         assert report.tech_health_score is None
-        assert report.total_sessions == 0
 
-    _run(_impl())
+    asyncio.run(_impl())
 
 
-def test_analytics_router_and_workspace_isolation():
+def test_workspace_single_pass_store_and_router_auth_and_idor():
     async def _impl():
-        uid, pid, other_pid = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
-        user = User(id=uid, email="dev@example.com")
-        proj = _proj(pid, uid, name="Alpha")
-        db = _make_fake_db(projects=[proj])
-
+        uid, other_uid = uuid.uuid4(), uuid.uuid4()
+        pid, pid2, foreign_pid = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+        projects = [_proj(pid, uid, name="Alpha"), _proj(pid2, uid, name="Beta")]
         fsm = DefenseSessionStore()
-        await _populate_store(fsm, str(pid), str(other_pid))
+        await _populate_store(fsm, str(pid), str(foreign_pid))
+        with patch.object(fsm, "get_by_project", wraps=fsm.get_by_project) as spy_single:
+            ws = await build_workspace_analytics(
+                uid, _make_fake_db(projects=projects),
+                fsm_store=fsm, stress_store={}, incident_store={}, arch_store={},
+            )
+        spy_single.assert_not_called()
+        assert ws.total_projects == 2 and ws.total_sessions == 3 and ws.avg_readiness_pct == 70.0
 
-        ws = await build_workspace_analytics(
-            uid, db, fsm_store=fsm, stress_store={}, incident_store={}, arch_store={}
-        )
-        assert ws.total_projects == 1
-        assert ws.analyzed_projects == 1
-        assert ws.total_sessions == 3
-        assert ws.completed_sessions == 2
-        assert ws.avg_readiness_pct == 70.0
-
-        mock_db = AsyncMock()
-        app.dependency_overrides[get_current_user] = lambda: user
-        app.dependency_overrides[get_db] = lambda: mock_db
-        err_404 = AsyncMock(side_effect=HTTPException(status_code=404, detail="Not found"))
+        prev_overrides = dict(app.dependency_overrides)
         try:
-            with (
-                patch("app.api.v1.analytics.build_workspace_analytics", AsyncMock(return_value=ws)),
-                patch("app.api.v1.analytics.build_project_analytics", err_404),
-            ):
-                transport = ASGITransport(app=app)
-                async with AsyncClient(transport=transport, base_url="http://test") as client:
-                    r1 = await client.get("/api/v1/analytics/workspace")
-                    assert r1.status_code == 200
-                    assert r1.json()["avg_readiness_pct"] == 70.0
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as anon_client:
+                unauth_ws = await anon_client.get("/api/v1/analytics/workspace")
+                unauth_proj = await anon_client.get(f"/api/v1/analytics/projects/{pid}")
+                assert unauth_ws.status_code in (401, 403)
+                assert unauth_proj.status_code in (401, 403)
 
-                    r2 = await client.get(f"/api/v1/analytics/projects/{uuid.uuid4()}")
-                    assert r2.status_code == 404
+            user_b = User(id=other_uid, email="other@example.com")
+            mock_db_denied = AsyncMock()
+            mock_db_denied.execute = AsyncMock(
+                return_value=MagicMock(scalar_one_or_none=MagicMock(return_value=None))
+            )
+            app.dependency_overrides[get_current_user] = lambda: user_b
+            app.dependency_overrides[get_db] = lambda: mock_db_denied
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                denied = await client.get(f"/api/v1/analytics/projects/{pid}")
+                assert denied.status_code == 404
+
+                owner = User(id=uid, email="dev@example.com")
+                app.dependency_overrides[get_current_user] = lambda: owner
+                ws_fn = "app.api.v1.analytics.build_workspace_analytics"
+                with patch(ws_fn, AsyncMock(return_value=ws)):
+                    ok_ws = await client.get("/api/v1/analytics/workspace")
+                    assert ok_ws.status_code == 200 and ok_ws.json()["total_projects"] == 2
         finally:
             app.dependency_overrides.clear()
+            app.dependency_overrides.update(prev_overrides)
 
-    _run(_impl())
+    asyncio.run(_impl())

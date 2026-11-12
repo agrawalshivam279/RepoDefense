@@ -2,7 +2,7 @@
 
 import asyncio
 from datetime import datetime, timezone
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Set
 
 import structlog
 
@@ -33,9 +33,12 @@ class DefenseSessionStore:
         async with self._lock:
             return self._sessions.get(session_id)
 
-    async def get_by_project(self, project_id: str) -> List[DefenseSessionState]:
+    async def get_by_projects(self, project_ids: Set[str]) -> List[DefenseSessionState]:
         async with self._lock:
-            return [s for s in self._sessions.values() if s.project_id == project_id]
+            return [s for s in self._sessions.values() if s.project_id in project_ids]
+
+    async def get_by_project(self, project_id: str) -> List[DefenseSessionState]:
+        return await self.get_by_projects({project_id})
 
     async def save(self, session: DefenseSessionState) -> DefenseSessionState:
         session.updated_at = datetime.now(timezone.utc).isoformat()
@@ -287,10 +290,8 @@ async def submit_defense_turn(
     elif session.status in (DefenseStage.STRESS_TEST_ACTIVE, DefenseStage.MENTOR_ACTIVE):
         is_stress = session.status == DefenseStage.STRESS_TEST_ACTIVE
         raw_ctx = prog.stress_test_prompt if is_stress else prog.retest_question
-        prompt_ctx = raw_ctx or prog.question.question_text
-        await _process_secondary_turn(
-            session, prog, candidate_answer, prompt_ctx, is_stress, **llm_kw
-        )
+        ctx = raw_ctx or prog.question.question_text
+        await _process_secondary_turn(session, prog, candidate_answer, ctx, is_stress, **llm_kw)
 
     else:
         raise ValueError(f"Cannot submit candidate turn in state '{session.status}'.")

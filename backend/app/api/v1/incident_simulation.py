@@ -8,6 +8,7 @@ Endpoints:
 """
 
 import uuid
+from datetime import datetime, timezone
 from typing import Dict, List
 
 import structlog
@@ -245,6 +246,7 @@ async def respond_to_incident_turn_endpoint(
             "initial triage to cascading chaos mitigation and established robust safeguards."
         )
 
+    session.updated_at = datetime.now(timezone.utc).isoformat()
     incident_session_store[session_id] = session
     logger.info(
         "Incident turn evaluated",

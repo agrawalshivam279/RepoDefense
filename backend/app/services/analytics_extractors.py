@@ -1,7 +1,7 @@
 """Normalize defense session state records from heterogeneous mode stores."""
 
+import math
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
 from app.ai.fsm import DefenseSessionStore, defense_store
@@ -39,12 +39,21 @@ class SessionSample:
     skills: Dict[str, float] = field(default_factory=dict)
 
 
-def normalize_score(raw: Optional[float], scale_10: bool) -> Optional[float]:
-    """Converts a raw mode score into a clamped 0.0-100.0 percentage."""
-    if raw is None:
+def _scale_finite_pct(raw: object, factor: float) -> Optional[float]:
+    if raw is None or isinstance(raw, bool):
         return None
-    val = float(raw) * 10.0 if scale_10 else float(raw)
-    return round(max(0.0, min(100.0, val)), 1)
+    try:
+        num = float(raw)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(num):
+        return None
+    return round(max(0.0, min(100.0, num * factor)), 1)
+
+
+def normalize_score(raw: Optional[float], scale_10: bool) -> Optional[float]:
+    """Converts a finite raw mode score into a clamped 0.0-100.0 percentage."""
+    return _scale_finite_pct(raw, 10.0 if scale_10 else 1.0)
 
 
 def _extract_core_family_sample(session: Any) -> SessionSample:
@@ -65,10 +74,11 @@ def _extract_core_family_sample(session: Any) -> SessionSample:
         fallback_title = first_q or "Core Codebase Defense"
         title = (first_q[:57] + "...") if len(first_q) > 60 else fallback_title
 
-    skills = {
-        str(k): round(max(0.0, min(100.0, float(v) * 100.0)), 1)
-        for k, v in (session.topic_confidence or {}).items()
-    }
+    skills: Dict[str, float] = {}
+    for k, v in (session.topic_confidence or {}).items():
+        pct = _scale_finite_pct(v, 100.0)
+        if pct is not None:
+            skills[str(k)] = pct
     return SessionSample(
         session_id=str(session.session_id),
         project_id=str(session.project_id),
@@ -103,18 +113,14 @@ def _extract_incident_sample(session: Any) -> SessionSample:
     skills: Dict[str, float] = {}
     if score_pct is not None and getattr(session, "scenario", None):
         skills[f"incident:{session.scenario.category.value}"] = score_pct
-    ts = (
-        getattr(session, "updated_at", None)
-        or getattr(session, "created_at", None)
-        or datetime.now(timezone.utc).isoformat()
-    )
+    ts = str(getattr(session, "updated_at", None) or getattr(session, "created_at", None) or "")
     return SessionSample(
         session_id=str(session.id),
         project_id=str(session.project_id),
         mode=DefenseModeKey.INCIDENT_SIMULATION,
         completed=session.stage == IncidentStage.POSTMORTEM,
         score_pct=score_pct,
-        timestamp=str(ts),
+        timestamp=ts,
         topic_or_title=getattr(session.scenario, "title", "Incident Simulation"),
         skills=skills,
     )
@@ -161,10 +167,10 @@ async def collect_samples_for_projects(
     else:
         target_incident = incident_store
 
-    samples: List[SessionSample] = []
-    for pid in allowed_project_ids:
-        for sess in await target_fsm.get_by_project(pid):
-            samples.append(_extract_core_family_sample(sess))
+    samples: List[SessionSample] = [
+        _extract_core_family_sample(sess)
+        for sess in await target_fsm.get_by_projects(allowed_project_ids)
+    ]
 
     extractors: Sequence[Tuple[Iterable[Any], Any]] = (
         (target_stress.values(), _extract_stress_sample),

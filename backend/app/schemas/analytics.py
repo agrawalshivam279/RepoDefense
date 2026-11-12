@@ -92,9 +92,11 @@ class ProjectAnalyticsResponse(BaseModel):
     )
     total_sessions: int = Field(default=0, ge=0, description="All sessions across modes")
     completed_sessions: int = Field(default=0, ge=0, description="Completed sessions across modes")
-    file_coverage_pct: float = Field(default=0.0, ge=0.0, le=100.0, description="File coverage %")
-    evidence_coverage_pct: float = Field(
-        default=0.0, ge=0.0, le=100.0, description="Evidence coverage %"
+    file_coverage_pct: Optional[float] = Field(
+        default=None, ge=0.0, le=100.0, description="File coverage %"
+    )
+    evidence_coverage_pct: Optional[float] = Field(
+        default=None, ge=0.0, le=100.0, description="Evidence coverage %"
     )
     tech_health_score: Optional[int] = Field(
         default=None, ge=0, le=100, description="Static dependency health score (0-100)"

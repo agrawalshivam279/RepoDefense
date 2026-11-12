@@ -162,8 +162,8 @@ async def build_project_analytics(
     n_comp = len(completed_scores)
     readiness = round(sum(completed_scores) / n_comp, 1) if n_comp else None
 
-    file_cov_pct = 0.0
-    ev_cov_pct = 0.0
+    file_cov_pct: Optional[float] = None
+    ev_cov_pct: Optional[float] = None
     module_points: List[ModuleCoveragePoint] = []
     try:
         cov = await calculate_project_coverage(project.id, user_id, db, store=target_fsm)
