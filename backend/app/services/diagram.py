@@ -23,6 +23,7 @@ from app.ai.prompts import (  # noqa: E402
 from app.analyzers.architecture import normalize_directory_tokens  # noqa: E402
 from app.analyzers.diagram import (  # noqa: E402
     build_deterministic_mermaid_diagram,
+    extract_mermaid_nodes_and_edges,
     validate_mermaid_syntax,
 )
 from app.core.config import settings  # noqa: E402
@@ -128,23 +129,30 @@ async def generate_project_architecture_diagram(
 
             mermaid_code = data.get("mermaid_code", "")
             if validate_mermaid_syntax(mermaid_code):
-                summary = data.get("summary") or f"Architectural flowchart for {project_name}."
-                logger.info("diagram_llm_generation_success", project_id=str(project_id))
-                return DiagramResponse(
+                parsed_nodes, parsed_edges = extract_mermaid_nodes_and_edges(mermaid_code)
+                if parsed_nodes:
+                    summary = data.get("summary") or f"Architectural flowchart for {project_name}."
+                    logger.info("diagram_llm_generation_success", project_id=str(project_id))
+                    return DiagramResponse(
+                        project_id=str(project_id),
+                        project_name=project_name,
+                        diagram_type=DiagramType.FLOWCHART_TD,
+                        mermaid_code=mermaid_code,
+                        nodes=parsed_nodes,
+                        edges=parsed_edges,
+                        is_fallback=False,
+                        summary=summary,
+                    )
+                logger.warning(
+                    "diagram_llm_empty_nodes_using_fallback",
                     project_id=str(project_id),
-                    project_name=project_name,
-                    diagram_type=DiagramType.FLOWCHART_TD,
-                    mermaid_code=mermaid_code,
-                    nodes=fb_nodes,
-                    edges=fb_edges,
-                    is_fallback=False,
-                    summary=summary,
                 )
-            logger.warning(
-                "diagram_invalid_mermaid_syntax",
-                project_id=str(project_id),
-                code_sample=mermaid_code[:100],
-            )
+            else:
+                logger.warning(
+                    "diagram_invalid_mermaid_syntax",
+                    project_id=str(project_id),
+                    code_sample=mermaid_code[:100],
+                )
         except Exception as exc:
             logger.warning(
                 "diagram_llm_generation_failed_using_fallback",

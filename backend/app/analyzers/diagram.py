@@ -173,3 +173,67 @@ def build_deterministic_mermaid_diagram(
         f"incorporating {len(node_list)} components and {len(edges)} connections."
     )
     return mermaid_code, node_list, edges, summary
+
+
+_EDGE_LINE_RE = re.compile(
+    r"^\s*([A-Za-z0-9_]+)(?:\s*[\[\(\{].*?[\]\)\}])?\s*"
+    r"(-->|-.->|==>)(?:\s*\|\s*\"?([^|\"]+?)\"?\s*\|)?\s*"
+    r"([A-Za-z0-9_]+)"
+)
+_NODE_DEF_RE = re.compile(
+    r"^\s*([A-Za-z0-9_]+)\s*(?:\[\[|\(\(|\{\{|\[\(|\[\"|\[|\(\"?|\{)"
+    r"\s*([^\n\]\)\}]+?)\s*(?:\]\]|\)\)|\}\}|\)\]|\"\]|\]|\"\)|\)|\})"
+)
+_SUBGRAPH_RE = re.compile(r'^\s*subgraph\s+[A-Za-z0-9_]+(?:\s*\[\s*"?([^"\]]+)"?\s*\])?')
+
+
+def extract_mermaid_nodes_and_edges(
+    mermaid_code: str,
+) -> tuple[list[DiagramNode], list[DiagramEdge]]:
+    """Derive DiagramNode and DiagramEdge objects directly from Mermaid flowchart syntax."""
+    nodes_by_id: dict[str, DiagramNode] = {}
+    edges: list[DiagramEdge] = []
+    subgraph_stack: list[str] = []
+
+    def ensure_node(node_id: str, raw_label: str | None = None) -> None:
+        if node_id in nodes_by_id:
+            if raw_label and nodes_by_id[node_id].label == node_id:
+                nodes_by_id[node_id].label = raw_label[:60]
+            return
+        label = (raw_label or node_id).strip().strip('"')[:60]
+        tier, n_type = classify_tier(label or node_id)
+        current_sub = subgraph_stack[-1] if subgraph_stack else tier
+        nodes_by_id[node_id] = DiagramNode(
+            node_id=node_id, label=label, node_type=n_type, subgraph=current_sub
+        )
+
+    for raw_line in mermaid_code.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith(("%%", "flowchart ", "classDef ", "class ", "style ")):
+            continue
+        sub_m = _SUBGRAPH_RE.match(line)
+        if sub_m:
+            subgraph_stack.append((sub_m.group(1) or "Group").strip())
+            continue
+        if line == "end":
+            if subgraph_stack:
+                subgraph_stack.pop()
+            continue
+        edge_m = _EDGE_LINE_RE.match(line)
+        if edge_m:
+            src, arrow, lbl, tgt = edge_m.groups()
+            ensure_node(src)
+            ensure_node(tgt)
+            style = "dotted" if arrow == "-.->" else "solid"
+            edges.append(
+                DiagramEdge(
+                    source_id=src, target_id=tgt,
+                    label=lbl.strip() if lbl else None, style=style,
+                )
+            )
+            continue
+        node_m = _NODE_DEF_RE.match(line)
+        if node_m:
+            ensure_node(node_m.group(1), node_m.group(2))
+
+    return list(nodes_by_id.values()), edges

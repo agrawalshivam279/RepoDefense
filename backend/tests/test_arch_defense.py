@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import HTTPException
+from httpx import ASGITransport, AsyncClient
 from pydantic import ValidationError
 
 from app.ai.arch_defense_generator import (
@@ -18,11 +19,14 @@ from app.ai.arch_defense_generator import (
 from app.api.v1.arch_defense import (
     _arch_session_store,
     _arch_topic_catalog,
+    _session_locks,
     get_arch_defense_session,
     get_or_generate_arch_topics,
     start_arch_defense_session,
     submit_arch_defense_turn,
 )
+from app.core.database import get_db
+from app.main import app
 from app.models.project import Project, User
 from app.schemas.arch_defense import (
     ArchDefenseStage,
@@ -62,30 +66,27 @@ def _sample_report(project_id: str = "proj-1", files_count: int = 24) -> Archite
 
 
 def _sample_diagram(project_id: str = "proj-1") -> DiagramResponse:
+    n1 = DiagramNode(node_id="api", label="FastAPI API", node_type="backend", subgraph="API")
+    n2 = DiagramNode(node_id="svc", label="Services", node_type="service", subgraph="Core")
     return DiagramResponse(
         project_id=project_id, project_name="RepoDefense", diagram_type=DiagramType.FLOWCHART_TD,
         mermaid_code="flowchart TD\n  api[FastAPI API] --> svc[Services]",
-        nodes=[
-            DiagramNode(node_id="api", label="FastAPI API", node_type="backend", subgraph="API"),
-            DiagramNode(node_id="svc", label="Services", node_type="service", subgraph="Core"),
-        ],
-        edges=[DiagramEdge(source_id="api", target_id="svc", label="calls")],
+        nodes=[n1, n2], edges=[DiagramEdge(source_id="api", target_id="svc", label="calls")],
         is_fallback=True, summary="Layered topology.",
     )
 
 
 class TestArchDefenseSchemas:
-    """Tests for schemas and SSRF base_url override validation."""
-
     def test_ssrf_base_url_allowlist(self):
         assert (
             GenerateArchTopicsRequest(base_url="https://api.openai.com/v1").base_url
             == "https://api.openai.com/v1"
         )
-        for bad in (
+        bad_urls = (
             "http://169.254.169.254/latest", "https://127.0.0.1/v1",
             "https://user:secret@api.openai.com/v1", "https://evil.example.com/v1",
-        ):
+        )
+        for bad in bad_urls:
             for fn in (
                 lambda u: GenerateArchTopicsRequest(base_url=u),
                 lambda u: StartArchDefenseRequest(topic_id="t-1", base_url=u),
@@ -124,24 +125,17 @@ class TestArchDefenseEngine:
             },
         ])
         fake_resp = MagicMock(choices=[MagicMock(message=MagicMock(content=payload))])
-        with patch(
-            "app.ai.arch_defense_generator.litellm.acompletion",
-            new=AsyncMock(return_value=fake_resp),
-        ) as mock_llm:
-            topics = _run(
-                generate_arch_defense_topics(
-                    _sample_report(), _sample_diagram(), api_key="k-1", max_topics=2
-                )
-            )
+        llm_path = "app.ai.arch_defense_generator.litellm.acompletion"
+        with patch(llm_path, new=AsyncMock(return_value=fake_resp)) as mock_llm:
+            topics = _run(generate_arch_defense_topics(
+                _sample_report(), _sample_diagram(), api_key="k-1", max_topics=2,
+            ))
         mock_llm.assert_awaited_once()
         assert len(topics) == 1
         assert topics[0].focus_area == ArchFocusAreaType.PATTERN_CHOICE
         assert [n.node_id for n in topics[0].target_nodes] == ["api"]
 
-        with patch(
-            "app.ai.arch_defense_generator.litellm.acompletion",
-            new=AsyncMock(side_effect=RuntimeError("timeout")),
-        ):
+        with patch(llm_path, new=AsyncMock(side_effect=RuntimeError("timeout"))):
             fb = _run(
                 generate_arch_defense_topics(_sample_report(), _sample_diagram(), api_key="k")
             )
@@ -184,23 +178,20 @@ class TestArchDefenseEngine:
     def test_deterministic_evaluation_strong_vs_weak(self):
         topic = build_deterministic_arch_topics(_sample_report(), _sample_diagram())[0]
         strong = (
-            "We enforce a strict interface boundary between FastAPI API handlers and Services "
-            "to minimize coupling, accepting extra schema mapping complexity and latency "
-            "cost as deliberate tradeoffs for independent module scaling."
+            "We enforce strict interface boundary separation between API handlers and Services "
+            "to minimize coupling, accepting extra schema complexity and latency cost as tradeoffs "
+            "for independent scaling."
         )
         res_strong = build_deterministic_arch_evaluation(topic, strong)
-        assert res_strong.depth_score >= 7 and not res_strong.is_terminal
         res_weak = build_deterministic_arch_evaluation(topic, "Because it felt right.")
+        assert res_strong.depth_score >= 7 and not res_strong.is_terminal
         assert res_weak.depth_score <= 5 and res_weak.is_terminal
 
 
 class TestArchDefenseRouter:
-    """Integration tests for REST endpoints, FSM transitions, IDOR, and cache integrity."""
-
     def setup_method(self):
         self._saved_cat, self._saved_sess = dict(_arch_topic_catalog), dict(_arch_session_store)
-        _arch_topic_catalog.clear()
-        _arch_session_store.clear()
+        _arch_topic_catalog.clear(), _arch_session_store.clear(), _session_locks.clear()
         self._key_patch = patch("app.ai.arch_defense_generator.settings.FREELLMAPI_API_KEY", "")
         self._key_patch.start()
         self.user_a = User(id=uuid.uuid4(), email="a@repodefense.dev")
@@ -210,28 +201,22 @@ class TestArchDefenseRouter:
 
     def teardown_method(self):
         self._key_patch.stop()
-        _arch_topic_catalog.clear()
-        _arch_session_store.clear()
-        _arch_topic_catalog.update(self._saved_cat)
-        _arch_session_store.update(self._saved_sess)
+        _arch_topic_catalog.clear(), _arch_session_store.clear(), _session_locks.clear()
+        _arch_topic_catalog.update(self._saved_cat), _arch_session_store.update(self._saved_sess)
 
     def _mock_db(self, owned: bool = True):
         db = AsyncMock()
-        val = MagicMock(scalar_one_or_none=MagicMock(return_value=self.project if owned else None))
-        db.execute.return_value = val
+        row = self.project if owned else None
+        db.execute.return_value = MagicMock(scalar_one_or_none=MagicMock(return_value=row))
         return db
 
     def test_full_defense_fsm_and_idor_enforcement(self):
         rep, diag = _sample_report(str(self.project_id)), _sample_diagram(str(self.project_id))
+        rep_p = "app.api.v1.arch_defense.detect_repository_architecture"
+        diag_p = "app.api.v1.arch_defense.generate_project_architecture_diagram"
         with (
-            patch(
-                "app.api.v1.arch_defense.detect_repository_architecture",
-                AsyncMock(return_value=rep),
-            ),
-            patch(
-                "app.api.v1.arch_defense.generate_project_architecture_diagram",
-                AsyncMock(return_value=diag),
-            ),
+            patch(rep_p, AsyncMock(return_value=rep)),
+            patch(diag_p, AsyncMock(return_value=diag)),
         ):
             resp = _run(get_or_generate_arch_topics(
                 self.project_id, GenerateArchTopicsRequest(max_topics=3),
@@ -275,16 +260,32 @@ class TestArchDefenseRouter:
             _run(respond(sess.session_id, SubmitArchAnswerRequest(answer="extra"), self.user_a))
         assert exc_done.value.status_code == 400
 
+        async def _check_http_auth():
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as cl:
+                r_miss = await cl.get(f"/api/v1/arch-defense/sessions/{sess.session_id}")
+                r_bad = await cl.get(
+                    f"/api/v1/arch-defense/sessions/{sess.session_id}",
+                    headers={"Authorization": "Bearer invalid-token"},
+                )
+                return r_miss.status_code, r_bad.status_code
+
+        saved_overrides = dict(app.dependency_overrides)
+        app.dependency_overrides[get_db] = lambda: self._mock_db()
+        try:
+            miss_code, bad_code = _run(_check_http_auth())
+            assert miss_code in (401, 403) and bad_code == 401
+        finally:
+            app.dependency_overrides.clear(), app.dependency_overrides.update(saved_overrides)
+
     def test_cache_invalidation_and_override_bypass(self):
         r1, r2 = _sample_report(str(self.project_id), 10), _sample_report(str(self.project_id), 25)
         diag_mock = AsyncMock(return_value=_sample_diagram(str(self.project_id)))
         get_topics = get_or_generate_arch_topics
+        rep_p = "app.api.v1.arch_defense.detect_repository_architecture"
+        diag_p = "app.api.v1.arch_defense.generate_project_architecture_diagram"
         with (
-            patch(
-                "app.api.v1.arch_defense.detect_repository_architecture",
-                AsyncMock(side_effect=[r1, r1, r1, r2]),
-            ),
-            patch("app.api.v1.arch_defense.generate_project_architecture_diagram", diag_mock),
+            patch(rep_p, AsyncMock(side_effect=[r1, r1, r1, r2])),
+            patch(diag_p, diag_mock),
         ):
             _run(get_topics(self.project_id, None, self.user_a, self._mock_db()))
             _run(get_topics(self.project_id, None, self.user_a, self._mock_db()))
