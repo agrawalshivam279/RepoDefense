@@ -3,7 +3,7 @@
 > **Product**: RepoDefense  
 > **Tagline**: "Prove that you understand — and can defend — the software you built."  
 > **Core Loop**: Evidence → Claim → Defense → Stress Test → Evaluation → Mentor → Re-test  
-> **Status**: 🟢 Phase 1 & 2 Complete — Phase 3 In Progress (Milestones 3.1–3.5 & Step 3.6a Complete)  
+> **Status**: 🟢 Phase 1 & 2 Complete — Phase 3 In Progress (Milestones 3.1–3.6 Complete)  
 > **Last Synchronized**: 2026-11-12  
 
 ---
@@ -131,13 +131,18 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | :--- | :--- | :--- |
 | **Phase 1** | Ingestion & Core MVP (Scaffolding, Auth, Git Clone, Security Filter, Complete MVP) | 🟢 Complete |
 | **Phase 2** | Differentiation (Claims Extraction, Verification, Adaptive Questioning, Pushback Logic, Coverage Tracking, Ownership Engine, Architecture Audit, Mermaid Diagrams, Tech Audit, Enhanced Report) | 🟢 Complete (Milestones 2.1 - 2.12 Complete) |
-| **Phase 3** | The State Machine & Advanced Defense (PR Fetch & Diff Defense, Stress Testing, Incident Simulation, Architecture Defense) | 🟡 In Progress (Milestones 3.1 - 3.5 & Step 3.6a Complete) |
+| **Phase 3** | The State Machine & Advanced Defense (PR Fetch & Diff Defense, Stress Testing, Incident Simulation, Architecture Defense) | 🟡 In Progress (Milestones 3.1 - 3.6 Complete) |
 | **Phase 4** | Interactive Frontend (Next.js 15, SSE / WebSocket chat, Monaco/Prism Code Viewer) | ⚪ Planned |
 | **Phase 5** | Evaluation & Export (Rubric Scoring, Transcript Generation, PDF & Badge Export) | ⚪ Planned |
 
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-11-12] — Step 3.6b: Next.js 15 Architecture Defense Mode UI & Interactive Diagram-Linked Defense Flow
+- **Scope / Module**: Frontend Architecture Defense Mode (`frontend/src/types/archDefense.ts`, `frontend/src/lib/archDefenseApi.ts`, `frontend/src/lib/__tests__/archDefenseApi.test.ts`, `frontend/src/components/domain/ArchTopologyPanel.tsx`, `frontend/src/components/domain/ArchTopicCard.tsx`, `frontend/src/components/domain/ArchDefenseSession.tsx`, `frontend/src/app/projects/[id]/arch-defense/page.tsx`, `frontend/src/components/domain/ProjectNavHeader.tsx`, `docs/specs/step-3-6b-arch-defense-ui.md`)
+- **Details**: Built the Next.js 15 App Router Architecture Defense Arena (`/projects/[id]/arch-defense`), concluding Milestone 3.6. Defined TypeScript contracts mirroring `backend/app/schemas/arch_defense.py` and implemented `archDefenseApi.ts` with runtime payload validation (`validateTopicListResponse`, `validateSessionState`), `AbortSignal` support, and FastAPI HTTP error detail extraction. Built modular dark-theme components (`ArchTopologyPanel`, `ArchTopicCard`, `ArchDefenseSession`) rendering strict-sandboxed Mermaid diagrams alongside target diagram nodes, collapsible tradeoff/risk hints, multi-turn `TOPIC_ACTIVE -> TRADEOFF_CHALLENGE -> COMPLETED` transcripts, scorecard metrics (`overall_score`, `boundary_coherence_score`, `pattern_rationale_solid`, `feedback`), and an `1..8000`-character submission form with unmount/request-sequence guards. Registered the **Arch Defense** tab in `ProjectNavHeader.tsx`. Verified via `npm run typecheck` (`0` errors), `npm run build` (`Next.js 15.5.28` production build clean), hermetic Node tests (`5 passed, 0 failed`), zero unsafe HTML injection grep, and `<= 285 LOC` across all files (`98`, `256`, `168`, `134`, `65`, `285`, `280`, `209`).
+- **Key Files**: `frontend/src/types/archDefense.ts`, `frontend/src/lib/archDefenseApi.ts`, `frontend/src/lib/__tests__/archDefenseApi.test.ts`, `frontend/src/components/domain/ArchTopologyPanel.tsx`, `frontend/src/components/domain/ArchTopicCard.tsx`, `frontend/src/components/domain/ArchDefenseSession.tsx`, `frontend/src/app/projects/[id]/arch-defense/page.tsx`, `frontend/src/components/domain/ProjectNavHeader.tsx`, `docs/specs/step-3-6b-arch-defense-ui.md`
 
 ### [2026-11-12] — Step 3.6a: Backend Architecture Defense Mode (Diagram-Grounded Interrogation & REST API)
 - **Scope / Module**: Backend Architecture Defense Mode (`backend/app/schemas/arch_defense.py`, `backend/app/ai/arch_defense_generator.py`, `backend/app/api/v1/arch_defense.py`, `backend/app/main.py`, `backend/tests/test_arch_defense.py`, `docs/specs/step-3-6a-arch-defense-backend.md`)

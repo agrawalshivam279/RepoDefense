@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   ArrowLeft,
   ChevronRight,
+  Compass,
   ExternalLink,
   FileCode,
   Flame,
@@ -31,7 +32,8 @@ export type ProjectNavTab =
   | "pr-defense"
   | "commit-defense"
   | "incident-simulation"
-  | "stress-test";
+  | "stress-test"
+  | "arch-defense";
 
 export interface ProjectNavHeaderProps {
   projectId: string;
@@ -64,6 +66,7 @@ const TABS: {
   { id: "commit-defense", label: "Commit Defense", hrefSuffix: "/commit-defense", Icon: GitCommit, accentColor: "text-emerald-400" },
   { id: "incident-simulation", label: "War Room", hrefSuffix: "/incident-simulation", Icon: Flame, accentColor: "text-rose-400" },
   { id: "stress-test", label: "Stress Test", hrefSuffix: "/stress-test", Icon: Gauge, accentColor: "text-amber-400" },
+  { id: "arch-defense", label: "Arch Defense", hrefSuffix: "/arch-defense", Icon: Compass, accentColor: "text-cyan-400" },
 ];
 
 export function ProjectNavHeader({
