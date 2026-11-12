@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.v1.arch_defense import router as arch_defense_router
 from app.api.v1.architecture import router as architecture_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.claims import (
@@ -68,6 +69,7 @@ app.include_router(
     incident_simulation_router, prefix=f"{settings.API_V1_STR}/v1/incident-simulation"
 )
 app.include_router(stress_test_router, prefix=f"{settings.API_V1_STR}/v1/stress-test")
+app.include_router(arch_defense_router, prefix=f"{settings.API_V1_STR}/v1/arch-defense")
 
 
 @app.get("/", tags=["System"])

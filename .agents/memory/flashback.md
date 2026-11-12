@@ -3,7 +3,7 @@
 > **Product**: RepoDefense  
 > **Tagline**: "Prove that you understand — and can defend — the software you built."  
 > **Core Loop**: Evidence → Claim → Defense → Stress Test → Evaluation → Mentor → Re-test  
-> **Status**: 🟢 Phase 1 & 2 Complete — Phase 3 In Progress (Milestones 3.1–3.5 Complete)  
+> **Status**: 🟢 Phase 1 & 2 Complete — Phase 3 In Progress (Milestones 3.1–3.5 & Step 3.6a Complete)  
 > **Last Synchronized**: 2026-11-12  
 
 ---
@@ -131,13 +131,18 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | :--- | :--- | :--- |
 | **Phase 1** | Ingestion & Core MVP (Scaffolding, Auth, Git Clone, Security Filter, Complete MVP) | 🟢 Complete |
 | **Phase 2** | Differentiation (Claims Extraction, Verification, Adaptive Questioning, Pushback Logic, Coverage Tracking, Ownership Engine, Architecture Audit, Mermaid Diagrams, Tech Audit, Enhanced Report) | 🟢 Complete (Milestones 2.1 - 2.12 Complete) |
-| **Phase 3** | The State Machine & Advanced Defense (PR Fetch & Diff Defense, Stress Testing, Incident Simulation) | 🟡 In Progress (Milestones 3.1 - 3.5 Complete) |
+| **Phase 3** | The State Machine & Advanced Defense (PR Fetch & Diff Defense, Stress Testing, Incident Simulation, Architecture Defense) | 🟡 In Progress (Milestones 3.1 - 3.5 & Step 3.6a Complete) |
 | **Phase 4** | Interactive Frontend (Next.js 15, SSE / WebSocket chat, Monaco/Prism Code Viewer) | ⚪ Planned |
 | **Phase 5** | Evaluation & Export (Rubric Scoring, Transcript Generation, PDF & Badge Export) | ⚪ Planned |
 
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-11-12] — Step 3.6a: Backend Architecture Defense Mode (Diagram-Grounded Interrogation & REST API)
+- **Scope / Module**: Backend Architecture Defense Mode (`backend/app/schemas/arch_defense.py`, `backend/app/ai/arch_defense_generator.py`, `backend/app/api/v1/arch_defense.py`, `backend/app/main.py`, `backend/tests/test_arch_defense.py`, `docs/specs/step-3-6a-arch-defense-backend.md`)
+- **Details**: Implemented the backend Architecture Defense Mode engine (Milestone 3.6, Sub-slice 3.6a) interrogating high-level design decisions grounded directly in Milestone 2.8 pattern/risk reports (`detect_repository_architecture`) and Milestone 2.9 Mermaid architecture diagrams (`generate_project_architecture_diagram`). Defined Pydantic v2 data contracts (`ArchFocusAreaType`, `ArchDefenseStage`, `DiagramTarget`, `ArchDefenseTopic`, `ArchDefenseTurn`, `ArchDefenseEvaluationOutput`, `ArchDefenseSessionState`, `ArchTopicListResponse`) and SSRF-validated `_LLMOverrideBase` request DTOs reusing `validate_llm_base_url`. Implemented LiteLLM topic synthesis and Principal Architect evaluation in `ai/arch_defense_generator.py` with XML delimiter sandboxing (`<architecture_context>`, `<diagram_mermaid>`, `<candidate_defense>`), ghost-node filtering against real `DiagramNode`s, deterministic offline synthesis/rubric fallbacks, and strict credential isolation (`resolve_llm_credentials` blocking `settings.FREELLMAPI_API_KEY` transmission to caller `base_url` overrides without an API key). Built FastAPI router mounted at `/api/v1/arch-defense` (`POST /projects/{id}/topics`, `POST /projects/{id}/sessions/start`, `GET /sessions/{id}`, `POST /sessions/{id}/respond`) with `(user_id, session)` IDOR authorization returning HTTP 404, architecture-fingerprinted topic caching with override bypass, bounded topic/session stores, and deterministic `TOPIC_ACTIVE -> TRADEOFF_CHALLENGE -> COMPLETED` transitions. Verified via `ruff check app tests` (`All checks passed!`), `pytest tests/test_arch_defense.py -v --cov... --cov-branch` (`7 passed in 8.44s`, `93%` combined statement coverage across `arch_defense.py` schema `100%`, `arch_defense_generator.py` `91%`, and `arch_defense.py` API `91%`), and `<= 300 LOC` across all files (`221`, `298`, `287`, `92`, `299`).
+- **Key Files**: `backend/app/schemas/arch_defense.py`, `backend/app/ai/arch_defense_generator.py`, `backend/app/api/v1/arch_defense.py`, `backend/app/main.py`, `backend/tests/test_arch_defense.py`, `docs/specs/step-3-6a-arch-defense-backend.md`
 
 ### [2026-11-12] — Step 3.5b: Next.js 15 Stress Test / What-If Mode UI & Interactive Scaling Defense Flow
 - **Scope / Module**: Frontend Stress Test & What-If Mode UI + Backend Scenario Cache, Security & View Isolation (`frontend/src/types/stressTest.ts`, `frontend/src/lib/stressTestApi.ts`, `frontend/src/components/domain/StressTurnTranscript.tsx`, `frontend/src/components/domain/StressTestSession.tsx`, `frontend/src/app/projects/[id]/stress-test/page.tsx`, `frontend/src/components/domain/ProjectNavHeader.tsx`, `backend/app/core/config.py`, `backend/app/ai/stress_test_generator.py`, `backend/app/schemas/stress_test.py`, `backend/app/services/stress_cache.py`, `backend/app/api/v1/stress_test.py`, `backend/tests/test_stress_test.py`, `backend/tests/test_stress_cache.py`, `docs/specs/step-3-5b-stress-test-what-if-ui.md`)
