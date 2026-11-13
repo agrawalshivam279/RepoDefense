@@ -524,7 +524,7 @@ gantt
 - **Components:** Recharts or similar Next.js library.
 - **Tasks:**
   - [x] **Step 3.7a: Backend Cross-Mode Performance Analytics Service & REST API** (schemas/analytics.py, services/analytics_extractors.py, services/analytics.py, api/v1/analytics.py, tests/test_analytics.py)
-  - [ ] **Step 3.7b: Next.js 15 Enhanced Analytics & Visualizations Dashboard UI**
+  - [x] **Step 3.7b: Next.js 15 Enhanced Analytics & Visualizations Dashboard UI** (analytics.ts, analyticsApi.ts, AnalyticsCharts.tsx, AnalyticsGroundTruthPanels.tsx, app/projects/[id]/analytics/page.tsx, ProjectNavHeader.tsx)
 - **Dependencies:** 1.16
 
 ### Milestone 3.8: Phase 3 Polish & Deploy
