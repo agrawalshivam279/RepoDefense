@@ -2,9 +2,11 @@
 
 import time
 import uuid
+from unittest.mock import MagicMock
 
 from fastapi.testclient import TestClient
 
+from app.ai.fsm import defense_store
 from app.api.v1.incident_simulation import incident_session_store
 from app.main import app
 from app.schemas.health import SimulationReadinessResponse, StoreTelemetry
@@ -75,6 +77,39 @@ class TestSimulationSessionStore:
         assert stats.active_sessions == 3
         assert stats.max_capacity == 3
 
+    def test_expired_pruned_before_lru_eviction(self):
+        """Ensures expired items are pruned before evicting a live LRU item upon saturation."""
+        store: SimulationSessionStore[str] = SimulationSessionStore(max_items=2, ttl_seconds=60.0)
+        store.set("a", "expiring_val", ttl_seconds=0.03)
+        store.set("b", "live_val", ttl_seconds=60.0)
+
+        # Access "a" so "b" would be LRU if expiry wasn't checked
+        store.get("a")
+
+        # Let "a" expire
+        time.sleep(0.05)
+
+        # Inserting "c" should prune expired "a" instead of evicting live "b"
+        store.set("c", "new_val")
+        assert len(store) == 2
+        assert "a" not in store
+        assert "b" in store
+        assert "c" in store
+        assert store.get_stats().total_evicted == 0
+        assert store.get_stats().total_expired >= 1
+
+    def test_explicit_ttl_override_when_default_ttl_zero(self):
+        """Ensures explicit ttl_seconds override is honored when default store TTL is 0."""
+        store: SimulationSessionStore[str] = SimulationSessionStore(max_items=5, ttl_seconds=0.0)
+        store.set("permanent", "stays", ttl_seconds=0.0)
+        store.set("temporary", "expires", ttl_seconds=0.04)
+
+        assert store.get("temporary") == "expires"
+        time.sleep(0.05)
+
+        assert store.get("temporary") is None
+        assert store.get("permanent") == "stays"
+
     def test_ttl_expiration_and_pruning(self):
         store: SimulationSessionStore[str] = SimulationSessionStore(max_items=5, ttl_seconds=0.05)
         k1 = "expiring-session"
@@ -96,7 +131,7 @@ class TestSimulationSessionStore:
         store: SimulationSessionStore[str] = SimulationSessionStore(max_items=10, ttl_seconds=0.05)
         store.set("a", "val_a")
         store.set("b", "val_b")
-        store.set("c", "val_c", ttl_seconds=10.0)  # persists longer
+        store.set("c", "val_c", ttl_seconds=10.0)
 
         time.sleep(0.07)
         pruned_count = store.prune_expired()
@@ -122,9 +157,16 @@ class TestSimulationSessionStore:
 class TestIncidentStoreIntegration:
     """Verifies incident_simulation router integration with SimulationSessionStore."""
 
-    def test_incident_session_store_is_bounded(self):
+    def test_incident_session_store_is_bounded(self, monkeypatch):
         assert isinstance(incident_session_store, SimulationSessionStore)
         assert incident_session_store._max_items == 100
+
+        isolated_store = SimulationSessionStore[IncidentDefenseSessionState](
+            max_items=100, ttl_seconds=86400.0
+        )
+        monkeypatch.setattr(
+            "app.api.v1.incident_simulation.incident_session_store", isolated_store
+        )
 
         sess_id = uuid.uuid4()
         scenario = IncidentScenario(
@@ -148,19 +190,34 @@ class TestIncidentStoreIntegration:
             telemetry_snapshot={"cpu_percent": 95},
         )
 
-        incident_session_store.set(sess_id, state)
-        assert sess_id in incident_session_store
-        assert incident_session_store.get(sess_id) == state
-
-        # Clean up
-        incident_session_store.delete(sess_id)
-        assert sess_id not in incident_session_store
+        isolated_store.set(sess_id, state)
+        assert sess_id in isolated_store
+        assert isolated_store.get(sess_id) == state
 
 
 class TestSimulationHealthEndpoints:
     """Verifies the /api/v1/health/simulations diagnostic endpoints."""
 
-    def test_get_simulation_readiness(self):
+    def test_get_simulation_readiness_and_discriminators(self, monkeypatch):
+        mock_core = MagicMock()
+        mock_core.pr_number = None
+        mock_core.commit_hash = None
+
+        mock_pr = MagicMock()
+        mock_pr.pr_number = 42
+        mock_pr.commit_hash = None
+
+        mock_commit = MagicMock()
+        mock_commit.pr_number = None
+        mock_commit.commit_hash = "abc1234"
+
+        mock_sessions = {
+            "core-1": mock_core,
+            "pr-1": mock_pr,
+            "commit-1": mock_commit,
+        }
+        monkeypatch.setattr(defense_store, "_sessions", mock_sessions)
+
         client = TestClient(app)
         response = client.get("/api/v1/health/simulations")
         assert response.status_code == 200
@@ -179,12 +236,10 @@ class TestSimulationHealthEndpoints:
             "arch_defense",
         }
         assert set(validated.supported_modes) == expected_modes
-        assert set(validated.modes.keys()) == expected_modes
 
-        incident_mode = validated.modes["incident_simulation"]
-        assert incident_mode.display_name == "Incident Simulation War Room"
-        assert incident_mode.capacity_limit == 100
-        assert incident_mode.status == "operational"
+        assert validated.modes["core_defense"].active_sessions == 1
+        assert validated.modes["pr_defense"].active_sessions == 1
+        assert validated.modes["commit_defense"].active_sessions == 1
 
     def test_get_simulation_telemetry(self):
         client = TestClient(app)

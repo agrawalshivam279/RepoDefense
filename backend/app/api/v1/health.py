@@ -21,10 +21,10 @@ async def get_simulation_readiness() -> SimulationReadinessResponse:
     """Returns operational readiness and active session metrics across all simulation engines."""
     fsm_sessions = list(defense_store._sessions.values())
     pr_count = sum(
-        1 for s in fsm_sessions if any("diff" in (t.metadata or {}) for t in s.turns)
+        1 for s in fsm_sessions if getattr(s, "pr_number", None) is not None
     )
     commit_count = sum(
-        1 for s in fsm_sessions if any("commit" in (t.metadata or {}) for t in s.turns)
+        1 for s in fsm_sessions if getattr(s, "commit_hash", None) is not None
     )
     core_count = max(0, len(fsm_sessions) - pr_count - commit_count)
 

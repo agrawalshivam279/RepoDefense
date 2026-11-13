@@ -16,7 +16,7 @@ class SimulationSessionStore(Generic[T]):
     def __init__(self, max_items: int = 100, ttl_seconds: float = 86400.0) -> None:
         self._max_items = max(1, max_items)
         self._ttl_seconds = max(0.0, ttl_seconds)
-        self._store: OrderedDict[str, Tuple[T, float]] = OrderedDict()
+        self._store: OrderedDict[str, Tuple[T, Optional[float]]] = OrderedDict()
         self._key_map: Dict[str, Any] = {}
         self._lock = threading.Lock()
         self._total_created = 0
@@ -26,11 +26,23 @@ class SimulationSessionStore(Generic[T]):
     def _norm(self, key: Any) -> str:
         return str(key)
 
+    def _prune_expired_locked(self, now: float) -> int:
+        """Internal lock-safe helper to prune expired entries without re-acquiring lock."""
+        expired_keys = [
+            k for k, (_, exp) in self._store.items() if exp is not None and now > exp
+        ]
+        for k in expired_keys:
+            del self._store[k]
+            self._key_map.pop(k, None)
+            self._total_expired += 1
+        return len(expired_keys)
+
     def set(self, key: Any, value: T, ttl_seconds: Optional[float] = None) -> None:
-        """Stores or updates a session item, evicting the oldest LRU item if capacity is reached."""
+        """Stores or updates an item, pruning expired items before LRU eviction if full."""
         norm = self._norm(key)
         ttl = ttl_seconds if ttl_seconds is not None else self._ttl_seconds
-        expires_at = time.time() + ttl
+        now = time.time()
+        expires_at = (now + ttl) if ttl > 0 else None
 
         with self._lock:
             if norm in self._store:
@@ -38,6 +50,9 @@ class SimulationSessionStore(Generic[T]):
                 self._store[norm] = (value, expires_at)
                 self._key_map[norm] = key
                 return
+
+            # Prune any expired entries first before checking capacity
+            self._prune_expired_locked(now)
 
             if len(self._store) >= self._max_items:
                 evicted_key, _ = self._store.popitem(last=False)
@@ -51,12 +66,13 @@ class SimulationSessionStore(Generic[T]):
     def get(self, key: Any, default: Optional[T] = None) -> Optional[T]:
         """Retrieves an item, updating its LRU position, or returns default if missing/expired."""
         norm = self._norm(key)
+        now = time.time()
         with self._lock:
             if norm not in self._store:
                 return default
 
             value, expires_at = self._store[norm]
-            if self._ttl_seconds > 0 and time.time() > expires_at:
+            if expires_at is not None and now > expires_at:
                 del self._store[norm]
                 self._key_map.pop(norm, None)
                 self._total_expired += 1
@@ -84,22 +100,14 @@ class SimulationSessionStore(Generic[T]):
     def prune_expired(self) -> int:
         """Removes all expired items and returns the number pruned."""
         with self._lock:
-            if self._ttl_seconds <= 0:
-                return 0
-            now = time.time()
-            expired_keys = [k for k, (_, exp) in self._store.items() if now > exp]
-            for k in expired_keys:
-                del self._store[k]
-                self._key_map.pop(k, None)
-                self._total_expired += 1
-            return len(expired_keys)
+            return self._prune_expired_locked(time.time())
 
     def get_stats(self) -> StoreTelemetry:
         """Returns observable telemetry counters for this store."""
         with self._lock:
             now = time.time()
             active_count = sum(
-                1 for _, exp in self._store.values() if self._ttl_seconds == 0 or now <= exp
+                1 for _, exp in self._store.values() if exp is None or now <= exp
             )
             return StoreTelemetry(
                 active_sessions=active_count,
@@ -128,17 +136,13 @@ class SimulationSessionStore(Generic[T]):
     def __len__(self) -> int:
         with self._lock:
             now = time.time()
-            return sum(
-                1 for _, exp in self._store.values() if self._ttl_seconds == 0 or now <= exp
-            )
+            return sum(1 for _, exp in self._store.values() if exp is None or now <= exp)
 
     def values(self) -> List[T]:
         """Returns a list of all active, unexpired values."""
         with self._lock:
             now = time.time()
-            return [
-                val for val, exp in self._store.values() if self._ttl_seconds == 0 or now <= exp
-            ]
+            return [val for val, exp in self._store.values() if exp is None or now <= exp]
 
     def keys(self) -> List[Any]:
         """Returns a list of all active, unexpired keys with original key types."""
@@ -147,7 +151,7 @@ class SimulationSessionStore(Generic[T]):
             return [
                 self._key_map.get(k, k)
                 for k, (_, exp) in self._store.items()
-                if self._ttl_seconds == 0 or now <= exp
+                if exp is None or now <= exp
             ]
 
     def items(self) -> List[Tuple[Any, T]]:
@@ -157,7 +161,7 @@ class SimulationSessionStore(Generic[T]):
             return [
                 (self._key_map.get(k, k), val)
                 for k, (val, exp) in self._store.items()
-                if self._ttl_seconds == 0 or now <= exp
+                if exp is None or now <= exp
             ]
 
     def __iter__(self) -> Iterator[Any]:
