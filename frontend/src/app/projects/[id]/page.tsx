@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 
 import { ProjectNavHeader } from "@/components/domain/ProjectNavHeader";
+import { SimulationArenaGrid } from "@/components/domain/SimulationArenaGrid";
 import { TechStackBadgeCloud } from "@/components/domain/TechStackBadgeCloud";
 import { getProjectOverview } from "@/lib/projectApi";
 import { supabase } from "@/lib/supabase";
@@ -201,6 +202,9 @@ export default function ProjectOverviewPage() {
           </div>
         </div>
       )}
+
+      {/* Interactive Simulation Arena Hub */}
+      <SimulationArenaGrid projectId={overview.project_id} />
 
       {/* Tech Stack & Dependencies Cloud */}
       <TechStackBadgeCloud
