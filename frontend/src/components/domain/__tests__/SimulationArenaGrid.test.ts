@@ -56,22 +56,36 @@ describe("SimulationArenaGrid Catalog & Route Builders", () => {
     }
   });
 
-  it("parses active session counts accurately from simulation readiness API payload", () => {
-    const mockPayload = {
+  it("parses active session counts from backend modes dictionary", () => {
+    const mockBackendResponse = {
       status: "healthy",
-      simulations: {
-        core_defense: { active_sessions: 3, capacity_limit: 100, status: "operational" },
-        pr_defense: { active_sessions: 1, capacity_limit: 100, status: "operational" },
-        incident_simulation: { active_sessions: 5, capacity_limit: 50, status: "operational" },
+      app: "RepoDefense Backend",
+      version: "0.1.0",
+      supported_modes: ["core_defense", "pr_defense", "incident_simulation"],
+      modes: {
+        core_defense: { active_sessions: 4, capacity_limit: null, status: "operational" },
+        pr_defense: { active_sessions: 2, capacity_limit: null, status: "operational" },
+        incident_simulation: { active_sessions: 6, capacity_limit: 100, status: "operational" },
       },
-      total_active_sessions: 9,
+      total_active_simulations: 12,
     };
 
-    const counts = parseSimulationReadiness(mockPayload);
-    assert.equal(counts.core_defense, 3);
-    assert.equal(counts.pr_defense, 1);
-    assert.equal(counts.incident_simulation, 5);
+    const counts = parseSimulationReadiness(mockBackendResponse);
+    assert.equal(counts.core_defense, 4);
+    assert.equal(counts.pr_defense, 2);
+    assert.equal(counts.incident_simulation, 6);
     assert.equal(counts.stress_test, undefined);
+  });
+
+  it("supports backward-compatible fallback for simulations dictionary", () => {
+    const legacyPayload = {
+      status: "healthy",
+      simulations: {
+        arch_defense: { active_sessions: 7 },
+      },
+    };
+    const counts = parseSimulationReadiness(legacyPayload);
+    assert.equal(counts.arch_defense, 7);
   });
 
   it("gracefully handles invalid, null, or malformed readiness payloads", () => {
@@ -79,6 +93,6 @@ describe("SimulationArenaGrid Catalog & Route Builders", () => {
     assert.deepEqual(parseSimulationReadiness(undefined), {});
     assert.deepEqual(parseSimulationReadiness("not-an-object"), {});
     assert.deepEqual(parseSimulationReadiness({ status: "healthy" }), {});
-    assert.deepEqual(parseSimulationReadiness({ simulations: null }), {});
+    assert.deepEqual(parseSimulationReadiness({ modes: null }), {});
   });
 });

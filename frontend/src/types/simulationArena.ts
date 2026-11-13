@@ -29,25 +29,25 @@ export interface ModeStatusItem {
 
 export interface SimulationReadinessPayload {
   status: string;
+  modes?: Record<string, ModeStatusItem>;
   simulations?: Record<string, ModeStatusItem>;
-  total_active_sessions?: number;
+  total_active_simulations?: number;
 }
 
 export function parseSimulationReadiness(
   data: unknown
 ): Record<string, number> {
   const counts: Record<string, number> = {};
-  if (
-    typeof data === "object" &&
-    data !== null &&
-    "simulations" in data &&
-    typeof (data as SimulationReadinessPayload).simulations === "object" &&
-    (data as SimulationReadinessPayload).simulations !== null
-  ) {
-    const sims = (data as SimulationReadinessPayload).simulations!;
-    for (const [key, val] of Object.entries(sims)) {
-      if (typeof val?.active_sessions === "number") {
-        counts[key] = val.active_sessions;
+  if (typeof data === "object" && data !== null) {
+    const obj = data as Record<string, unknown>;
+    const modesDict = (obj.modes || obj.simulations) as
+      | Record<string, ModeStatusItem>
+      | undefined;
+    if (modesDict && typeof modesDict === "object") {
+      for (const [key, val] of Object.entries(modesDict)) {
+        if (typeof val?.active_sessions === "number") {
+          counts[key] = val.active_sessions;
+        }
       }
     }
   }

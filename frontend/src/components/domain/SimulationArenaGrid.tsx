@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -28,13 +28,21 @@ export function SimulationArenaGrid({ projectId }: SimulationArenaGridProps) {
   const [sessionCounts, setSessionCounts] = useState<Record<string, number> | null>(null);
   const [loadingCounts, setLoadingCounts] = useState<boolean>(true);
   const [fetchError, setFetchError] = useState<boolean>(false);
+  const abortRef = useRef<AbortController | null>(null);
 
-  const fetchSessionCounts = useCallback((signal?: AbortSignal) => {
+  const fetchSessionCounts = useCallback(() => {
+    // Abort any in-flight request before launching a new one
+    if (abortRef.current) {
+      abortRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setLoadingCounts(true);
     setFetchError(false);
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-    fetch(`${apiUrl}/api/v1/health/simulations`, { signal })
+    fetch(`${apiUrl}/api/v1/health/simulations`, { signal: controller.signal })
       .then((res) => {
         if (!res.ok) throw new Error("Health check failed");
         return res.json();
@@ -52,10 +60,11 @@ export function SimulationArenaGrid({ projectId }: SimulationArenaGridProps) {
   }, []);
 
   useEffect(() => {
-    const controller = new AbortController();
-    fetchSessionCounts(controller.signal);
+    fetchSessionCounts();
     return () => {
-      controller.abort();
+      if (abortRef.current) {
+        abortRef.current.abort();
+      }
     };
   }, [fetchSessionCounts]);
 
@@ -89,7 +98,7 @@ export function SimulationArenaGrid({ projectId }: SimulationArenaGridProps) {
           {fetchError && (
             <button
               type="button"
-              onClick={() => fetchSessionCounts()}
+              onClick={fetchSessionCounts}
               className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-[11px] font-mono text-amber-300 hover:bg-amber-500/20 transition-colors"
             >
               <RefreshCw className="w-3.5 h-3.5" />
@@ -153,6 +162,10 @@ export function SimulationArenaGrid({ projectId }: SimulationArenaGridProps) {
                     <span className="text-slate-500 animate-pulse text-[10px]">
                       Checking...
                     </span>
+                  ) : fetchError ? (
+                    <span className="text-amber-400/80 text-[10px]">
+                      Unavailable
+                    </span>
                   ) : typeof activeCount === "number" ? (
                     <span className="flex items-center gap-1.5">
                       <span
@@ -173,7 +186,9 @@ export function SimulationArenaGrid({ projectId }: SimulationArenaGridProps) {
                       </span>
                     </span>
                   ) : (
-                    <span className="text-slate-500 text-[10px]">Ready</span>
+                    <span className="text-slate-500 text-[10px]">
+                      Unavailable
+                    </span>
                   )}
                 </div>
               </div>
