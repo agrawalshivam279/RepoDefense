@@ -1,6 +1,9 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { SIMULATION_MODES } from "../SimulationArenaGrid";
+import {
+  SIMULATION_MODES,
+  parseSimulationReadiness,
+} from "../SimulationArenaGrid";
 
 describe("SimulationArenaGrid Catalog & Route Builders", () => {
   it("defines all 6 canonical RepoDefense simulation modes", () => {
@@ -51,5 +54,31 @@ describe("SimulationArenaGrid Catalog & Route Builders", () => {
         `URL mismatch for mode ${mode.id}`
       );
     }
+  });
+
+  it("parses active session counts accurately from simulation readiness API payload", () => {
+    const mockPayload = {
+      status: "healthy",
+      simulations: {
+        core_defense: { active_sessions: 3, capacity_limit: 100, status: "operational" },
+        pr_defense: { active_sessions: 1, capacity_limit: 100, status: "operational" },
+        incident_simulation: { active_sessions: 5, capacity_limit: 50, status: "operational" },
+      },
+      total_active_sessions: 9,
+    };
+
+    const counts = parseSimulationReadiness(mockPayload);
+    assert.equal(counts.core_defense, 3);
+    assert.equal(counts.pr_defense, 1);
+    assert.equal(counts.incident_simulation, 5);
+    assert.equal(counts.stress_test, undefined);
+  });
+
+  it("gracefully handles invalid, null, or malformed readiness payloads", () => {
+    assert.deepEqual(parseSimulationReadiness(null), {});
+    assert.deepEqual(parseSimulationReadiness(undefined), {});
+    assert.deepEqual(parseSimulationReadiness("not-an-object"), {});
+    assert.deepEqual(parseSimulationReadiness({ status: "healthy" }), {});
+    assert.deepEqual(parseSimulationReadiness({ simulations: null }), {});
   });
 });

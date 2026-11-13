@@ -1,118 +1,68 @@
 "use client";
 
-import React from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
   BarChart3,
-  Compass,
-  Flame,
-  Gauge,
-  GitCommit,
-  GitPullRequest,
-  Shield,
+  RefreshCw,
   Sparkles,
 } from "lucide-react";
+import {
+  SIMULATION_MODES,
+  type SimulationArenaMode,
+  parseSimulationReadiness,
+} from "../../types/simulationArena";
 
-export interface SimulationArenaMode {
-  id: string;
-  title: string;
-  badgeText: string;
-  badgeStyle: string;
-  focusArea: string;
-  description: string;
-  hrefTemplate: (id: string) => string;
-  buttonLabel: string;
-  Icon: React.ComponentType<{ className?: string }>;
-  accentColor: string;
-}
-
-export const SIMULATION_MODES: SimulationArenaMode[] = [
-  {
-    id: "core_defense",
-    title: "Core Oral Defense",
-    badgeText: "Core MVP",
-    badgeStyle: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-    focusArea: "Deep Code Comprehension",
-    description:
-      "Evidence-grounded architectural defense with adaptive follow-ups, depth scoring, and AI pushback.",
-    hrefTemplate: (id) => `/interview/${id}`,
-    buttonLabel: "Launch Oral Defense",
-    Icon: Shield,
-    accentColor: "text-emerald-400",
-  },
-  {
-    id: "pr_defense",
-    title: "Pull Request Defense",
-    badgeText: "Diff Grounded",
-    badgeStyle: "bg-rose-500/10 text-rose-400 border-rose-500/20",
-    focusArea: "Change Rationalization",
-    description:
-      "Diff-scoped interrogation focusing strictly on why code changes were made across modified hunks.",
-    hrefTemplate: (id) => `/projects/${id}/pr-defense`,
-    buttonLabel: "Launch PR Defense",
-    Icon: GitPullRequest,
-    accentColor: "text-rose-400",
-  },
-  {
-    id: "commit_defense",
-    title: "Git Commit Defense",
-    badgeText: "Commit Scoped",
-    badgeStyle: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-    focusArea: "Atomic Integrity",
-    description:
-      "Single commit SHA interrogation examining change context, author intent, and potential blast radius.",
-    hrefTemplate: (id) => `/projects/${id}/commit-defense`,
-    buttonLabel: "Launch Commit Defense",
-    Icon: GitCommit,
-    accentColor: "text-emerald-400",
-  },
-  {
-    id: "incident_simulation",
-    title: "Incident War Room",
-    badgeText: "Chaos SRE",
-    badgeStyle: "bg-rose-500/10 text-rose-400 border-rose-500/20",
-    focusArea: "Resilience Engineering",
-    description:
-      "Production chaos failure simulation testing real-time triage, system mitigations, and postmortems.",
-    hrefTemplate: (id) => `/projects/${id}/incident-simulation`,
-    buttonLabel: "Enter War Room",
-    Icon: Flame,
-    accentColor: "text-rose-400",
-  },
-  {
-    id: "stress_test",
-    title: "Stress Test & What-If",
-    badgeText: "Scaling Defense",
-    badgeStyle: "bg-amber-500/10 text-amber-400 border-amber-500/20",
-    focusArea: "Concurrency & Bottlenecks",
-    description:
-      "Hypothetical 10x–100x traffic scaling constraints interrogating bottlenecks and connection saturation.",
-    hrefTemplate: (id) => `/projects/${id}/stress-test`,
-    buttonLabel: "Start Stress Test",
-    Icon: Gauge,
-    accentColor: "text-amber-400",
-  },
-  {
-    id: "arch_defense",
-    title: "Architecture Defense",
-    badgeText: "Topology Defense",
-    badgeStyle: "bg-cyan-500/10 text-cyan-400 border-cyan-500/20",
-    focusArea: "System Tradeoffs",
-    description:
-      "Interactive Mermaid diagram-linked interrogation challenging component boundaries and architectural risks.",
-    hrefTemplate: (id) => `/projects/${id}/arch-defense`,
-    buttonLabel: "Defend Architecture",
-    Icon: Compass,
-    accentColor: "text-cyan-400",
-  },
-];
+export {
+  SIMULATION_MODES,
+  type SimulationArenaMode,
+  parseSimulationReadiness,
+};
 
 interface SimulationArenaGridProps {
   projectId: string;
 }
 
 export function SimulationArenaGrid({ projectId }: SimulationArenaGridProps) {
+  const [sessionCounts, setSessionCounts] = useState<Record<string, number> | null>(null);
+  const [loadingCounts, setLoadingCounts] = useState<boolean>(true);
+  const [fetchError, setFetchError] = useState<boolean>(false);
+
+  const fetchSessionCounts = useCallback((signal?: AbortSignal) => {
+    setLoadingCounts(true);
+    setFetchError(false);
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+    fetch(`${apiUrl}/api/v1/health/simulations`, { signal })
+      .then((res) => {
+        if (!res.ok) throw new Error("Health check failed");
+        return res.json();
+      })
+      .then((data: unknown) => {
+        setSessionCounts(parseSimulationReadiness(data));
+        setLoadingCounts(false);
+      })
+      .catch((err: Error) => {
+        if (err.name !== "AbortError") {
+          setFetchError(true);
+          setLoadingCounts(false);
+        }
+      });
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchSessionCounts(controller.signal);
+    return () => {
+      controller.abort();
+    };
+  }, [fetchSessionCounts]);
+
+  const totalActive = sessionCounts
+    ? Object.values(sessionCounts).reduce((acc, n) => acc + n, 0)
+    : 0;
+
   return (
     <div className="space-y-6">
       {/* Header Banner */}
@@ -121,6 +71,11 @@ export function SimulationArenaGrid({ projectId }: SimulationArenaGridProps) {
           <div className="flex items-center gap-2 text-emerald-400 text-xs font-mono uppercase tracking-wider mb-1">
             <Sparkles className="w-4 h-4" />
             <span>Interactive Defense Arena</span>
+            {sessionCounts && totalActive > 0 && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-semibold border border-emerald-500/30">
+                {totalActive} Active System-wide
+              </span>
+            )}
           </div>
           <h2 className="text-xl font-bold text-white tracking-tight">
             Select a Simulation Engine
@@ -130,14 +85,27 @@ export function SimulationArenaGrid({ projectId }: SimulationArenaGridProps) {
           </p>
         </div>
 
-        <Link
-          href={`/projects/${projectId}/analytics`}
-          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs font-mono text-emerald-400 hover:text-emerald-300 hover:border-emerald-500/40 transition-colors shrink-0 shadow-sm"
-        >
-          <BarChart3 className="w-4 h-4" />
-          <span>Readiness Telemetry</span>
-          <ArrowRight className="w-3.5 h-3.5" />
-        </Link>
+        <div className="flex items-center gap-2">
+          {fetchError && (
+            <button
+              type="button"
+              onClick={() => fetchSessionCounts()}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-[11px] font-mono text-amber-300 hover:bg-amber-500/20 transition-colors"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Retry Counts</span>
+            </button>
+          )}
+
+          <Link
+            href={`/projects/${projectId}/analytics`}
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs font-mono text-emerald-400 hover:text-emerald-300 hover:border-emerald-500/40 transition-colors shrink-0 shadow-sm"
+          >
+            <BarChart3 className="w-4 h-4" />
+            <span>Readiness Telemetry</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
       </div>
 
       {/* 6-Card Arena Grid */}
@@ -145,6 +113,8 @@ export function SimulationArenaGrid({ projectId }: SimulationArenaGridProps) {
         {SIMULATION_MODES.map((mode) => {
           const { Icon } = mode;
           const href = mode.hrefTemplate(projectId);
+          const activeCount = sessionCounts ? sessionCounts[mode.id] : undefined;
+
           return (
             <div
               key={mode.id}
@@ -175,9 +145,40 @@ export function SimulationArenaGrid({ projectId }: SimulationArenaGridProps) {
                 <p className="text-xs text-slate-300 leading-relaxed font-sans min-h-[48px]">
                   {mode.description}
                 </p>
+
+                {/* Active Sessions Counter */}
+                <div className="pt-2 flex items-center justify-between text-[11px] font-mono border-t border-slate-800/50">
+                  <span className="text-slate-500">Live Engine</span>
+                  {loadingCounts ? (
+                    <span className="text-slate-500 animate-pulse text-[10px]">
+                      Checking...
+                    </span>
+                  ) : typeof activeCount === "number" ? (
+                    <span className="flex items-center gap-1.5">
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full ${
+                          activeCount > 0
+                            ? "bg-emerald-400 animate-pulse"
+                            : "bg-slate-600"
+                        }`}
+                      />
+                      <span
+                        className={
+                          activeCount > 0
+                            ? "text-emerald-400 font-semibold"
+                            : "text-slate-400"
+                        }
+                      >
+                        {activeCount} active
+                      </span>
+                    </span>
+                  ) : (
+                    <span className="text-slate-500 text-[10px]">Ready</span>
+                  )}
+                </div>
               </div>
 
-              <div className="pt-4 mt-2 border-t border-slate-800/80">
+              <div className="pt-4 mt-3 border-t border-slate-800/80">
                 <Link
                   href={href}
                   className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-xs font-mono text-slate-200 hover:text-white border border-slate-700/80 transition-colors"
