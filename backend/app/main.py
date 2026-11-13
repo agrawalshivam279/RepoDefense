@@ -16,6 +16,7 @@ from app.api.v1.claims import (
 from app.api.v1.commit_defense import router as commit_defense_router
 from app.api.v1.defense import router as defense_router
 from app.api.v1.diagram import router as diagram_router
+from app.api.v1.health import router as health_router
 from app.api.v1.incident_simulation import router as incident_simulation_router
 from app.api.v1.pr_defense import router as pr_defense_router
 from app.api.v1.projects import router as projects_router
@@ -72,6 +73,7 @@ app.include_router(
 app.include_router(stress_test_router, prefix=f"{settings.API_V1_STR}/v1/stress-test")
 app.include_router(arch_defense_router, prefix=f"{settings.API_V1_STR}/v1/arch-defense")
 app.include_router(analytics_router, prefix=f"{settings.API_V1_STR}/v1/analytics")
+app.include_router(health_router, prefix=f"{settings.API_V1_STR}/v1/health")
 
 
 @app.get("/", tags=["System"])

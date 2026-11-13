@@ -34,12 +34,15 @@ from app.schemas.incident import (
     StartIncidentDefenseRequest,
     SubmitIncidentAnswerRequest,
 )
+from app.services.simulation_store import SimulationSessionStore
 
 logger = structlog.get_logger(__name__)
 router = APIRouter(tags=["Incident Simulation"])
 
 # In-memory store for active incident defense sessions (production would sync to Redis)
-incident_session_store: Dict[uuid.UUID, IncidentDefenseSessionState] = {}
+incident_session_store: SimulationSessionStore[IncidentDefenseSessionState] = (
+    SimulationSessionStore[IncidentDefenseSessionState](max_items=100, ttl_seconds=86400.0)
+)
 # Cached scenarios catalog per project
 project_scenarios_cache: Dict[uuid.UUID, List[IncidentScenario]] = {}
 

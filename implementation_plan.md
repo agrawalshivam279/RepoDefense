@@ -528,6 +528,10 @@ gantt
 - **Dependencies:** 1.16
 
 ### Milestone 3.8: Phase 3 Polish & Deploy
+- **Goal:** Comprehensive Phase 3 simulation hardening, bounded session lifecycle persistence, and unified simulation arena.
+- **Sub-tasks:**
+  - [x] **Step 3.8a: Backend Cross-Simulation Session Store Hardening & Readiness API** (SimulationSessionStore generic LRU/TTL bounded store, incident_simulation refactor, health.py GET /api/v1/health/simulations diagnostic readiness endpoint, test_simulation_store_health.py with 8/8 tests passing, 96% coverage)
+  - [ ] **Step 3.8b: Frontend Simulation Arena Hub, Grouped Navigation & Phase 3 UX Polish** (SimulationArenaGrid component, responsive categorized ProjectNavHeader, /projects/[id] Arena launcher, production build verification)
 
 ## 7. PHASE 4 — LEARNING LOOP
 **Goal:** Mentor mode, progress tracking, re-testing.
