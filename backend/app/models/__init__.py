@@ -7,6 +7,7 @@ from app.models.analysis import (
 )
 from app.models.base import Base, TimestampMixin
 from app.models.project import Project, RepositorySnapshot, User
+from app.models.skill import CandidateWeakness, UserSkill
 
 __all__ = [
     "Base",
@@ -19,4 +20,6 @@ __all__ = [
     "Dependency",
     "Evidence",
     "CodeEmbedding",
+    "UserSkill",
+    "CandidateWeakness",
 ]

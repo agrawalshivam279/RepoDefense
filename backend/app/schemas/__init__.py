@@ -100,6 +100,19 @@ from app.schemas.report import (
     EnhancedDefenseReportResponse,
     ReportSynthesisOutput,
 )
+from app.schemas.skill import (
+    CandidateWeaknessBase,
+    CandidateWeaknessCreate,
+    CandidateWeaknessResponse,
+    CandidateWeaknessUpdate,
+    SkillCategory,
+    UserSkillBase,
+    UserSkillCreate,
+    UserSkillResponse,
+    UserSkillsOverviewResponse,
+    UserSkillUpdate,
+    WeaknessSeverity,
+)
 from app.schemas.summary import (
     ProjectSummary,
     ProjectSummaryInput,
@@ -190,4 +203,15 @@ __all__ = [
     "TechAuditReportResponse",
     "TurnRole",
     "VerificationStatus",
+    "WeaknessSeverity",
+    "SkillCategory",
+    "UserSkillBase",
+    "UserSkillCreate",
+    "UserSkillUpdate",
+    "UserSkillResponse",
+    "CandidateWeaknessBase",
+    "CandidateWeaknessCreate",
+    "CandidateWeaknessUpdate",
+    "CandidateWeaknessResponse",
+    "UserSkillsOverviewResponse",
 ]
