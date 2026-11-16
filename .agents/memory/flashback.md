@@ -17,7 +17,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **Frontend Core** | Next.js 15 (App Router) + TypeScript + Tailwind + shadcn/ui | 🟢 Phase 1 & Step 2.1b Complete |
 | **Backend API** | FastAPI (Python 3.12+) + Pydantic v2 + structlog | 🟢 Milestone 1.1 Complete |
 | **Database & Vectors** | PostgreSQL 17 + pgvector (Supabase) + SQLAlchemy asyncpg | 🟢 Milestone 1.2, Step 2.12a, RLS Lockdown (`3b7c9d4e2f1a`) & Step 4.1a (`4c8d1e2f3a4b`) Complete |
-| **Weakness Tracking & Skills** | PostgreSQL 17 + Vector(384) + SQLAlchemy asyncpg | 🟢 Step 4.1a Complete (Models & RLS Migration) |
+| **Weakness Tracking & Skills** | PostgreSQL 17 + Vector(384) + SQLAlchemy asyncpg | 🟢 Milestone 4.1 Complete (Models, RLS Migration, Extraction Service & Skills API) |
 | **Authentication** | Supabase Auth (GitHub OAuth + Email/Password) | 🟢 Milestone 1.3 Complete |
 | **Background Queue** | ARQ (asyncio + Upstash Redis) | 🟢 Milestone 1.5 Complete |
 | **Static Code Ingestion & Cataloging** | Shallow Git Clone + Security Filter + File Scanner | 🟢 Milestone 1.5 & 1.6 Complete |
@@ -139,6 +139,14 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-11-16] — Step 4.1b: Backend Weakness Extraction Service, Simulation Hooks & Portfolio Rollup REST API
+- **Scope / Module**: Backend Weakness Extraction Service & REST API (ackend/app/services/weakness_tracker.py, ackend/app/api/v1/skills.py, ackend/app/main.py, ackend/app/schemas/skill.py, ackend/app/schemas/__init__.py, ackend/tests/test_weakness_tracker.py, docs/specs/step-4-1b-weakness-tracker-api.md)
+- **Details**: Built the business logic service and REST API layer concluding Milestone 4.1 (Weakness Tracking System). Implemented WeaknessTrackerService (weakness_tracker.py - 276 LOC) with pessimistic row locking (with_for_update) for atomic candidate skill proficiency updates using exponential moving average (.7 \times \text{prior} + 0.3 \times \text{score}$ clamped $[0.0, 100.0]$), evaluation counter increments, and automatic extraction of CandidateWeakness records on failed turns with CPU-bound embedding generation offloaded to thread pool (syncio.to_thread(generate_embeddings, ...)). Built idempotent weakness resolution workflow (
+esolve_weakness) reinforcing candidate skills only on first transition and maintaining counter consistency. Implemented portfolio summary service (get_user_skills_overview) aggregating average proficiency, weak vs. strong skill counts, and top 5 unresolved weaknesses ordered by severity priority (critical > major > minor). Authored FastAPI REST router pi/v1/skills.py (149 LOC) mounted under /api/v1/skills exposing GET /overview, GET /weaknesses, PATCH /weaknesses/{id}/resolve (with strict ResolveWeaknessRequest schema rejecting unsupported fields), and POST /evaluations (with strict multi-tenant project ownership verification against IDOR attacks). Authored 6 comprehensive hermetic tests in 	ests/test_weakness_tracker.py (291 LOC). Verified 100% via 
+uff check (clean), 
+pm run typecheck (0 errors), and pytest (17/17 passed in 5.25s), zero arbitrary code execution, and strict <= 300 LOC across all touched files. Concludes Milestone 4.1.
+- **Key Files**: ackend/app/services/weakness_tracker.py, ackend/app/api/v1/skills.py, ackend/app/main.py, ackend/app/schemas/skill.py, ackend/tests/test_weakness_tracker.py, docs/specs/step-4-1b-weakness-tracker-api.md
 
 ### [2026-11-16] — Step 4.1a: Backend UserSkill & CandidateWeakness Models, Schemas & Alembic Migration
 - **Scope / Module**: Backend Weakness Tracking Models & Database Migration (`backend/app/models/skill.py`, `backend/app/schemas/skill.py`, `backend/alembic/versions/4c8d1e2f3a4b_create_user_skills_and_weaknesses.py`, `backend/tests/test_skill_models.py`, `backend/tests/test_db_rls.py`, `backend/app/models/project.py`, `backend/app/models/__init__.py`, `backend/app/schemas/__init__.py`, `docs/specs/step-4-1a-weakness-models-migration.md`)

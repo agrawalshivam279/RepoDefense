@@ -540,7 +540,7 @@ gantt
 - **Goal:** DB schema to track consistently missed topics.
 - **Sub-tasks:**
   - [x] **Step 4.1a: Backend UserSkill & CandidateWeakness Models, Schemas & Alembic Migration** (SQLAlchemy 2.0 async models, Pydantic v2 contracts, 4c8d1e2f3a4b migration with public schema RLS lockdown, 11/11 tests passing, 100% coverage)
-  - [ ] **Step 4.1b: Backend Weakness Extraction Service, Simulation Hooks & Portfolio Rollup REST API** (services/weakness_tracker.py, api/v1/skills.py, portfolio endpoints, hermetic service tests)
+  - [x] **Step 4.1b: Backend Weakness Extraction Service, Simulation Hooks & Portfolio Rollup REST API** (services/weakness_tracker.py, api/v1/skills.py, portfolio endpoints, IDOR & thread offload hardening, 17/17 tests passing)
 - **Components:** `UserSkill` model.
 - **Dependencies:** 1.14
 
