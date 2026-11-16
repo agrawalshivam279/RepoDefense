@@ -3,7 +3,7 @@
 import uuid
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -85,7 +85,7 @@ async def explain_weakness_or_topic(
 )
 async def get_explanation_for_weakness(
     weakness_id: uuid.UUID,
-    language: str = "python",
+    language: str = Query(default="python", max_length=32),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> MentorExplanationResponse:

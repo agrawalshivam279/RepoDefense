@@ -4,8 +4,9 @@ import uuid
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from app.core.config import validate_llm_base_url
 from app.schemas.skill import SkillCategory
 
 
@@ -92,6 +93,11 @@ class MentorExplanationRequest(BaseModel):
         default=None,
         description="Optional LiteLLM API key override",
     )
+
+    @field_validator("llm_base_url")
+    @classmethod
+    def _validate_base_url(cls, value: Optional[str]) -> Optional[str]:
+        return validate_llm_base_url(value)
 
     @model_validator(mode="after")
     def validate_request_source(self) -> "MentorExplanationRequest":

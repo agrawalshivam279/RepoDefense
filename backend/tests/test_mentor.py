@@ -12,6 +12,7 @@ from app.ai.mentor_generator import (
     _build_deterministic_mentor_explanation,
     generate_mentor_explanation,
 )
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.main import app
@@ -56,12 +57,14 @@ def test_mentor_generator_deterministic_fallbacks():
     )
     assert "thundering herd" in resp_cache.code_examples[0].before_code.lower()
 
-    # 4. Generic / Other topic
-    resp_gen = _build_deterministic_mentor_explanation(
-        category="architecture", topic="domain_service_coupling"
+    # 4. Long topic boundary and non-python requested language
+    long_topic = "a" * 128
+    resp_long = _build_deterministic_mentor_explanation(
+        category="architecture", topic=long_topic, language="typescript"
     )
-    assert resp_gen.category == "architecture"
-    assert resp_gen.code_examples[0].language == "python"
+    assert len(resp_long.code_examples[0].title) <= 128
+    assert resp_long.code_examples[0].language == "python"
+    assert "typescript" in resp_long.code_examples[0].explanation.lower()
 
 
 def test_mentor_generator_with_mock_litellm():
@@ -165,6 +168,8 @@ def test_mentor_rest_endpoints():
 
         mock_db = _make_mock_db(scalar_return=weakness)
         prev_overrides = dict(app.dependency_overrides)
+        orig_key = settings.FREELLMAPI_API_KEY
+        settings.FREELLMAPI_API_KEY = ""  # Force deterministic offline fallback
         app.dependency_overrides[get_current_user] = lambda: user
         app.dependency_overrides[get_db] = lambda: mock_db
 
@@ -194,6 +199,11 @@ def test_mentor_rest_endpoints():
                 assert data_weakness["topic"] == "race_condition_locks"
                 assert "concurrency" in data_weakness["category"].lower()
 
+                # Verify ownership predicate was inspected in DB query
+                last_call = mock_db.execute.call_args[0][0]
+                sql_str = str(last_call)
+                assert "candidate_weaknesses.user_id =" in sql_str
+
                 # 4. POST /explain with non-existent or unowned weakness_id (IDOR defense)
                 mock_db.execute.return_value.scalar_one_or_none.return_value = None
                 res_unauthorized = await client.post(
@@ -217,7 +227,21 @@ def test_mentor_rest_endpoints():
                 # 7. POST /explain empty body (422 Unprocessable Entity)
                 res_invalid = await client.post("/api/v1/mentor/explain", json={})
                 assert res_invalid.status_code == 422
+
+                # 8. POST /explain with invalid insecure llm_base_url (422 rejected)
+                res_bad_url = await client.post(
+                    "/api/v1/mentor/explain",
+                    json={"topic": "testing", "llm_base_url": "http://insecure.test/v1"},
+                )
+                assert res_bad_url.status_code == 422
+
+                # 9. GET /explanations/{id} with overly long language (422 rejected)
+                res_bad_lang = await client.get(
+                    f"/api/v1/mentor/explanations/{weakness.id}?language={'x'*35}"
+                )
+                assert res_bad_lang.status_code == 422
         finally:
+            settings.FREELLMAPI_API_KEY = orig_key
             app.dependency_overrides = prev_overrides
 
     asyncio.run(_impl())
