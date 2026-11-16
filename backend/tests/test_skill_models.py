@@ -55,11 +55,14 @@ def test_user_skill_schema_validations():
     assert skill.passed_evaluations == 3
 
     # Clamped bounds: score must be between 0.0 and 100.0
-    with pytest.raises(ValidationError):
-        UserSkillBase(category="auth", topic="jwt", proficiency_score=-5.0)
+    for bad_score in [-5.0, 105.0]:
+        with pytest.raises(ValidationError):
+            UserSkillBase(category="auth", topic="jwt", proficiency_score=bad_score)
 
-    with pytest.raises(ValidationError):
-        UserSkillBase(category="auth", topic="jwt", proficiency_score=105.0)
+    # String length bounds
+    for bad_cat, bad_top in [("a" * 65, "jwt"), ("auth", "b" * 129)]:
+        with pytest.raises(ValidationError):
+            UserSkillBase(category=bad_cat, topic=bad_top)
 
     # Valid creation with user_id
     uid = uuid.uuid4()
@@ -128,6 +131,35 @@ def test_candidate_weakness_schema_validations():
     )
     assert default_w.severity == WeaknessSeverity.MAJOR
 
+    # String length bounds
+    base_kwargs = {
+        "user_id": uid,
+        "project_id": pid,
+        "question_prompt": "q",
+        "feedback": "f",
+    }
+    bad_fields = [
+        {"simulation_mode": "m" * 33, "category": "c", "topic": "t"},
+        {"simulation_mode": "c", "category": "c" * 65, "topic": "t"},
+        {"simulation_mode": "c", "category": "c", "topic": "t" * 129},
+        {"simulation_mode": "c", "category": "c", "topic": "t", "session_id": "s" * 65},
+    ]
+    for bf in bad_fields:
+        with pytest.raises(ValidationError):
+            CandidateWeaknessCreate(**base_kwargs, **bf)
+
+    # Embedding dimension validation: exactly 384 or None
+    for bad_emb in [[], [0.1] * 383, [0.1] * 385]:
+        with pytest.raises(ValidationError):
+            CandidateWeaknessCreate(
+                **base_kwargs, simulation_mode="c", category="c", topic="t", topic_embedding=bad_emb
+            )
+
+    valid_emb = CandidateWeaknessCreate(
+        **base_kwargs, simulation_mode="c", category="c", topic="t", topic_embedding=[0.1] * 384
+    )
+    assert len(valid_emb.topic_embedding) == 384
+
     # Update schema
     resolved_time = datetime.now(timezone.utc)
     update = CandidateWeaknessUpdate(resolved=True, resolved_at=resolved_time)
@@ -178,16 +210,12 @@ def test_sqlalchemy_user_skill_model_contracts():
 
     # Column presence and types
     cols = {c.name: c for c in UserSkill.__table__.columns}
-    assert "id" in cols
-    assert "user_id" in cols
-    assert "category" in cols
-    assert "topic" in cols
-    assert "proficiency_score" in cols
-    assert "total_evaluations" in cols
-    assert "passed_evaluations" in cols
-    assert "failed_evaluations" in cols
-    assert "created_at" in cols
-    assert "updated_at" in cols
+    for col in [
+        "id", "user_id", "category", "topic", "proficiency_score",
+        "total_evaluations", "passed_evaluations", "failed_evaluations",
+        "created_at", "updated_at",
+    ]:
+        assert col in cols
 
     # Unique constraint check
     uq_names = [c.name for c in UserSkill.__table__.constraints if hasattr(c, "columns")]
@@ -203,28 +231,32 @@ def test_sqlalchemy_candidate_weakness_model_contracts():
     assert CandidateWeakness.__tablename__ == "candidate_weaknesses"
 
     cols = {c.name: c for c in CandidateWeakness.__table__.columns}
-    assert "id" in cols
-    assert "user_id" in cols
-    assert "project_id" in cols
-    assert "simulation_mode" in cols
-    assert "session_id" in cols
-    assert "category" in cols
-    assert "topic" in cols
-    assert "severity" in cols
-    assert "question_prompt" in cols
-    assert "candidate_response" in cols
-    assert "feedback" in cols
-    assert "resolved" in cols
-    assert "resolved_at" in cols
-    assert "topic_embedding" in cols
+    for col in [
+        "id", "user_id", "project_id", "simulation_mode", "session_id",
+        "category", "topic", "severity", "question_prompt",
+        "candidate_response", "feedback", "resolved", "resolved_at",
+        "topic_embedding",
+    ]:
+        assert col in cols
 
-    # Foreign keys check
+    # Foreign keys and relationships
     fk_targets = [str(fk.target_fullname) for fk in CandidateWeakness.__table__.foreign_keys]
-    assert "users.id" in fk_targets
-    assert "projects.id" in fk_targets
-
-    # Relationship check on Project
+    assert "users.id" in fk_targets and "projects.id" in fk_targets
     assert hasattr(Project, "weaknesses")
+
+    # has_embedding property check on model and response derivation
+    now = datetime.now(timezone.utc)
+    w_inst = CandidateWeakness(
+        id=uuid.uuid4(), user_id=uuid.uuid4(), project_id=uuid.uuid4(),
+        simulation_mode="core", category="scalability", topic="indexing",
+        severity="major", question_prompt="q", feedback="f",
+        resolved=False, created_at=now, updated_at=now,
+    )
+    assert w_inst.has_embedding is False
+    w_inst.topic_embedding = [0.1] * 384
+    assert w_inst.has_embedding is True
+    res_from_orm = CandidateWeaknessResponse.model_validate(w_inst)
+    assert res_from_orm.has_embedding is True
 
 
 def test_migration_chain_and_rls_lockdown_contracts():

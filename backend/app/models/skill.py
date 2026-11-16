@@ -181,6 +181,11 @@ class CandidateWeakness(Base, TimestampMixin):
         back_populates="weaknesses",
     )
 
+    @property
+    def has_embedding(self) -> bool:
+        """Whether this weakness record has an associated topic vector embedding."""
+        return self.topic_embedding is not None
+
     __table_args__ = (
         Index(
             "ix_candidate_weaknesses_user_resolved_severity",

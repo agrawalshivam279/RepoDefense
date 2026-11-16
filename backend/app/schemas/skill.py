@@ -3,9 +3,9 @@
 import uuid
 from datetime import datetime
 from enum import Enum
-from typing import List, Optional
+from typing import Any, List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class WeaknessSeverity(str, Enum):
@@ -32,8 +32,12 @@ class SkillCategory(str, Enum):
 class UserSkillBase(BaseModel):
     """Base schema for a tracked candidate technical skill."""
 
-    category: str = Field(..., description="High-level category, e.g. architecture")
-    topic: str = Field(..., description="Specific skill or topic, e.g. connection_pooling")
+    category: str = Field(
+        ..., max_length=64, description="High-level category, e.g. architecture"
+    )
+    topic: str = Field(
+        ..., max_length=128, description="Specific skill or topic, e.g. connection_pooling"
+    )
     proficiency_score: float = Field(
         default=50.0,
         ge=0.0,
@@ -83,10 +87,16 @@ class CandidateWeaknessBase(BaseModel):
     """Base attributes for an identified weakness or blind spot."""
 
     simulation_mode: str = Field(
-        ..., description="Originating simulation mode key (e.g. core_defense, stress_test)"
+        ...,
+        max_length=32,
+        description="Originating simulation mode key (e.g. core_defense, stress_test)",
     )
-    category: str = Field(..., description="Technical category, e.g. scalability")
-    topic: str = Field(..., description="Specific topic where the gap was observed")
+    category: str = Field(
+        ..., max_length=64, description="Technical category, e.g. scalability"
+    )
+    topic: str = Field(
+        ..., max_length=128, description="Specific topic where the gap was observed"
+    )
     severity: WeaknessSeverity = Field(
         default=WeaknessSeverity.MAJOR, description="Severity tier"
     )
@@ -107,11 +117,24 @@ class CandidateWeaknessCreate(CandidateWeaknessBase):
     user_id: uuid.UUID = Field(..., description="Associated candidate user ID")
     project_id: uuid.UUID = Field(..., description="Associated repository project ID")
     session_id: Optional[str] = Field(
-        default=None, description="Optional simulation session ID reference"
+        default=None,
+        max_length=64,
+        description="Optional simulation session ID reference",
     )
     topic_embedding: Optional[List[float]] = Field(
         default=None, description="Optional 384-dimensional vector embedding"
     )
+
+    @field_validator("topic_embedding")
+    @classmethod
+    def validate_embedding_dimensions(
+        cls, v: Optional[List[float]]
+    ) -> Optional[List[float]]:
+        if v is not None and len(v) != 384:
+            raise ValueError(
+                f"topic_embedding must contain exactly 384 dimensions, got {len(v)}"
+            )
+        return v
 
 
 class CandidateWeaknessUpdate(BaseModel):
@@ -144,6 +167,14 @@ class CandidateWeaknessResponse(CandidateWeaknessBase):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+    @model_validator(mode="before")
+    @classmethod
+    def derive_has_embedding(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "has_embedding" not in data and "topic_embedding" in data:
+                data["has_embedding"] = data["topic_embedding"] is not None
+        return data
 
 
 class UserSkillsOverviewResponse(BaseModel):
