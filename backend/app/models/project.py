@@ -10,6 +10,7 @@ from app.models.base import Base, TimestampMixin
 
 if TYPE_CHECKING:
     from app.models.analysis import AnalyzedFile, Dependency, Evidence
+    from app.models.skill import CandidateWeakness, UserSkill
 
 
 class User(Base, TimestampMixin):
@@ -32,6 +33,18 @@ class User(Base, TimestampMixin):
     # Relationships
     projects: Mapped[List["Project"]] = relationship(
         "Project",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    skills: Mapped[List["UserSkill"]] = relationship(
+        "UserSkill",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    weaknesses: Mapped[List["CandidateWeakness"]] = relationship(
+        "CandidateWeakness",
         back_populates="user",
         cascade="all, delete-orphan",
         passive_deletes=True,
@@ -92,6 +105,12 @@ class Project(Base, TimestampMixin):
     )
     evidence: Mapped[List["Evidence"]] = relationship(
         "Evidence",
+        back_populates="project",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    weaknesses: Mapped[List["CandidateWeakness"]] = relationship(
+        "CandidateWeakness",
         back_populates="project",
         cascade="all, delete-orphan",
         passive_deletes=True,
