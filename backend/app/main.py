@@ -18,6 +18,7 @@ from app.api.v1.defense import router as defense_router
 from app.api.v1.diagram import router as diagram_router
 from app.api.v1.health import router as health_router
 from app.api.v1.incident_simulation import router as incident_simulation_router
+from app.api.v1.mentor import router as mentor_router
 from app.api.v1.pr_defense import router as pr_defense_router
 from app.api.v1.projects import router as projects_router
 from app.api.v1.pull_requests import router as pr_router
@@ -75,6 +76,7 @@ app.include_router(stress_test_router, prefix=f"{settings.API_V1_STR}/v1/stress-
 app.include_router(arch_defense_router, prefix=f"{settings.API_V1_STR}/v1/arch-defense")
 app.include_router(analytics_router, prefix=f"{settings.API_V1_STR}/v1/analytics")
 app.include_router(skills_router, prefix=f"{settings.API_V1_STR}/v1/skills")
+app.include_router(mentor_router, prefix=f"{settings.API_V1_STR}/v1/mentor")
 app.include_router(health_router, prefix=f"{settings.API_V1_STR}/v1/health")
 
 

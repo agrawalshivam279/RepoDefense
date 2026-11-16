@@ -546,6 +546,9 @@ gantt
 
 ### Milestone 4.2: Mentor Mode — Teaching Content
 - **Goal:** Instead of scoring, explain the answer.
+- **Sub-tasks:**
+  - [x] **Step 4.2a: Backend Mentor Engine, Schemas, Teaching Content Synthesizer & REST API** (schemas/mentor.py, ai/mentor_generator.py & mentor_prompts.py, api/v1/mentor.py, POST /explain & GET /explanations/{id}, IDOR isolation, deterministic fallbacks, 4/4 tests passing)
+  - [ ] **Step 4.2b: Next.js 15 Mentor Mode Teaching Visualizer & Interactive Code Remediation Panel** (mentorApi.ts, MentorExplanationCard.tsx, CodeRemediationViewer.tsx, integration into skills/weaknesses & interview UI)
 - **Components:** "Mentor" LLM prompt that provides code examples.
 - **Dependencies:** 4.1
 

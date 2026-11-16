@@ -133,12 +133,19 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **Phase 1** | Ingestion & Core MVP (Scaffolding, Auth, Git Clone, Security Filter, Complete MVP) | 🟢 Complete |
 | **Phase 2** | Differentiation (Claims Extraction, Verification, Adaptive Questioning, Pushback Logic, Coverage Tracking, Ownership Engine, Architecture Audit, Mermaid Diagrams, Tech Audit, Enhanced Report) | 🟢 Complete (Milestones 2.1 - 2.12 Complete) |
 | **Phase 3** | The State Machine & Advanced Defense (PR Fetch & Diff Defense, Stress Testing, Incident Simulation, Architecture Defense, Bounded Simulation Stores & Unified Simulation Arena Hub) | 🟢 Complete (Milestones 3.1 - 3.8 Complete) |
-| **Phase 4** | Learning Loop & Weakness Tracking (UserSkill Models, Weakness Tracker, Mentor Mode, Targeted Re-Testing) | 🟡 In Progress (Milestone 4.1 In Progress) |
+| **Phase 4** | Learning Loop & Weakness Tracking (UserSkill Models, Weakness Tracker, Mentor Mode, Targeted Re-Testing) | 🟡 In Progress (Milestone 4.2 In Progress) |
 | **Phase 5** | Evaluation & Export (Rubric Scoring, Transcript Generation, PDF & Badge Export) | ⚪ Planned |
 
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-11-17] — Step 4.2a: Backend Mentor Engine, Schemas, Teaching Content Synthesizer & REST API
+- **Scope / Module**: Backend Mentor Mode Teaching Engine (ackend/app/schemas/mentor.py, ackend/app/schemas/__init__.py, ackend/app/ai/mentor_generator.py, ackend/app/ai/mentor_prompts.py, ackend/app/api/v1/mentor.py, ackend/app/main.py, ackend/tests/test_mentor.py, docs/specs/step-4-2a-mentor-teaching-content.md)
+- **Details**: Designed and implemented the backend architectural teaching content generator and drop-in code remediation engine initiating Milestone 4.2 (Mentor Mode — Teaching Content) in Phase 4. Defined Pydantic v2 data models (CodeRemediationSnippet, MentorExplanationRequest, MentorExplanationResponse) in schemas/mentor.py with multi-tenant context loading and optional LLM overrides. Authored the Constructive Principal Engineer & Socratic Mentor AI prompt orchestration with XML context boundary delimiters (<weakness_context>, <question_prompt>, <candidate_response>, <evaluator_feedback>, <code_context>) to eliminate prompt injection, paired with deterministic offline fallback synthesis covering database connection pooling, concurrency lost updates, cache stampedes, and domain decoupling. Built FastAPI REST router in pi/v1/mentor.py mounted at /api/v1/mentor in main.py exposing POST /api/v1/mentor/explain and GET /api/v1/mentor/explanations/{weakness_id} with strict multi-tenant ownership verification against IDOR attacks returning HTTP 404 for unowned weakness records. Authored 4 hermetic unit and endpoint tests in 	ests/test_mentor.py. Verified 100% via 
+uff check (clean), 
+pm run typecheck (0 errors), and pytest backend/tests/test_mentor.py (4/4 passed), zero arbitrary code execution, and strict <= 300 LOC across all touched files (schemas/mentor.py 152 LOC, schemas/__init__.py 231 LOC, i/mentor_generator.py 127 LOC, i/mentor_prompts.py 254 LOC, pi/v1/mentor.py 114 LOC, main.py 100 LOC, 	ests/test_mentor.py 223 LOC). Concludes Step 4.2a.
+- **Key Files**: ackend/app/schemas/mentor.py, ackend/app/ai/mentor_generator.py, ackend/app/ai/mentor_prompts.py, ackend/app/api/v1/mentor.py, ackend/app/main.py, ackend/tests/test_mentor.py, docs/specs/step-4-2a-mentor-teaching-content.md
 
 ### [2026-11-16] — Step 4.1b: Backend Weakness Extraction Service, Simulation Hooks & Portfolio Rollup REST API
 - **Scope / Module**: Backend Weakness Extraction Service & REST API (ackend/app/services/weakness_tracker.py, ackend/app/api/v1/skills.py, ackend/app/main.py, ackend/app/schemas/skill.py, ackend/app/schemas/__init__.py, ackend/tests/test_weakness_tracker.py, docs/specs/step-4-1b-weakness-tracker-api.md)
