@@ -191,3 +191,46 @@ class UserSkillsOverviewResponse(BaseModel):
     skills: List[UserSkillResponse] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
+
+
+
+class RecordEvaluationRequest(BaseModel):
+    """Payload for submitting a simulation evaluation turn result."""
+
+    project_id: uuid.UUID = Field(..., description="Target repository project ID")
+    simulation_mode: str = Field(..., max_length=32, description="Simulation mode key")
+    category: str = Field(..., max_length=64, description="Technical skill category")
+    topic: str = Field(..., max_length=128, description="Specific topic or skill")
+    question_prompt: str = Field(..., description="Challenge prompt or question")
+    feedback: str = Field(..., description="Evaluation feedback or explanation")
+    passed: bool = Field(..., description="Whether the candidate passed the turn")
+    score: float = Field(default=50.0, ge=0.0, le=100.0, description="Evaluation score")
+    session_id: Optional[str] = Field(
+        default=None, max_length=64, description="Session reference"
+    )
+    candidate_response: Optional[str] = Field(
+        default=None, description="Candidate answer text"
+    )
+    severity: Optional[WeaknessSeverity] = Field(
+        default=None, description="Optional gap severity"
+    )
+
+
+class RecordEvaluationResponse(BaseModel):
+    """Result of processing a simulation evaluation turn."""
+
+    skill: UserSkillResponse
+    weakness: Optional[CandidateWeaknessResponse] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+
+class ResolveWeaknessRequest(BaseModel):
+    """Payload for resolving an identified weakness with optional mentor guidance."""
+
+    feedback: Optional[str] = Field(
+        default=None, description="Optional mentor guidance or resolution notes"
+    )
+
+    model_config = ConfigDict(extra="forbid")

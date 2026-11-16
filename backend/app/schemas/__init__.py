@@ -105,6 +105,9 @@ from app.schemas.skill import (
     CandidateWeaknessCreate,
     CandidateWeaknessResponse,
     CandidateWeaknessUpdate,
+    RecordEvaluationRequest,
+    RecordEvaluationResponse,
+    ResolveWeaknessRequest,
     SkillCategory,
     UserSkillBase,
     UserSkillCreate,
@@ -214,4 +217,7 @@ __all__ = [
     "CandidateWeaknessUpdate",
     "CandidateWeaknessResponse",
     "UserSkillsOverviewResponse",
+    "RecordEvaluationRequest",
+    "RecordEvaluationResponse",
+    "ResolveWeaknessRequest",
 ]
