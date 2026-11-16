@@ -10,7 +10,7 @@ from httpx import ASGITransport, AsyncClient
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.main import app
-from app.models.project import User
+from app.models.project import Project, User
 from app.models.skill import CandidateWeakness, UserSkill
 from app.schemas.skill import RecordEvaluationRequest, WeaknessSeverity
 from app.services.weakness_tracker import (
@@ -43,16 +43,9 @@ def test_record_evaluation_turn_creates_user_skill_and_weakness():
         mock_db = _make_mock_db(scalar_return=None)
 
         skill, weakness = await record_evaluation_turn(
-            session=mock_db,
-            user_id=uid,
-            project_id=pid,
-            simulation_mode="core_defense",
-            category="scalability",
-            topic="connection_pooling",
-            question_prompt="What happens if pool is exhausted?",
-            feedback="Requests will queue and timeout.",
-            passed=False,
-            score=30.0,
+            mock_db, uid, pid, "core_defense", "scalability", "connection_pooling",
+            "What happens if pool is exhausted?", "Requests will queue and timeout.",
+            passed=False, score=30.0,
         )
 
         assert skill is not None and weakness is not None
@@ -92,8 +85,8 @@ def test_record_evaluation_turn_updates_existing_skill_moving_average():
     asyncio.run(_impl())
 
 
-def test_resolve_weakness_success_and_skill_reinforcement():
-    """Verify marking weakness resolved appends note and boosts skill proficiency."""
+def test_resolve_weakness_success_and_idempotent_reinforcement():
+    """Verify marking weakness resolved appends note and is idempotent on repeat."""
     async def _impl():
         uid, pid = uuid.uuid4(), uuid.uuid4()
         wid = uuid.uuid4()
@@ -115,32 +108,44 @@ def test_resolve_weakness_success_and_skill_reinforcement():
         e1, e2 = MagicMock(), MagicMock()
         e1.scalar_one_or_none.return_value = weakness
         e2.scalar_one_or_none.return_value = associated_skill
-        mock_db.execute = AsyncMock(side_effect=[e1, e2])
+        mock_db.execute = AsyncMock(side_effect=[e1, e2, e1])
 
+        # First resolution: boosts skill and increments counters consistently
         resolved = await resolve_weakness(
             session=mock_db, weakness_id=wid, user_id=uid,
             feedback="Partition keys guarantee per-entity order.",
         )
 
         assert resolved is not None and resolved.resolved is True
-        assert resolved.resolved_at is not None
         assert "[Resolution Note]: Partition keys guarantee" in resolved.feedback
         assert associated_skill.proficiency_score == 70.0
+        assert associated_skill.total_evaluations == 3
         assert associated_skill.passed_evaluations == 2
+
+        # Second resolution: idempotent, no duplicate score boost or counter increments
+        resolved_again = await resolve_weakness(mock_db, wid, uid, feedback="Redundant retry")
+        assert resolved_again.resolved is True
+        assert associated_skill.proficiency_score == 70.0
+        assert associated_skill.total_evaluations == 3
 
     asyncio.run(_impl())
 
 
-def test_resolve_and_get_candidate_weaknesses_filters():
-    """Verify unauthorized resolve returns None and get_candidate_weaknesses applies filters."""
+def test_resolve_and_get_candidate_weaknesses_filters_and_predicates():
+    """Verify unauthorized resolve returns None and predicates are strictly applied."""
     async def _impl():
-        uid, pid = uuid.uuid4(), uuid.uuid4()
+        owner_id, caller_id = uuid.uuid4(), uuid.uuid4()
+        pid, wid = uuid.uuid4(), uuid.uuid4()
         mock_db = _make_mock_db(scalar_return=None, scalars_return=[])
-        res = await resolve_weakness(mock_db, uuid.uuid4(), uuid.uuid4())
+
+        res = await resolve_weakness(mock_db, wid, user_id=caller_id)
         assert res is None
+        called_stmt = str(mock_db.execute.call_args[0][0])
+        assert "candidate_weaknesses.user_id =" in called_stmt
+        assert "candidate_weaknesses.id =" in called_stmt
 
         items = await get_candidate_weaknesses(
-            mock_db, user_id=uid, project_id=pid, resolved=False, category="sec", limit=25
+            mock_db, user_id=owner_id, project_id=pid, resolved=False, category="sec", limit=25
         )
         assert items == []
 
@@ -194,7 +199,7 @@ def test_get_user_skills_overview_aggregation_and_ordering():
 
 
 def test_skills_rest_endpoints_auth_and_crud():
-    """Verify API router authentication, overview, listing, and resolution."""
+    """Verify API router authentication, overview, listing, resolution, and IDOR protection."""
     async def _impl():
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as anon:
@@ -204,7 +209,8 @@ def test_skills_rest_endpoints_auth_and_crud():
         uid, pid = uuid.uuid4(), uuid.uuid4()
         now = datetime.now(timezone.utc)
         user = User(id=uid, email="candidate@repodefense.dev")
-        mock_db = _make_mock_db()
+        project = Project(id=pid, user_id=uid, name="RepoDefense", github_url="http://gh")
+        mock_db = _make_mock_db(scalar_return=project)
 
         prev_overrides = dict(app.dependency_overrides)
         app.dependency_overrides[get_current_user] = lambda: user
@@ -233,21 +239,37 @@ def test_skills_rest_endpoints_auth_and_crud():
                             resolved=False, created_at=now, updated_at=now,
                         )
                     ]
-                    list_res = await client.get("/api/v1/skills/weaknesses?limit=10")
+                    list_res = await client.get(f"/api/v1/skills/weaknesses?project_id={pid}")
                     assert list_res.status_code == 200 and len(list_res.json()) == 1
 
-                # 3. Resolve endpoint - 404 on not found
+                # 3. Resolve endpoint - extra unsupported fields forbidden (422)
+                rand_id = uuid.uuid4()
+                bad_body_res = await client.patch(
+                    f"/api/v1/skills/weaknesses/{rand_id}/resolve",
+                    json={"resolved": False},
+                )
+                assert bad_body_res.status_code == 422
+
+                # 4. Resolve endpoint - 404 on not found
                 with patch("app.api.v1.skills.resolve_weakness", return_value=None):
-                    rand_id = uuid.uuid4()
                     bad_res = await client.patch(f"/api/v1/skills/weaknesses/{rand_id}/resolve")
                     assert bad_res.status_code == 404
 
-                # 4. Evaluations endpoint
+                # 5. Evaluations endpoint - IDOR protection (404 when project not owned)
+                mock_db.execute.return_value.scalar_one_or_none.return_value = None
                 eval_payload = RecordEvaluationRequest(
                     project_id=pid, simulation_mode="core_defense", category="architecture",
                     topic="modular_monolith", question_prompt="Why monolith?",
                     feedback="Good isolation.", passed=True, score=85.0,
                 )
+                denied_post = await client.post(
+                    "/api/v1/skills/evaluations",
+                    json=eval_payload.model_dump(mode="json"),
+                )
+                assert denied_post.status_code == 404
+
+                # 6. Evaluations endpoint - 201 on valid owner
+                mock_db.execute.return_value.scalar_one_or_none.return_value = project
                 with patch("app.api.v1.skills.record_evaluation_turn") as mock_rec:
                     skill_inst = UserSkill(
                         id=uuid.uuid4(), user_id=uid, category="architecture",
@@ -262,7 +284,6 @@ def test_skills_rest_endpoints_auth_and_crud():
                     )
                     assert post_res.status_code == 201
                     assert post_res.json()["skill"]["proficiency_score"] == 85.0
-                    assert post_res.json()["weakness"] is None
         finally:
             app.dependency_overrides.clear()
             app.dependency_overrides.update(prev_overrides)

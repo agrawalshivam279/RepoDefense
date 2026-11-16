@@ -223,3 +223,14 @@ class RecordEvaluationResponse(BaseModel):
     weakness: Optional[CandidateWeaknessResponse] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+
+class ResolveWeaknessRequest(BaseModel):
+    """Payload for resolving an identified weakness with optional mentor guidance."""
+
+    feedback: Optional[str] = Field(
+        default=None, description="Optional mentor guidance or resolution notes"
+    )
+
+    model_config = ConfigDict(extra="forbid")

@@ -4,16 +4,17 @@ import uuid
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.security import get_current_user
-from app.models.project import User
+from app.models.project import Project, User
 from app.schemas.skill import (
     CandidateWeaknessResponse,
-    CandidateWeaknessUpdate,
     RecordEvaluationRequest,
     RecordEvaluationResponse,
+    ResolveWeaknessRequest,
     UserSkillResponse,
     UserSkillsOverviewResponse,
 )
@@ -54,6 +55,17 @@ async def list_weaknesses(
     db: AsyncSession = Depends(get_db),
 ) -> List[CandidateWeaknessResponse]:
     """Returns candidate weakness records filtered by repository, category, or resolution state."""
+    if project_id is not None:
+        proj_stmt = select(Project).where(
+            Project.id == project_id,
+            Project.user_id == current_user.id,
+        )
+        if (await db.execute(proj_stmt)).scalar_one_or_none() is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Project not found or access denied",
+            )
+
     weaknesses = await get_candidate_weaknesses(
         session=db,
         user_id=current_user.id,
@@ -72,7 +84,7 @@ async def list_weaknesses(
 )
 async def mark_weakness_resolved(
     weakness_id: uuid.UUID,
-    payload: Optional[CandidateWeaknessUpdate] = None,
+    payload: Optional[ResolveWeaknessRequest] = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> CandidateWeaknessResponse:
@@ -104,6 +116,16 @@ async def record_evaluation(
     db: AsyncSession = Depends(get_db),
 ) -> RecordEvaluationResponse:
     """Processes an evaluation turn, updating UserSkill proficiency and extracting weaknesses."""
+    proj_stmt = select(Project).where(
+        Project.id == payload.project_id,
+        Project.user_id == current_user.id,
+    )
+    if (await db.execute(proj_stmt)).scalar_one_or_none() is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found or access denied",
+        )
+
     skill, weakness = await record_evaluation_turn(
         session=db,
         user_id=current_user.id,

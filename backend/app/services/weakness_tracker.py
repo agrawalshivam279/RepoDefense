@@ -1,5 +1,6 @@
 """Domain service for candidate weakness extraction and skill tracking."""
 
+import asyncio
 import uuid
 from datetime import datetime, timezone
 from typing import List, Optional, Tuple
@@ -57,11 +58,15 @@ async def record_evaluation_turn(
     clean_sid = session_id[:64] if session_id else None
     clamped_score = max(0.0, min(100.0, float(score)))
 
-    # 1. Update or create UserSkill
-    skill_stmt = select(UserSkill).where(
-        UserSkill.user_id == user_id,
-        UserSkill.category == clean_cat,
-        UserSkill.topic == clean_topic,
+    # 1. Update or create UserSkill with pessimistic lock for atomic counter/score updates
+    skill_stmt = (
+        select(UserSkill)
+        .where(
+            UserSkill.user_id == user_id,
+            UserSkill.category == clean_cat,
+            UserSkill.topic == clean_topic,
+        )
+        .with_for_update()
     )
     skill_res = await session.execute(skill_stmt)
     skill = skill_res.scalar_one_or_none()
@@ -103,7 +108,10 @@ async def record_evaluation_turn(
 
         embedding_vector: Optional[List[float]] = None
         try:
-            embeddings = generate_embeddings([f"{clean_cat}: {clean_topic}"])
+            # Offload CPU-bound embedding inference to worker thread pool
+            embeddings = await asyncio.to_thread(
+                generate_embeddings, [f"{clean_cat}: {clean_topic}"]
+            )
             if embeddings and len(embeddings[0]) == 384:
                 embedding_vector = embeddings[0]
         except Exception as exc:
@@ -136,9 +144,13 @@ async def resolve_weakness(
     feedback: Optional[str] = None,
 ) -> Optional[CandidateWeakness]:
     """Mark an identified weakness as resolved, append mentor notes, and boost skill score."""
-    stmt = select(CandidateWeakness).where(
-        CandidateWeakness.id == weakness_id,
-        CandidateWeakness.user_id == user_id,
+    stmt = (
+        select(CandidateWeakness)
+        .where(
+            CandidateWeakness.id == weakness_id,
+            CandidateWeakness.user_id == user_id,
+        )
+        .with_for_update()
     )
     res = await session.execute(stmt)
     weakness = res.scalar_one_or_none()
@@ -146,23 +158,31 @@ async def resolve_weakness(
         return None
 
     now = datetime.now(timezone.utc)
-    weakness.resolved = True
-    weakness.resolved_at = now
+    # Only reinforce skill on first transition from unresolved to resolved
+    if not weakness.resolved:
+        weakness.resolved = True
+        weakness.resolved_at = now
+
+        # Reinforce associated skill proficiency and update counters consistently
+        skill_stmt = (
+            select(UserSkill)
+            .where(
+                UserSkill.user_id == user_id,
+                UserSkill.category == weakness.category,
+                UserSkill.topic == weakness.topic,
+            )
+            .with_for_update()
+        )
+        skill_res = await session.execute(skill_stmt)
+        skill = skill_res.scalar_one_or_none()
+        if skill is not None:
+            skill.proficiency_score = min(100.0, round(skill.proficiency_score + 10.0, 1))
+            skill.total_evaluations += 1
+            skill.passed_evaluations += 1
+            skill.last_evaluated_at = now
+
     if feedback:
         weakness.feedback = f"{weakness.feedback}\n\n[Resolution Note]: {feedback}".strip()
-
-    # Reinforce associated skill proficiency
-    skill_stmt = select(UserSkill).where(
-        UserSkill.user_id == user_id,
-        UserSkill.category == weakness.category,
-        UserSkill.topic == weakness.topic,
-    )
-    skill_res = await session.execute(skill_stmt)
-    skill = skill_res.scalar_one_or_none()
-    if skill is not None:
-        skill.proficiency_score = min(100.0, round(skill.proficiency_score + 10.0, 1))
-        skill.passed_evaluations += 1
-        skill.last_evaluated_at = now
 
     await session.flush()
     return weakness
