@@ -61,6 +61,11 @@ from app.schemas.evidence import (
     EvidenceResponse,
     EvidenceType,
 )
+from app.schemas.mentor import (
+    CodeRemediationSnippet,
+    MentorExplanationRequest,
+    MentorExplanationResponse,
+)
 from app.schemas.ownership import (
     AuthorShare,
     FileOwnershipSummary,
@@ -142,6 +147,7 @@ __all__ = [
     "ClaimVerificationRequest",
     "ClaimVerificationResult",
     "CodeChunk",
+    "CodeRemediationSnippet",
     "CoverageStatus",
     "CoverageTier",
     "DefenseQuestionProgress",
@@ -170,6 +176,8 @@ __all__ = [
     "FileOwnershipSummary",
     "GroundedQuestion",
     "LanguageMetric",
+    "MentorExplanationRequest",
+    "MentorExplanationResponse",
     "ModuleCoverageItem",
     "OwnershipStatus",
     "ParsedDiffHunk",
