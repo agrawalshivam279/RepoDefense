@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 interface ChallengeEditorProps {
+  challengeId?: string;
   starterCode?: string | null;
   language: string;
   isSubmitting: boolean;
@@ -20,6 +21,7 @@ interface ChallengeEditorProps {
 }
 
 export function ChallengeEditor({
+  challengeId,
   starterCode,
   language,
   isSubmitting,
@@ -32,7 +34,7 @@ export function ChallengeEditor({
 
   useEffect(() => {
     setCode(starterCode || "# Implement your architectural refactoring here\n");
-  }, [starterCode]);
+  }, [challengeId, starterCode]);
 
   const handleReset = () => {
     setCode(initial);
@@ -50,7 +52,8 @@ export function ChallengeEditor({
 
   const lines = code.split("\n");
   const lineCount = lines.length;
-  const charCount = code.trim().length;
+  const trimmed = code.trim();
+  const charCount = Array.from(trimmed).length;
   const isTooShort = charCount < 10;
 
   return (

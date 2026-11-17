@@ -90,8 +90,11 @@ export function MentorRemediationWorkspace({
 
   useEffect(() => {
     handleSynthesize(defaultTopic, defaultCategory);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId]);
+    return () => {
+      // Invalidate active request on cleanup or parameter change
+      activeRequestIdRef.current++;
+    };
+  }, [projectId, defaultTopic, defaultCategory, handleSynthesize]);
 
   const renderTopicIcon = (iconName: QuickTopicOption["iconName"]) => {
     switch (iconName) {

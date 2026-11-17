@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   BookOpen,
@@ -27,39 +27,68 @@ export default function MentorModePage() {
   const [overview, setOverview] = useState<ProjectOverviewResponse | null>(null);
   const [authLoading, setAuthLoading] = useState<boolean>(true);
 
-  const isMountedRef = useRef(true);
-
+  // Subscribe to auth state changes and keep token refreshed
   useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
+    let isCancelled = false;
 
-  const loadAuthAndProject = useCallback(async () => {
-    const { data } = await supabase.auth.getSession();
-    const sessionToken = data.session?.access_token;
-    if (!sessionToken) {
-      router.replace("/login");
-      return;
+    async function initSession() {
+      const { data } = await supabase.auth.getSession();
+      const sessionToken = data.session?.access_token;
+      if (!isCancelled) {
+        if (!sessionToken) {
+          router.replace("/login");
+          return;
+        }
+        setToken(sessionToken);
+        setAuthLoading(false);
+      }
     }
-    if (!isMountedRef.current) return;
-    setToken(sessionToken);
-    setAuthLoading(false);
 
-    if (projectId) {
+    initSession();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!isCancelled) {
+        if (session?.access_token) {
+          setToken(session.access_token);
+          setAuthLoading(false);
+        } else {
+          router.replace("/login");
+        }
+      }
+    });
+
+    return () => {
+      isCancelled = true;
+      subscription.unsubscribe();
+    };
+  }, [router]);
+
+  // Load project overview metadata with cancellation and isolation per projectId
+  useEffect(() => {
+    let isCancelled = false;
+    setOverview(null);
+
+    if (!projectId || !token) return;
+
+    async function loadMeta() {
       try {
-        const meta = await getProjectOverview(projectId, sessionToken);
-        if (isMountedRef.current) setOverview(meta);
+        const meta = await getProjectOverview(projectId, token as string);
+        if (!isCancelled) {
+          setOverview(meta);
+        }
       } catch {
         // Non-blocking project header metadata failure
       }
     }
-  }, [projectId, router]);
 
-  useEffect(() => {
-    loadAuthAndProject();
-  }, [loadAuthAndProject]);
+    loadMeta();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [projectId, token]);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
