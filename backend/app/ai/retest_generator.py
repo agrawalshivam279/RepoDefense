@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import math
 import os
 from typing import Any, Dict, Optional, Tuple
 
@@ -88,9 +89,25 @@ async def generate_targeted_retest_question(
         cleaned = clean_json_response(content)
         parsed = json.loads(cleaned)
 
-        q_text = parsed.get("question_text") or fallback["question_text"]
-        constraint = parsed.get("architectural_constraint") or fallback["architectural_constraint"]
-        rubric = parsed.get("evaluation_rubric") or fallback["evaluation_rubric"]
+        q_raw = parsed.get("question_text")
+        c_raw = parsed.get("architectural_constraint")
+        r_raw = parsed.get("evaluation_rubric")
+
+        q_text = (
+            str(q_raw).strip()
+            if isinstance(q_raw, str) and q_raw.strip()
+            else fallback["question_text"]
+        )
+        constraint = (
+            str(c_raw).strip()
+            if isinstance(c_raw, str) and c_raw.strip()
+            else fallback["architectural_constraint"]
+        )
+        rubric = (
+            str(r_raw).strip()
+            if isinstance(r_raw, str) and r_raw.strip()
+            else fallback["evaluation_rubric"]
+        )
 
         return {
             "question_text": q_text,
@@ -147,12 +164,31 @@ async def evaluate_targeted_retest_defense(
         cleaned = clean_json_response(content)
         parsed = json.loads(cleaned)
 
-        raw_score = float(parsed.get("score", 50.0))
+        raw_val = parsed.get("score")
+        try:
+            raw_score = float(raw_val if raw_val is not None else 50.0)
+            if not math.isfinite(raw_score):
+                raise ValueError("Non-finite score from LLM")
+        except (ValueError, TypeError):
+            logger.warning("invalid_llm_score_fallback", raw_score=raw_val)
+            return evaluate_retest_fallback(candidate_response, category, topic)
+
         score = round(max(0.0, min(100.0, raw_score)), 1)
-        passed = bool(parsed.get("passed", score >= 70.0))
-        feedback = parsed.get("feedback") or "Evaluation complete."
-        key_improvements = parsed.get("key_improvements") or []
-        remaining_gaps = parsed.get("remaining_gaps") or []
+        passed = score >= 70.0
+        feedback = str(parsed.get("feedback") or "Evaluation complete.")
+
+        raw_improvements = parsed.get("key_improvements")
+        key_improvements = (
+            [str(x) for x in raw_improvements if isinstance(x, (str, int, float))]
+            if isinstance(raw_improvements, list)
+            else []
+        )
+        raw_gaps = parsed.get("remaining_gaps")
+        remaining_gaps = (
+            [str(x) for x in raw_gaps if isinstance(x, (str, int, float))]
+            if isinstance(raw_gaps, list)
+            else []
+        )
 
         return {
             "score": score,

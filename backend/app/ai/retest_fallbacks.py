@@ -129,7 +129,7 @@ def evaluate_retest_fallback(
     score += min(25.0, len(matched_keywords) * 4.0)
 
     score = round(max(0.0, min(100.0, score)), 1)
-    passed = score >= 70.0
+    passed = score >= 70.0 and word_count >= 30
 
     key_improvements: List[str] = []
     remaining_gaps: List[str] = []

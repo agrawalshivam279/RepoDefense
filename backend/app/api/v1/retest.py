@@ -17,6 +17,7 @@ from app.schemas.retest import (
     TargetedRetestSessionResponse,
 )
 from app.services.retest_service import (
+    RetestNotFoundError,
     create_targeted_retest_session,
     evaluate_retest_answer,
     get_eligible_retest_weaknesses,
@@ -91,8 +92,8 @@ async def evaluate_retest(
             weakness_id=payload.weakness_id,
             candidate_response=payload.candidate_response,
         )
-    except ValueError as exc:
+    except RetestNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
-        )
+        ) from exc

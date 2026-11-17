@@ -1,5 +1,6 @@
 """Domain service for Targeted Re-Testing session orchestration and evaluation."""
 
+import asyncio
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -8,7 +9,6 @@ import structlog
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.ai.retest_fallbacks import get_fallback_retest_question
 from app.ai.retest_generator import (
     evaluate_targeted_retest_defense,
     generate_targeted_retest_question,
@@ -25,8 +25,24 @@ from app.services.weakness_tracker import resolve_weakness
 
 logger = structlog.get_logger(__name__)
 
-# In-memory registry for active re-test questions with automatic DB fallback
+
+class RetestNotFoundError(LookupError):
+    """Raised when an active re-test question or targeted weakness is not found."""
+
+    pass
+
+
+# Bounded in-memory registry for active re-test questions with capacity limit
+_MAX_CACHED_QUESTIONS = 1000
 _ACTIVE_RETEST_QUESTIONS: Dict[str, Dict[str, Any]] = {}
+
+
+def _store_active_question(question_id: str, data: Dict[str, Any]) -> None:
+    """Store question metadata in bounded cache with FIFO eviction when full."""
+    if len(_ACTIVE_RETEST_QUESTIONS) >= _MAX_CACHED_QUESTIONS:
+        oldest_key = next(iter(_ACTIVE_RETEST_QUESTIONS))
+        _ACTIVE_RETEST_QUESTIONS.pop(oldest_key, None)
+    _ACTIVE_RETEST_QUESTIONS[question_id] = data
 
 
 async def get_eligible_retest_weaknesses(
@@ -97,19 +113,25 @@ async def create_targeted_retest_session(
     weaknesses = list(res.scalars().all())
 
     session_id = f"retest-{uuid.uuid4().hex[:12]}"
-    questions: List[RetestQuestion] = []
 
-    for w in weaknesses:
-        q_id = f"q-{uuid.uuid4().hex[:8]}"
-        q_data = await generate_targeted_retest_question(
-            category=w.category,
-            topic=w.topic,
-            severity=w.severity,
-            original_prompt=w.question_prompt,
-            feedback=w.feedback,
-            candidate_prior_response=w.candidate_response,
+    # Concurrently generate re-test questions for all selected weaknesses
+    generated_q_data = await asyncio.gather(
+        *(
+            generate_targeted_retest_question(
+                category=w.category,
+                topic=w.topic,
+                severity=w.severity,
+                original_prompt=w.question_prompt,
+                feedback=w.feedback,
+                candidate_prior_response=w.candidate_response,
+            )
+            for w in weaknesses
         )
+    )
 
+    questions: List[RetestQuestion] = []
+    for w, q_data in zip(weaknesses, generated_q_data):
+        q_id = f"q-{uuid.uuid4().hex[:8]}"
         retest_q = RetestQuestion(
             question_id=q_id,
             weakness_id=w.id,
@@ -123,17 +145,19 @@ async def create_targeted_retest_session(
         )
         questions.append(retest_q)
 
-        # Cache question metadata for subsequent evaluation
-        _ACTIVE_RETEST_QUESTIONS[q_id] = {
-            "session_id": session_id,
-            "user_id": user_id,
-            "weakness_id": w.id,
-            "category": w.category,
-            "topic": w.topic,
-            "question_text": q_data["question_text"],
-            "constraint": q_data["architectural_constraint"],
-            "rubric": q_data["evaluation_rubric"],
-        }
+        _store_active_question(
+            question_id=q_id,
+            data={
+                "session_id": session_id,
+                "user_id": user_id,
+                "weakness_id": w.id,
+                "category": w.category,
+                "topic": w.topic,
+                "question_text": q_data["question_text"],
+                "constraint": q_data["architectural_constraint"],
+                "rubric": q_data["evaluation_rubric"],
+            },
+        )
 
     return TargetedRetestSessionResponse(
         session_id=session_id,
@@ -162,23 +186,27 @@ async def evaluate_retest_answer(
     w_res = await session.execute(w_stmt)
     weakness = w_res.scalar_one_or_none()
     if not weakness:
-        raise ValueError("Weakness record not found or does not belong to the authenticated user")
+        raise RetestNotFoundError(
+            "Weakness record not found or does not belong to the authenticated user"
+        )
 
-    # 2. Retrieve question metadata from cache or construct fallback
+    # 2. Retrieve question metadata from cache validating user, weakness, and session
     cached = _ACTIVE_RETEST_QUESTIONS.get(question_id)
-    if cached and cached.get("user_id") == user_id:
-        category = cached["category"]
-        topic = cached["topic"]
-        q_text = cached["question_text"]
-        constraint = cached["constraint"]
-        rubric = cached["rubric"]
-    else:
-        category = weakness.category
-        topic = weakness.topic
-        fallback = get_fallback_retest_question(category, topic)
-        q_text = fallback["question_text"]
-        constraint = fallback["architectural_constraint"]
-        rubric = fallback["evaluation_rubric"]
+    if (
+        cached is None
+        or cached.get("user_id") != user_id
+        or cached.get("weakness_id") != weakness_id
+        or cached.get("session_id") != session_id
+    ):
+        raise RetestNotFoundError(
+            "Re-test question not found for the specified session and weakness"
+        )
+
+    category = cached["category"]
+    topic = cached["topic"]
+    q_text = cached["question_text"]
+    constraint = cached["constraint"]
+    rubric = cached["rubric"]
 
     # 3. Evaluate response
     eval_result = await evaluate_targeted_retest_defense(

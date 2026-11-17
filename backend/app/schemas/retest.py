@@ -18,6 +18,7 @@ class TargetedRetestSessionCreate(BaseModel):
     )
     weakness_ids: Optional[List[uuid.UUID]] = Field(
         default=None,
+        max_length=50,
         description="Optional explicit list of active weakness IDs to re-test",
     )
     category: Optional[str] = Field(

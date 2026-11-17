@@ -3,12 +3,15 @@
 import re
 from typing import Optional
 
+from app.security.secrets import redact_secrets
+
 
 def sanitize_prompt_text(text: Optional[str], max_len: int = 2000) -> str:
     """Sanitize and clamp untrusted candidate or repository input for LLM prompts."""
     if not text:
         return ""
     clean = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", text)
+    clean = redact_secrets(clean)
     clean = clean.strip()
     return clean[:max_len]
 
