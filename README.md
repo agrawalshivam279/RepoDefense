@@ -383,11 +383,17 @@ cd RepoDefense
 ```
 
 #### 2. Configure Environment Variables
-Copy the template configuration:
+Copy the template configuration for the backend:
 ```bash
 cp .env.example .env
 ```
-*(Open `.env` and fill in your Supabase credentials and FreeLLMAPI/OpenAI keys as needed)*
+*(Open `.env` and fill in your Supabase credentials, database URLs, and FreeLLMAPI/OpenAI keys)*
+
+Configure the Next.js frontend environment separately:
+```bash
+cp frontend/.env.example frontend/.env.local
+```
+*(Configure `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` in `frontend/.env.local` for client-side authentication; the root `.env` configures the backend)*
 
 #### 3. Start Database & Redis via Docker Compose
 ```bash
@@ -423,7 +429,7 @@ In a separate terminal, start the **ARQ Background Worker**:
 ```bash
 cd backend
 source .venv/bin/activate  # or .venv\Scripts\Activate.ps1
-arq app.workers.worker.WorkerSettings
+arq app.workers.main.WorkerSettings
 ```
 
 The FastAPI backend will now be live at:

@@ -246,42 +246,52 @@ async def get_user_progress_timeline(
     skills_res = await session.execute(skills_stmt)
     skills = list(skills_res.scalars().all())
 
-    if not skills:
+    w_stmt = select(CandidateWeakness).where(CandidateWeakness.user_id == user_id)
+    w_res = await session.execute(w_stmt)
+    weaknesses = list(w_res.scalars().all())
+
+    if not skills and not weaknesses:
         return []
 
-    # Map skills by last evaluation date or updated_at date
     date_points: Dict[str, Dict[str, float]] = defaultdict(
         lambda: {"evals": 0, "passed": 0, "total_prof": 0.0, "count": 0}
     )
-
     for s in skills:
         ts = s.last_evaluated_at or s.updated_at or s.created_at
         if ts:
-            d_str = ts.strftime("%Y-%m-%d")
-            entry = date_points[d_str]
+            entry = date_points[ts.strftime("%Y-%m-%d")]
             entry["evals"] += s.total_evaluations
             entry["passed"] += s.passed_evaluations
             entry["total_prof"] += s.proficiency_score
             entry["count"] += 1
 
-    sorted_dates = sorted(date_points.keys())
-    if days > 0:
-        cutoff = (datetime.now(timezone.utc).date() - timedelta(days=days - 1)).isoformat()
-        sorted_dates = [d for d in sorted_dates if d >= cutoff]
+    skill_keys = {(s.category, s.topic) for s in skills}
+    for w in weaknesses:
+        if w.resolved and w.resolved_at and (w.category, w.topic) not in skill_keys:
+            entry = date_points[w.resolved_at.strftime("%Y-%m-%d")]
+            entry["evals"] += 1
+            entry["passed"] += 1
 
+    sorted_dates = sorted(date_points.keys())
+    running_prof = (
+        round(sum(s.proficiency_score for s in skills) / len(skills), 1)
+        if skills
+        else 50.0
+    )
     timeline: List[ProficiencyTrendPoint] = []
     for d in sorted_dates:
         data = date_points[d]
-        avg_prof = (
-            round(data["total_prof"] / data["count"], 1) if data["count"] > 0 else 0.0
-        )
+        if data["count"] > 0:
+            running_prof = round(data["total_prof"] / data["count"], 1)
         timeline.append(
             ProficiencyTrendPoint(
                 date=d,
-                average_proficiency=avg_prof,
+                average_proficiency=running_prof,
                 evaluations_count=int(data["evals"]),
                 passed_count=int(data["passed"]),
             )
         )
-
+    if days > 0:
+        cutoff = (datetime.now(timezone.utc).date() - timedelta(days=days - 1)).isoformat()
+        timeline = [pt for pt in timeline if pt.date >= cutoff]
     return timeline
