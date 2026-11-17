@@ -21,18 +21,20 @@ from app.services.skill_progress import (
 
 
 def _make_mock_db(skills=None, weaknesses=None):
-    """Build mock AsyncSession returning skills and weaknesses sequentially."""
+    """Build mock AsyncSession returning skills and weaknesses based on query."""
     mock_db = AsyncMock()
-    exec_res_skills = MagicMock()
-    exec_res_skills.scalars.return_value.all.return_value = skills if skills is not None else []
+    s_list = skills if skills is not None else []
+    w_list = weaknesses if weaknesses is not None else []
 
-    exec_res_weaknesses = MagicMock()
-    exec_res_weaknesses.scalars.return_value.all.return_value = (
-        weaknesses if weaknesses is not None else []
-    )
+    async def _exec(stmt):
+        res = MagicMock()
+        if "candidate_weaknesses" in str(stmt):
+            res.scalars.return_value.all.return_value = w_list
+        else:
+            res.scalars.return_value.all.return_value = s_list
+        return res
 
-    # First execute is skills, second is weaknesses, third is timeline skills
-    mock_db.execute.side_effect = [exec_res_skills, exec_res_weaknesses, exec_res_skills]
+    mock_db.execute.side_effect = _exec
     return mock_db
 
 
@@ -201,10 +203,7 @@ def test_timeline_points_aggregation():
             last_evaluated_at=now,
         )
 
-        mock_db = AsyncMock()
-        exec_res = MagicMock()
-        exec_res.scalars.return_value.all.return_value = [skill1]
-        mock_db.execute.return_value = exec_res
+        mock_db = _make_mock_db(skills=[skill1], weaknesses=[])
 
         timeline = await get_user_progress_timeline(mock_db, user_id, days=7)
         assert len(timeline) == 1

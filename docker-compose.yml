@@ -54,6 +54,25 @@ services:
       redis:
         condition: service_healthy
 
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: repodefense-worker
+    restart: unless-stopped
+    command: ["arq", "app.workers.main.WorkerSettings"]
+    environment:
+      PROJECT_NAME: ${PROJECT_NAME:-RepoDefense Worker}
+      VERSION: ${VERSION:-0.1.0}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-repouser}:${POSTGRES_PASSWORD:-repopassword}@postgres:5432/${POSTGRES_DB:-repodefense}
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
 volumes:
   postgres_data:
     driver: local
