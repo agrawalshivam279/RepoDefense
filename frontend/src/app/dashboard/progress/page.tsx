@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   AlertCircle,
@@ -30,10 +30,22 @@ export default function ProgressDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [timelineLoading, setTimelineLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [timelineError, setTimelineError] = useState<string | null>(null);
+
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const timelineAbortRef = useRef<AbortController | null>(null);
 
   const loadData = useCallback(async () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setLoading(true);
     setError(null);
+    setTimelineError(null);
+
     try {
       const {
         data: { session },
@@ -45,39 +57,63 @@ export default function ProgressDashboardPage() {
       }
 
       const [ovData, tlData] = await Promise.all([
-        fetchProgressOverview(session.access_token),
-        fetchProgressTimeline(session.access_token, 30),
+        fetchProgressOverview(session.access_token, controller.signal),
+        fetchProgressTimeline(session.access_token, selectedDays, controller.signal),
       ]);
 
-      setOverview(ovData);
-      setTimeline(tlData);
+      if (!controller.signal.aborted) {
+        setOverview(ovData);
+        setTimeline(tlData);
+      }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to load progress telemetry");
+      if (!controller.signal.aborted) {
+        setError(err instanceof Error ? err.message : "Failed to load progress telemetry");
+      }
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) {
+        setLoading(false);
+      }
     }
-  }, []);
+  }, [selectedDays]);
 
   const handleDaysChange = async (days: number) => {
+    if (timelineAbortRef.current) {
+      timelineAbortRef.current.abort();
+    }
+    const controller = new AbortController();
+    timelineAbortRef.current = controller;
+
     setSelectedDays(days);
     setTimelineLoading(true);
+    setTimelineError(null);
+
     try {
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      if (session) {
-        const tlData = await fetchProgressTimeline(session.access_token, days);
+      if (!session) return;
+
+      const tlData = await fetchProgressTimeline(session.access_token, days, controller.signal);
+      if (!controller.signal.aborted) {
         setTimeline(tlData);
       }
     } catch (err: unknown) {
-      console.error("Failed to switch timeline days:", err);
+      if (!controller.signal.aborted) {
+        setTimelineError(err instanceof Error ? err.message : "Failed to load timeline data");
+      }
     } finally {
-      setTimelineLoading(false);
+      if (!controller.signal.aborted) {
+        setTimelineLoading(false);
+      }
     }
   };
 
   useEffect(() => {
     loadData();
+    return () => {
+      if (abortControllerRef.current) abortControllerRef.current.abort();
+      if (timelineAbortRef.current) timelineAbortRef.current.abort();
+    };
   }, [loadData]);
 
   if (loading) {
@@ -136,13 +172,11 @@ export default function ProgressDashboardPage() {
 
         {overview && (
           <>
-            {/* High-Level Telemetry Cards */}
+            {/* Quick Metrics */}
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               <div className="rounded-xl border border-border/50 bg-card p-5 shadow-sm">
                 <div className="flex items-center justify-between text-muted-foreground">
-                  <span className="text-xs font-medium uppercase tracking-wider">
-                    Proficiency
-                  </span>
+                  <span className="text-xs font-medium uppercase tracking-wider">Proficiency</span>
                   <TrendingUp className="h-4 w-4 text-primary" />
                 </div>
                 <div className="mt-2 text-2xl font-bold text-foreground">
@@ -153,16 +187,12 @@ export default function ProgressDashboardPage() {
 
               <div className="rounded-xl border border-border/50 bg-card p-5 shadow-sm">
                 <div className="flex items-center justify-between text-muted-foreground">
-                  <span className="text-xs font-medium uppercase tracking-wider">
-                    Mastered Skills
-                  </span>
+                  <span className="text-xs font-medium uppercase tracking-wider">Mastered Skills</span>
                   <Award className="h-4 w-4 text-emerald-500" />
                 </div>
                 <div className="mt-2 text-2xl font-bold text-foreground">
                   {overview.mastered_skills_count}
-                  <span className="text-sm font-normal text-muted-foreground">
-                    /{overview.active_skills_count}
-                  </span>
+                  <span className="text-sm font-normal text-muted-foreground">/{overview.active_skills_count}</span>
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">Skills rated &ge; 80%</p>
               </div>
@@ -205,6 +235,8 @@ export default function ProgressDashboardPage() {
                   selectedDays={selectedDays}
                   onDaysChange={handleDaysChange}
                   isLoading={timelineLoading}
+                  errorMessage={timelineError}
+                  onRetry={() => handleDaysChange(selectedDays)}
                 />
               </div>
               <div>
@@ -215,7 +247,7 @@ export default function ProgressDashboardPage() {
             {/* Category Mastery Breakdown */}
             <CategoryMasteryGrid categories={overview.category_deltas} />
 
-            {/* Focus & Weakness Re-Test Recommendations */}
+            {/* Focus & Recommendations */}
             <FocusTopicsPanel
               topImproved={overview.top_improved_topics}
               needsFocus={overview.needs_focus_topics}

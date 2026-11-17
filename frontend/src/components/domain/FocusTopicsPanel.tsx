@@ -1,15 +1,19 @@
 "use client";
 
 import React from "react";
-import Link from "next/link";
 import type { TopicMasteryItem } from "@/types/progress";
 
 interface FocusTopicsPanelProps {
   topImproved: TopicMasteryItem[];
   needsFocus: TopicMasteryItem[];
+  onSelectTopic?: (item: TopicMasteryItem) => void;
 }
 
-export const FocusTopicsPanel: React.FC<FocusTopicsPanelProps> = ({ topImproved, needsFocus }) => {
+export const FocusTopicsPanel: React.FC<FocusTopicsPanelProps> = ({
+  topImproved,
+  needsFocus,
+  onSelectTopic,
+}) => {
   const formatTopic = (t: string) => {
     return t
       .replace(/_/g, " ")
@@ -80,11 +84,11 @@ export const FocusTopicsPanel: React.FC<FocusTopicsPanelProps> = ({ topImproved,
               <span className="text-rose-500">▼</span> Recommended Focus Topics
             </h3>
             <p className="text-xs text-muted-foreground">
-              Vulnerabilities and architectural blind spots requiring re-testing
+              Identified architectural blind spots targeted for re-testing
             </p>
           </div>
           <span className="rounded-full bg-rose-500/10 px-2.5 py-0.5 text-xs font-medium text-rose-500">
-            {needsFocus.length} Attention Needed
+            {needsFocus.length} Focus Areas
           </span>
         </div>
 
@@ -116,12 +120,18 @@ export const FocusTopicsPanel: React.FC<FocusTopicsPanelProps> = ({ topImproved,
                       {item.pass_rate_pct.toFixed(0)}% pass
                     </div>
                   </div>
-                  <Link
-                    href={`/dashboard?focus_topic=${encodeURIComponent(item.topic)}`}
-                    className="rounded bg-rose-500/10 px-2.5 py-1 text-xs font-medium text-rose-500 hover:bg-rose-500/20"
-                  >
-                    Re-Test
-                  </Link>
+                  {onSelectTopic ? (
+                    <button
+                      onClick={() => onSelectTopic(item)}
+                      className="rounded bg-rose-500/10 px-2.5 py-1 text-xs font-medium text-rose-500 hover:bg-rose-500/20"
+                    >
+                      Focus
+                    </button>
+                  ) : (
+                    <span className="rounded border border-rose-500/20 bg-rose-500/10 px-2.5 py-1 text-[11px] font-medium text-rose-500">
+                      Focus Area
+                    </span>
+                  )}
                 </div>
               </div>
             ))}
