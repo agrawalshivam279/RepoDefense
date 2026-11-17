@@ -265,13 +265,12 @@ async def get_user_progress_timeline(
             entry["total_prof"] += s.proficiency_score
             entry["count"] += 1
 
+    skill_keys = {(s.category, s.topic) for s in skills}
     for w in weaknesses:
-        if w.resolved and w.resolved_at:
+        if w.resolved and w.resolved_at and (w.category, w.topic) not in skill_keys:
             entry = date_points[w.resolved_at.strftime("%Y-%m-%d")]
             entry["evals"] += 1
             entry["passed"] += 1
-            entry["total_prof"] += 80.0
-            entry["count"] += 1
 
     sorted_dates = sorted(date_points.keys())
     if days > 0:
