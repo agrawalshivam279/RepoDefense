@@ -2,7 +2,7 @@
 
 import uuid
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Set
 
 from sqlalchemy import select
@@ -167,10 +167,9 @@ async def get_user_progress_overview(
     cat_skills: Dict[str, List[UserSkill]] = defaultdict(list)
     for s in skills:
         cat_skills[s.category].append(s)
-        if s.last_evaluated_at:
-            activity_dates.add(s.last_evaluated_at.date())
-        elif s.updated_at:
-            activity_dates.add(s.updated_at.date())
+        for ts in (s.last_evaluated_at, s.updated_at, s.created_at):
+            if ts:
+                activity_dates.add(ts.date())
 
     cat_weaknesses: Dict[str, Dict[str, int]] = defaultdict(lambda: {"total": 0, "resolved": 0})
     for w in weaknesses:
@@ -266,8 +265,9 @@ async def get_user_progress_timeline(
             entry["count"] += 1
 
     sorted_dates = sorted(date_points.keys())
-    if days > 0 and len(sorted_dates) > days:
-        sorted_dates = sorted_dates[-days:]
+    if days > 0:
+        cutoff = (datetime.now(timezone.utc).date() - timedelta(days=days)).isoformat()
+        sorted_dates = [d for d in sorted_dates if d >= cutoff]
 
     timeline: List[ProficiencyTrendPoint] = []
     for d in sorted_dates:

@@ -251,6 +251,7 @@ def test_progress_api_endpoints():
             mock_db.execute.side_effect = _exec
             return mock_db
 
+        orig_overrides = dict(app.dependency_overrides)
         app.dependency_overrides[get_current_user] = lambda: mock_user
         app.dependency_overrides[get_db] = _get_mock_db
 
@@ -281,5 +282,6 @@ def test_progress_api_endpoints():
                 assert cat_data[0]["status"] == "mastered"
         finally:
             app.dependency_overrides.clear()
+            app.dependency_overrides.update(orig_overrides)
 
     asyncio.run(_impl())
