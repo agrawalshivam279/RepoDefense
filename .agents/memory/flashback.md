@@ -134,12 +134,18 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **Phase 1** | Ingestion & Core MVP (Scaffolding, Auth, Git Clone, Security Filter, Complete MVP) | 🟢 Complete |
 | **Phase 2** | Differentiation (Claims Extraction, Verification, Adaptive Questioning, Pushback Logic, Coverage Tracking, Ownership Engine, Architecture Audit, Mermaid Diagrams, Tech Audit, Enhanced Report) | 🟢 Complete (Milestones 2.1 - 2.12 Complete) |
 | **Phase 3** | The State Machine & Advanced Defense (PR Fetch & Diff Defense, Stress Testing, Incident Simulation, Architecture Defense, Bounded Simulation Stores & Unified Simulation Arena Hub) | 🟢 Complete (Milestones 3.1 - 3.8 Complete) |
-| **Phase 4** | Learning Loop & Weakness Tracking (UserSkill Models, Weakness Tracker, Mentor Mode, Targeted Re-Testing) | 🟡 In Progress (Milestone 4.3 Complete) |
+| **Phase 4** | Learning Loop & Weakness Tracking (UserSkill Models, Weakness Tracker, Mentor Mode, Targeted Re-Testing) | 🟡 In Progress (Milestones 4.1-4.3 Complete, Step 4.4a Complete) |
 | **Phase 5** | Evaluation & Export (Rubric Scoring, Transcript Generation, PDF & Badge Export) | ⚪ Planned |
 
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-11-18] — Step 4.4a: Backend Skill Progress & Improvement Telemetry Service & REST API
+- **Scope / Module**: Backend Skill Progress & Learning Telemetry (`backend/app/schemas/progress.py`, `backend/app/schemas/__init__.py`, `backend/app/services/skill_progress.py`, `backend/app/api/v1/progress.py`, `backend/app/main.py`, `backend/tests/test_skill_progress.py`, `docs/specs/step-4-4a-skill-progress-telemetry-backend.md`)
+- **Details**: Designed and implemented the backend learning progress and weakness resolution telemetry engine for Milestone 4.4 in Phase 4. Defined Pydantic v2 data models in `schemas/progress.py` (`ProficiencyTrendPoint`, `WeaknessVelocityMetric`, `CategoryProgressDelta`, `TopicMasteryItem`, `UserProgressOverviewResponse`) capturing overall mastery, pass rate %, weakness resolution turnaround hours, category progress tiers (`mastered`, `proficient`, `improving`, `needs_focus`), and chronological timeline trends. Built `services/skill_progress.py` aggregating metrics across `UserSkill` and `CandidateWeakness` tables with zero-division protection and consecutive learning streak computation. Built FastAPI REST router `api/v1/progress.py` mounted at `/api/v1/progress` in `main.py` exposing `GET /overview`, `GET /timeline`, and `GET /categories` with strict multi-tenant IDOR isolation scoped to `current_user.id`. Authored 6 hermetic unit and API contract tests in `tests/test_skill_progress.py`. Addressed CodeRabbit review findings (activity streak dates retention, timeline calendar window cutoff calculation, test teardown dependency restoration, Dockerfile migration copying). Verified 100% via `ruff check` (clean), `pytest` (21/21 passed across progress and regression suites), zero arbitrary code execution, and strict <= 300 LOC limit across all touched files. Concludes Step 4.4a.
+- **Key Files**: `backend/app/schemas/progress.py`, `backend/app/schemas/__init__.py`, `backend/app/services/skill_progress.py`, `backend/app/api/v1/progress.py`, `backend/app/main.py`, `backend/tests/test_skill_progress.py`, `docs/specs/step-4-4a-skill-progress-telemetry-backend.md`
+
 
 ### [2026-11-17] — PR #76: Mentor Mode UI Hardening & CodeRabbit Review Findings Addressed
 - **Scope / Module**: Frontend Mentor Mode Hardening (rontend/src/app/projects/[id]/mentor/page.tsx, rontend/src/components/domain/ChallengeEditor.tsx, rontend/src/components/domain/MentorChallengeSandbox.tsx, rontend/src/components/domain/MentorRemediationWorkspace.tsx, rontend/src/components/domain/MiniChallengeCard.tsx)

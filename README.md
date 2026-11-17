@@ -378,7 +378,7 @@ Ensure you have the following installed on your machine:
 
 #### 1. Clone the Repository
 ```bash
-git clone https://github.com/your-username/RepoDefense.git
+git clone https://github.com/agrawalshivam279/RepoDefense.git
 cd RepoDefense
 ```
 
@@ -428,8 +428,8 @@ arq app.workers.worker.WorkerSettings
 
 The FastAPI backend will now be live at:
 - **API Base:** [http://localhost:8000](http://localhost:8000)
-- **Interactive Swagger Docs:** [http://localhost:8000/docs](http://localhost:8000/docs)
-- **ReDoc:** [http://localhost:8000/redoc](http://localhost:8000/redoc)
+- **Interactive Swagger Docs:** [http://localhost:8000/api/docs](http://localhost:8000/api/docs)
+- **ReDoc:** [http://localhost:8000/api/redoc](http://localhost:8000/api/redoc)
 
 #### 5. Setup and Run the Next.js Frontend
 ```bash
@@ -451,51 +451,20 @@ The frontend will be accessible at:
 
 To run the entire platform (PostgreSQL, Redis, and Backend) in containerized mode:
 ```bash
-docker-compose up --build
-```
+# 1. Start Postgres and Redis services
+docker-compose up -d postgres redis
 
----
+# 2. Apply database migrations
+docker-compose run --rm backend alembic upgrade head
 
-## 🧪 Testing & Quality Assurance
-
-RepoDefense maintains rigorous test coverage across AST parsers, API endpoints, and database vector operations:
-
-```bash
-# Run backend test suite with coverage report
-cd backend
-pytest -v --cov=app tests/
-
-# Run Ruff linter and code formatter
-ruff check app/
-ruff format --check app/
-
-# Run frontend typecheck & linting
-cd ../frontend
-npm run typecheck
-npm run lint
-```
-
----
-
-## 🔌 API Endpoints Overview
-
-The backend exposes a clean, modular REST API under `/api/v1`:
-
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `POST` | `/api/v1/projects` | Register a new GitHub repository URL for ingestion |
-| `GET` | `/api/v1/projects/{id}` | Ingestion progress, status, and summary |
-| `GET` | `/api/v1/projects/{id}/diagram` | Multi-tier Mermaid architecture diagram |
-| `POST` | `/api/v1/defense/sessions` | Initialize a new interactive defense interview |
-| `POST` | `/api/v1/defense/sessions/{id}/answer` | Submit a candidate defense answer to the FSM |
-| `GET` | `/api/v1/defense/sessions/{id}/report` | Retrieve scored defense evaluation rubric & report |
-| `POST` | `/api/v1/claims/upload` | Upload resume PDF and extract technical claims |
-| `POST` | `/api/v1/claims/verify` | Verify claims against AST and pgvector evidence |
+# 3. Start all services
 | `POST` | `/api/v1/incident-simulation/start` | Launch an interactive SRE War Room incident scenario |
 | `POST` | `/api/v1/stress-test/evaluate` | Inject scaling constraints and evaluate architecture |
 | `GET` | `/api/v1/mentor/lessons/{topic_id}` | Retrieve AI-synthesized remediation lesson |
 | `POST` | `/api/v1/mentor/challenges/verify` | Verify candidate solution to remediation challenge |
-| `GET` | `/api/v1/skills/progress` | Retrieve longitudinal candidate skill progress telemetry |
+| `GET` | `/api/v1/progress/overview` | Retrieve unified candidate skill progress telemetry & overview |
+| `GET` | `/api/v1/progress/timeline` | Daily proficiency trend points across trailing calendar window |
+| `GET` | `/api/v1/progress/categories` | Per-category proficiency, evaluation volume, and mastery status |
 
 ---
 

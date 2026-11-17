@@ -22,6 +22,8 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 # Copy application source code
 COPY app/ /app/app/
+COPY alembic.ini /app/
+COPY alembic/ /app/alembic/
 
 # Set ownership to unprivileged user
 RUN chown -R appuser:appuser /app

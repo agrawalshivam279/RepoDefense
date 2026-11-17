@@ -91,6 +91,13 @@ from app.schemas.pr_analysis import (
     PRMetadata,
     RawDiffParseRequest,
 )
+from app.schemas.progress import (
+    CategoryProgressDelta,
+    ProficiencyTrendPoint,
+    TopicMasteryItem,
+    UserProgressOverviewResponse,
+    WeaknessVelocityMetric,
+)
 from app.schemas.project import (
     DependencyOverviewItem,
     LanguageMetric,
@@ -240,4 +247,9 @@ __all__ = [
     "RecordEvaluationRequest",
     "RecordEvaluationResponse",
     "ResolveWeaknessRequest",
+    "ProficiencyTrendPoint",
+    "WeaknessVelocityMetric",
+    "CategoryProgressDelta",
+    "TopicMasteryItem",
+    "UserProgressOverviewResponse",
 ]
