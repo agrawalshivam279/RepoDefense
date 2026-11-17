@@ -211,6 +211,7 @@ export default function MentorModePage() {
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
               <input
                 type="text"
+                aria-label="Topic"
                 value={topicInput}
                 onChange={(e) => setTopicInput(e.target.value)}
                 placeholder="Request guidance on any architecture topic or weakness..."
@@ -218,6 +219,7 @@ export default function MentorModePage() {
               />
             </div>
             <select
+              aria-label="Category"
               value={categoryInput}
               onChange={(e) => setCategoryInput(e.target.value)}
               className="rounded-lg border border-slate-800 bg-slate-950/80 px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-indigo-500"
