@@ -34,6 +34,8 @@ export default function ProgressDashboardPage() {
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const timelineAbortRef = useRef<AbortController | null>(null);
+  const selectedDaysRef = useRef(selectedDays);
+  selectedDaysRef.current = selectedDays;
 
   const loadData = useCallback(async () => {
     if (abortControllerRef.current) {
@@ -58,7 +60,7 @@ export default function ProgressDashboardPage() {
 
       const [ovData, tlData] = await Promise.all([
         fetchProgressOverview(session.access_token, controller.signal),
-        fetchProgressTimeline(session.access_token, selectedDays, controller.signal),
+        fetchProgressTimeline(session.access_token, selectedDaysRef.current, controller.signal),
       ]);
 
       if (!controller.signal.aborted) {
@@ -70,11 +72,11 @@ export default function ProgressDashboardPage() {
         setError(err instanceof Error ? err.message : "Failed to load progress telemetry");
       }
     } finally {
-      if (!controller.signal.aborted) {
+      if (abortControllerRef.current === controller) {
         setLoading(false);
       }
     }
-  }, [selectedDays]);
+  }, []);
 
   const handleDaysChange = async (days: number) => {
     if (timelineAbortRef.current) {
@@ -102,7 +104,7 @@ export default function ProgressDashboardPage() {
         setTimelineError(err instanceof Error ? err.message : "Failed to load timeline data");
       }
     } finally {
-      if (!controller.signal.aborted) {
+      if (timelineAbortRef.current === controller) {
         setTimelineLoading(false);
       }
     }
