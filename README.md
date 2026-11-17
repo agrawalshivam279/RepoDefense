@@ -458,46 +458,6 @@ docker-compose up -d postgres redis
 docker-compose run --rm backend alembic upgrade head
 
 # 3. Start all services
-docker-compose up --build
-```
-
----
-
-## 🧪 Testing & Quality Assurance
-
-RepoDefense maintains rigorous test coverage across AST parsers, API endpoints, and database vector operations:
-
-```bash
-# Run backend test suite with coverage report
-cd backend
-pytest -v --cov=app tests/
-
-# Run Ruff linter and code formatter
-ruff check app/
-ruff format --check app/
-
-# Run frontend typecheck & linting
-cd ../frontend
-npm run typecheck
-npm run lint
-```
-
----
-
-## 🔌 API Endpoints Overview
-
-The backend exposes a clean, modular REST API under `/api/v1`:
-
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `POST` | `/api/v1/projects` | Register a new GitHub repository URL for ingestion |
-| `GET` | `/api/v1/projects/{id}` | Ingestion progress, status, and summary |
-| `GET` | `/api/v1/projects/{id}/diagram` | Multi-tier Mermaid architecture diagram |
-| `POST` | `/api/v1/projects/{id}/defense/start` | Initialize a new interactive defense interview |
-| `POST` | `/api/v1/projects/{id}/defense/answer` | Submit a candidate defense answer to the FSM |
-| `GET` | `/api/v1/projects/{id}/defense/report` | Retrieve scored defense evaluation rubric & report |
-| `POST` | `/api/v1/claims/upload` | Upload resume PDF and extract technical claims |
-| `POST` | `/api/v1/projects/{id}/claims/verify` | Verify claims against AST and pgvector evidence |
 | `POST` | `/api/v1/incident-simulation/start` | Launch an interactive SRE War Room incident scenario |
 | `POST` | `/api/v1/stress-test/evaluate` | Inject scaling constraints and evaluate architecture |
 | `GET` | `/api/v1/mentor/lessons/{topic_id}` | Retrieve AI-synthesized remediation lesson |
