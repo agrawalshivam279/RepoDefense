@@ -93,7 +93,12 @@ async def run_git_shallow_clone(
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
-    stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+    try:
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+    except (asyncio.TimeoutError, asyncio.CancelledError):
+        proc.kill()
+        await proc.wait()
+        raise
     if proc.returncode != 0:
         err_msg = stderr.decode(errors="replace").strip()
         logger.error("git_clone_failed", returncode=proc.returncode, stderr=err_msg)
@@ -106,7 +111,12 @@ async def run_git_shallow_clone(
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
-    stdout_rev, stderr_rev = await asyncio.wait_for(proc_rev.communicate(), timeout=10.0)
+    try:
+        stdout_rev, stderr_rev = await asyncio.wait_for(proc_rev.communicate(), timeout=10.0)
+    except (asyncio.TimeoutError, asyncio.CancelledError):
+        proc_rev.kill()
+        await proc_rev.wait()
+        raise
     if proc_rev.returncode != 0:
         err_msg = stderr_rev.decode(errors="replace").strip()
         raise RuntimeError(f"git rev-parse HEAD failed: {err_msg}")

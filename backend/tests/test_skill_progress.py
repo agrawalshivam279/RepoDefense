@@ -52,14 +52,10 @@ def test_mastery_status_classification():
 def test_learning_streak_calculation():
     """Verify consecutive learning streak computation."""
     today = datetime.now(timezone.utc).date()
-    # Streak active: today, yesterday, 2 days ago
-    dates_active = {today, today - timedelta(days=1), today - timedelta(days=2)}
-    assert _calculate_learning_streak(dates_active) == 3
-    # Streak active ending yesterday: yesterday, 2 days ago
+    s3 = {today, today - timedelta(days=1), today - timedelta(days=2)}
+    assert _calculate_learning_streak(s3) == 3
     assert _calculate_learning_streak({today - timedelta(days=1), today - timedelta(days=2)}) == 2
-    # Broken streak: 3 days ago, 4 days ago
     assert _calculate_learning_streak({today - timedelta(days=3), today - timedelta(days=4)}) == 0
-    # Empty dates
     assert _calculate_learning_streak(set()) == 0
 
 
@@ -190,6 +186,7 @@ def test_timeline_points_aggregation():
     async def _impl():
         user_id = uuid.uuid4()
         now = datetime.now(timezone.utc)
+        yesterday = now - timedelta(days=1)
 
         skill1 = UserSkill(
             id=uuid.uuid4(),
@@ -202,15 +199,32 @@ def test_timeline_points_aggregation():
             failed_evaluations=1,
             last_evaluated_at=now,
         )
+        w1 = CandidateWeakness(
+            id=uuid.uuid4(),
+            user_id=user_id,
+            project_id=uuid.uuid4(),
+            simulation_mode="system_architecture",
+            category="db",
+            topic="indexing",
+            severity="medium",
+            question_prompt="Indexing bottleneck",
+            feedback="Add composite index.",
+            resolved=True,
+            resolved_at=yesterday,
+        )
 
-        mock_db = _make_mock_db(skills=[skill1], weaknesses=[])
+        mock_db = _make_mock_db(skills=[skill1], weaknesses=[w1])
 
         timeline = await get_user_progress_timeline(mock_db, user_id, days=7)
-        assert len(timeline) == 1
-        assert timeline[0].date == now.strftime("%Y-%m-%d")
+        assert len(timeline) == 2
+        assert timeline[0].date == yesterday.strftime("%Y-%m-%d")
         assert timeline[0].average_proficiency == 80.0
-        assert timeline[0].evaluations_count == 5
-        assert timeline[0].passed_count == 4
+        assert timeline[0].evaluations_count == 1
+        assert timeline[0].passed_count == 1
+        assert timeline[1].date == now.strftime("%Y-%m-%d")
+        assert timeline[1].average_proficiency == 80.0
+        assert timeline[1].evaluations_count == 5
+        assert timeline[1].passed_count == 4
 
     asyncio.run(_impl())
 
@@ -257,22 +271,15 @@ def test_progress_api_endpoints():
         try:
             transport = ASGITransport(app=app)
             async with AsyncClient(transport=transport, base_url="http://test") as client:
-                # 1. Overview
                 res = await client.get("/api/v1/progress/overview")
                 assert res.status_code == 200
                 data = res.json()
-                assert data["overall_proficiency"] == 90.0
-                assert data["total_evaluations"] == 6
+                assert data["overall_proficiency"] == 90.0 and data["total_evaluations"] == 6
                 assert data["mastered_skills_count"] == 1
 
-                # 2. Timeline
                 res_tl = await client.get("/api/v1/progress/timeline?days=14")
-                assert res_tl.status_code == 200
-                tl_data = res_tl.json()
-                assert isinstance(tl_data, list)
-                assert len(tl_data) == 1
+                assert res_tl.status_code == 200 and len(res_tl.json()) == 1
 
-                # 3. Categories
                 res_cat = await client.get("/api/v1/progress/categories")
                 assert res_cat.status_code == 200
                 cat_data = res_cat.json()

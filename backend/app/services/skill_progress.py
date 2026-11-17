@@ -277,16 +277,20 @@ async def get_user_progress_timeline(
         cutoff = (datetime.now(timezone.utc).date() - timedelta(days=days - 1)).isoformat()
         sorted_dates = [d for d in sorted_dates if d >= cutoff]
 
+    running_prof = (
+        round(sum(s.proficiency_score for s in skills) / len(skills), 1)
+        if skills
+        else 50.0
+    )
     timeline: List[ProficiencyTrendPoint] = []
     for d in sorted_dates:
         data = date_points[d]
-        avg_prof = (
-            round(data["total_prof"] / data["count"], 1) if data["count"] > 0 else 0.0
-        )
+        if data["count"] > 0:
+            running_prof = round(data["total_prof"] / data["count"], 1)
         timeline.append(
             ProficiencyTrendPoint(
                 date=d,
-                average_proficiency=avg_prof,
+                average_proficiency=running_prof,
                 evaluations_count=int(data["evals"]),
                 passed_count=int(data["passed"]),
             )
