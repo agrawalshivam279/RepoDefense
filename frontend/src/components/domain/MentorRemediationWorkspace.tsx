@@ -43,6 +43,9 @@ export function MentorRemediationWorkspace({
   const [error, setError] = useState<string | null>(null);
 
   const activeRequestIdRef = useRef(0);
+  const tokenRef = useRef(token);
+  tokenRef.current = token;
+
   const lastAttemptedRef = useRef<{ topic: string; category: string }>({
     topic: defaultTopic,
     category: defaultCategory,
@@ -64,7 +67,7 @@ export function MentorRemediationWorkspace({
       setError(null);
 
       try {
-        const res = await explainWeaknessOrTopic(token, {
+        const res = await explainWeaknessOrTopic(tokenRef.current, {
           topic: trimmedTopic,
           category: targetCategory || "architecture",
           language: "python",
@@ -85,13 +88,16 @@ export function MentorRemediationWorkspace({
         }
       }
     },
-    [token]
+    []
   );
 
   useEffect(() => {
     handleSynthesize(defaultTopic, defaultCategory);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId]);
+    return () => {
+      // Invalidate active request on cleanup or parameter change
+      activeRequestIdRef.current++;
+    };
+  }, [projectId, defaultTopic, defaultCategory, handleSynthesize]);
 
   const renderTopicIcon = (iconName: QuickTopicOption["iconName"]) => {
     switch (iconName) {

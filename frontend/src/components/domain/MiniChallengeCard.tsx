@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   CheckCircle2,
   ChevronDown,
@@ -25,6 +25,13 @@ export function MiniChallengeCard({ challenge, className = "" }: MiniChallengeCa
   const [checkedRequirements, setCheckedRequirements] = useState<Record<number, boolean>>({});
   const [revealedHints, setRevealedHints] = useState<Record<number, boolean>>({});
   const [hintsExpanded, setHintsExpanded] = useState<boolean>(false);
+
+  // Reset interactive criteria and hints when challenge identity changes
+  useEffect(() => {
+    setCheckedRequirements({});
+    setRevealedHints({});
+    setHintsExpanded(false);
+  }, [challenge.challenge_id]);
 
   const diffStyle = getDifficultyStyle(challenge.difficulty);
 

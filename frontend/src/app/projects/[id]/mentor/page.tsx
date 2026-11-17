@@ -25,41 +25,87 @@ export default function MentorModePage() {
   const [activeTab, setActiveTab] = useState<MentorActiveTab>("remediation");
   const [token, setToken] = useState<string | null>(null);
   const [overview, setOverview] = useState<ProjectOverviewResponse | null>(null);
+  const [overviewError, setOverviewError] = useState<boolean>(false);
+  const [overviewLoading, setOverviewLoading] = useState<boolean>(false);
   const [authLoading, setAuthLoading] = useState<boolean>(true);
+  const prevProjectIdRef = useRef<string>(projectId);
+  const activeOverviewReqId = useRef(0);
 
-  const isMountedRef = useRef(true);
-
+  // Subscribe to auth state changes and keep token refreshed
   useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
+    let isCancelled = false;
 
-  const loadAuthAndProject = useCallback(async () => {
-    const { data } = await supabase.auth.getSession();
-    const sessionToken = data.session?.access_token;
-    if (!sessionToken) {
-      router.replace("/login");
-      return;
-    }
-    if (!isMountedRef.current) return;
-    setToken(sessionToken);
-    setAuthLoading(false);
-
-    if (projectId) {
-      try {
-        const meta = await getProjectOverview(projectId, sessionToken);
-        if (isMountedRef.current) setOverview(meta);
-      } catch {
-        // Non-blocking project header metadata failure
+    async function initSession() {
+      const { data } = await supabase.auth.getSession();
+      const sessionToken = data.session?.access_token;
+      if (!isCancelled) {
+        if (!sessionToken) {
+          router.replace("/login");
+          return;
+        }
+        setToken(sessionToken);
+        setAuthLoading(false);
       }
     }
-  }, [projectId, router]);
 
+    initSession();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!isCancelled) {
+        if (session?.access_token) {
+          setToken(session.access_token);
+          setAuthLoading(false);
+        } else {
+          router.replace("/login");
+        }
+      }
+    });
+
+    return () => {
+      isCancelled = true;
+      subscription.unsubscribe();
+    };
+  }, [router]);
+
+  const fetchProjectOverview = useCallback(async (pId: string, tok: string) => {
+    if (!pId || !tok) return;
+    const reqId = ++activeOverviewReqId.current;
+    setOverviewLoading(true);
+    try {
+      const meta = await getProjectOverview(pId, tok);
+      if (reqId === activeOverviewReqId.current) {
+        setOverview(meta);
+        setOverviewError(false);
+      }
+    } catch {
+      if (reqId === activeOverviewReqId.current) {
+        setOverviewError(true);
+      }
+    } finally {
+      if (reqId === activeOverviewReqId.current) {
+        setOverviewLoading(false);
+      }
+    }
+  }, []);
+
+  // Load project overview metadata with cancellation and isolation per projectId
   useEffect(() => {
-    loadAuthAndProject();
-  }, [loadAuthAndProject]);
+    if (prevProjectIdRef.current !== projectId) {
+      prevProjectIdRef.current = projectId;
+      setOverview(null);
+      setOverviewError(false);
+    }
+
+    if (projectId && token) {
+      fetchProjectOverview(projectId, token);
+    }
+
+    return () => {
+      activeOverviewReqId.current++;
+    };
+  }, [projectId, token, fetchProjectOverview]);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
@@ -94,6 +140,22 @@ export default function MentorModePage() {
             </div>
           </div>
         </header>
+
+        {overviewError && (
+          <div className="flex items-center justify-between p-3 rounded-xl border border-rose-900/40 bg-rose-950/20 text-xs text-rose-300">
+            <span>Failed to load project metadata. Showing fallback repository details.</span>
+            <button
+              type="button"
+              disabled={overviewLoading || !projectId || !token}
+              onClick={() => {
+                if (projectId && token) fetchProjectOverview(projectId, token);
+              }}
+              className="px-2.5 py-1 rounded-lg bg-rose-900/40 hover:bg-rose-900/60 disabled:opacity-50 text-white font-medium border border-rose-700/50 transition-colors"
+            >
+              {overviewLoading ? "Retrying..." : "Retry"}
+            </button>
+          </div>
+        )}
 
         {/* Sub-Tabs Switcher */}
         <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
