@@ -554,7 +554,10 @@ gantt
 
 ### Milestone 4.3: Mentor Mode — Mini Challenges
 - **Goal:** Generate small coding challenges to fix gaps.
-- **Components:** Challenge generation logic.
+- **Sub-tasks:**
+  - [x] **Step 4.3a: Backend Mini Challenge Generator, Evaluation Engine & REST API** (schemas/challenge.py, ai/challenge_generator.py & challenge_prompts.py & challenge_fallbacks.py, api/v1/mentor.py, POST /challenges/generate & /challenges/evaluate, IDOR isolation, WeaknessTracker resolution, 5/5 tests passing)
+  - [ ] **Step 4.3b: Next.js 15 Mini Challenge Interactive Sandbox & Solution Evaluation UI** (challengeApi.ts, MiniChallengeCard.tsx, ChallengeEditor.tsx, SolutionEvaluationViewer.tsx, integration into /projects/[id]/mentor)
+- **Components:** Challenge generation logic and solution evaluation.
 - **Dependencies:** 4.2
 
 ### Milestone 4.4: Progress Dashboard
