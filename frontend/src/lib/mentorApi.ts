@@ -134,7 +134,7 @@ export async function getExplanationForWeakness(
   language: string = "python",
   signal?: AbortSignal
 ): Promise<MentorExplanationResponse> {
-  const query = `?language=${encodeURIComponent(language.slice(0, 32))}`;
+  const query = `?language=${encodeURIComponent(Array.from(language).slice(0, 32).join(""))}`;
   return requestMentorApi<MentorExplanationResponse>(
     `/api/v1/mentor/explanations/${encodeURIComponent(weaknessId)}${query}`,
     token,

@@ -160,6 +160,24 @@ describe("mentorApi - HTTP Client Endpoints", () => {
     assert.equal(res.explanation_id, "exp-123");
   });
 
+  it("truncates language parameter by code-points safely without surrogate errors", async () => {
+    let capturedUrl = "";
+    globalThis.fetch = async (input) => {
+      capturedUrl = String(input);
+      return new Response(JSON.stringify(buildSampleExplanation()), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    };
+
+    // 40 unicode emojis (each 2 UTF-16 code units) -> must slice by code points (32 max)
+    const longEmojiLang = "🚀".repeat(40);
+    await getExplanationForWeakness("test-token", "w-123", longEmojiLang);
+
+    const expectedQuery = encodeURIComponent("🚀".repeat(32));
+    assert.ok(capturedUrl.includes(`?language=${expectedQuery}`));
+  });
+
   it("throws formatted error when server responds with non-200 code", async () => {
     globalThis.fetch = async () =>
       new Response(JSON.stringify({ detail: "Weakness record not found or access denied." }), {

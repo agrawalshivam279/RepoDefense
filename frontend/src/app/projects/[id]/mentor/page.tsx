@@ -40,6 +40,11 @@ export default function MentorModePage() {
   const [error, setError] = useState<string | null>(null);
 
   const isMountedRef = useRef(true);
+  const activeRequestIdRef = useRef(0);
+  const lastAttemptedRef = useRef<{ topic: string; category: string }>({
+    topic: "connection_pooling",
+    category: "scalability",
+  });
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -72,31 +77,42 @@ export default function MentorModePage() {
 
   const handleSynthesize = useCallback(
     async (targetTopic: string, targetCategory: string) => {
-      if (!targetTopic.trim()) return;
+      const trimmedTopic = targetTopic.trim();
+      if (!trimmedTopic) return;
+
+      if (Array.from(trimmedTopic).length > 128) {
+        setError("Topic must be 128 characters or fewer.");
+        return;
+      }
+
+      lastAttemptedRef.current = { topic: trimmedTopic, category: targetCategory };
+      const reqId = ++activeRequestIdRef.current;
       setLoading(true);
       setError(null);
 
       try {
         const token = await getAuthToken();
-        if (!token || !isMountedRef.current) return;
+        if (!token || !isMountedRef.current || reqId !== activeRequestIdRef.current) return;
 
         const res = await explainWeaknessOrTopic(token, {
-          topic: targetTopic.trim(),
+          topic: trimmedTopic,
           category: targetCategory || "architecture",
           language: "python",
         });
 
-        if (isMountedRef.current) {
+        if (isMountedRef.current && reqId === activeRequestIdRef.current) {
           setExplanation(res);
-          setTopicInput(targetTopic);
+          setTopicInput(trimmedTopic);
           setCategoryInput(targetCategory);
         }
       } catch (err: unknown) {
-        if (!isMountedRef.current) return;
+        if (!isMountedRef.current || reqId !== activeRequestIdRef.current) return;
         const msg = err instanceof Error ? err.message : "Failed to synthesize mentor content.";
         setError(msg);
       } finally {
-        if (isMountedRef.current) setLoading(false);
+        if (isMountedRef.current && reqId === activeRequestIdRef.current) {
+          setLoading(false);
+        }
       }
     },
     [getAuthToken]
@@ -119,114 +135,120 @@ export default function MentorModePage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
       <ProjectNavHeader
         projectId={projectId}
         projectName={overview?.name || overview?.summary?.title || "Repository"}
-        githubUrl={overview?.github_url}
-        defaultBranch={overview?.default_branch}
-        commitHash={overview?.commit_hash}
         activeTab="mentor"
-        subtitle="Principal Engineer Mentor Mode — Architectural Teaching & Drop-in Remediation"
       />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        {/* Hero Section */}
-        <div className="relative overflow-hidden rounded-2xl border border-indigo-900/40 bg-gradient-to-r from-indigo-950/40 via-slate-900/60 to-purple-950/40 p-6 md:p-8 shadow-xl">
-          <div className="relative z-10 max-w-3xl space-y-3">
-            <div className="inline-flex items-center gap-2 rounded-full bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-400 border border-indigo-500/20">
-              <GraduationCap className="h-3.5 w-3.5" />
-              Socratic Mentor Mode
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        <header className="rounded-2xl border border-indigo-900/40 bg-gradient-to-r from-indigo-950/40 via-purple-950/20 to-slate-900/60 p-6 md:p-8 backdrop-blur-sm flex items-center gap-3">
+          <div className="rounded-xl bg-indigo-500/10 p-2.5 border border-indigo-500/20 text-indigo-400">
+            <GraduationCap className="h-6 w-6" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold uppercase tracking-wider text-indigo-400">
+                Learning Loop &bull; Milestone 4.2
+              </span>
+              <span className="rounded-full bg-indigo-500/10 px-2.5 py-0.5 text-[10px] font-medium text-indigo-300 border border-indigo-500/20">
+                Constructive Principal
+              </span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
-              Architectural Mastery & Code Remediation
+            <h1 className="text-2xl font-bold tracking-tight text-white mt-0.5">
+              Mentor Mode: Architectural Remediation
             </h1>
-            <p className="text-sm text-slate-300 leading-relaxed">
-              Step away from high-pressure oral cross-examinations. Mentor Mode analyzes root-cause
-              failure modes, teaches production software design principles, and delivers drop-in
-              Before/After remediations.
+            <p className="text-sm text-slate-400 mt-1 max-w-3xl">
+              Bridge identified technical blind spots. Instead of scoring, our Principal Engineer persona walks through root cause failure modes, production principles, and drop-in code fixes.
             </p>
           </div>
-        </div>
+        </header>
 
-        {/* Quick Launch Chips */}
-        <div className="space-y-3">
-          <h2 className="text-xs font-mono uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-            <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
-            Canonical Failure Modes & Topics
+        <section className="space-y-4">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-indigo-400" />
+            <span>Core Architectural Remediation Topics</span>
           </h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-            {QUICK_MENTOR_TOPICS.map((t) => {
-              const isSelected = topicInput === t.topic;
+            {QUICK_MENTOR_TOPICS.map((topic) => {
+              const isSelected = topicInput === topic.topic && categoryInput === topic.category;
               return (
                 <button
-                  key={t.topic}
+                  key={topic.topic}
                   type="button"
-                  onClick={() => handleSynthesize(t.topic, t.category)}
-                  className={`text-left rounded-xl p-3.5 border transition-all flex flex-col justify-between space-y-2 ${
+                  disabled={loading}
+                  onClick={() => handleSynthesize(topic.topic, topic.category)}
+                  className={`text-left p-3.5 rounded-xl border transition-all text-xs space-y-1.5 ${
                     isSelected
-                      ? "border-indigo-500/70 bg-indigo-950/30 shadow-md ring-1 ring-indigo-500/30"
-                      : "border-slate-800 bg-slate-900/50 hover:bg-slate-900 hover:border-slate-700"
-                  }`}
+                      ? "border-indigo-500/80 bg-indigo-950/40 shadow-lg shadow-indigo-950/50"
+                      : "border-slate-800 bg-slate-900/50 hover:border-slate-700 hover:bg-slate-900/90"
+                  } ${loading ? "opacity-60 cursor-not-allowed" : ""}`}
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-xs text-white">{t.title}</span>
-                    {renderTopicIcon(t.iconName)}
+                  <div className="flex items-center gap-2">
+                    {renderTopicIcon(topic.iconName)}
+                    <span className="font-semibold text-slate-200">{topic.title}</span>
                   </div>
-                  <p className="text-[11px] text-slate-400 line-clamp-2">{t.description}</p>
+                  <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed">
+                    {topic.description}
+                  </p>
                 </button>
               );
             })}
           </div>
-        </div>
+        </section>
 
-        {/* Custom Topic Form */}
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleSynthesize(topicInput, categoryInput);
-          }}
-          className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-800 bg-slate-900/60 p-3"
-        >
-          <div className="flex-1 min-w-[200px] flex items-center gap-2 bg-slate-950 rounded-lg px-3 py-2 border border-slate-800">
-            <Search className="h-4 w-4 text-slate-400 shrink-0" />
-            <input
-              type="text"
-              value={topicInput}
-              onChange={(e) => setTopicInput(e.target.value)}
-              placeholder="Enter architectural topic or mechanism (e.g. distributed_locking)"
-              className="bg-transparent text-xs text-slate-100 placeholder-slate-500 w-full focus:outline-none"
-            />
-          </div>
-
-          <select
-            value={categoryInput}
-            onChange={(e) => setCategoryInput(e.target.value)}
-            className="rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-xs font-mono text-slate-300 focus:outline-none"
+        <section className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSynthesize(topicInput, categoryInput);
+            }}
+            className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3"
           >
-            <option value="scalability">Scalability</option>
-            <option value="concurrency">Concurrency</option>
-            <option value="security">Security</option>
-            <option value="reliability">Reliability</option>
-            <option value="architecture">Architecture</option>
-          </select>
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+              <input
+                type="text"
+                value={topicInput}
+                onChange={(e) => setTopicInput(e.target.value)}
+                placeholder="Request guidance on any architecture topic or weakness..."
+                className="w-full rounded-lg border border-slate-800 bg-slate-950/80 pl-9 pr-3 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+            <select
+              value={categoryInput}
+              onChange={(e) => setCategoryInput(e.target.value)}
+              className="rounded-lg border border-slate-800 bg-slate-950/80 px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-indigo-500"
+            >
+              <option value="scalability">Scalability</option>
+              <option value="concurrency">Concurrency</option>
+              <option value="caching">Caching</option>
+              <option value="architecture">Architecture</option>
+              <option value="security">Security</option>
+              <option value="data_modeling">Data Modeling</option>
+            </select>
+            <button
+              type="submit"
+              disabled={loading || !topicInput.trim()}
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 transition-colors shrink-0"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <span>Synthesizing...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-3.5 w-3.5" />
+                  <span>Ask Mentor</span>
+                </>
+              )}
+            </button>
+          </form>
+        </section>
 
-          <button
-            type="submit"
-            disabled={loading || !topicInput.trim()}
-            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-medium text-xs px-4 py-2 transition-colors shadow-sm"
-          >
-            {loading ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Sparkles className="h-3.5 w-3.5" />
-            )}
-            <span>Synthesize Guidance</span>
-          </button>
-        </form>
-
-        {/* Content Display Area */}
         {loading && (
           <div className="flex flex-col items-center justify-center py-20 space-y-3 rounded-2xl border border-slate-800/80 bg-slate-900/30 text-center">
             <Loader2 className="h-8 w-8 animate-spin text-indigo-400" />
@@ -252,7 +274,7 @@ export default function MentorModePage() {
             </div>
             <button
               type="button"
-              onClick={() => handleSynthesize(topicInput, categoryInput)}
+              onClick={() => handleSynthesize(lastAttemptedRef.current.topic, lastAttemptedRef.current.category)}
               className="inline-flex items-center gap-1.5 rounded-md bg-slate-800 px-3 py-1.5 text-xs text-slate-300 hover:text-white"
             >
               <RefreshCw className="h-3.5 w-3.5" />
