@@ -19,6 +19,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **Database & Vectors** | PostgreSQL 17 + pgvector (Supabase) + SQLAlchemy asyncpg | 🟢 Milestone 1.2, Step 2.12a, RLS Lockdown (`3b7c9d4e2f1a`) & Step 4.1a (`4c8d1e2f3a4b`) Complete |
 | **Weakness Tracking & Skills** | PostgreSQL 17 + Vector(384) + SQLAlchemy asyncpg | 🟢 Milestone 4.1 Complete (Models, RLS Migration, Extraction Service & Skills API) |
 | **Mentor Mode & Remediation** | LiteLLM Teaching Synthesizer + Next.js 15 Remediation Visualizer | 🟢 Milestone 4.2 Complete (Steps 4.2a & 4.2b) |
+| **Progress Dashboard & Telemetry** | Next.js 15 SVG Visualizer + Velocity & Telemetry API | 🟢 Milestone 4.4 Complete (Steps 4.4a & 4.4b) |
 | **Authentication** | Supabase Auth (GitHub OAuth + Email/Password) | 🟢 Milestone 1.3 Complete |
 | **Background Queue** | ARQ (asyncio + Upstash Redis) | 🟢 Milestone 1.5 Complete |
 | **Static Code Ingestion & Cataloging** | Shallow Git Clone + Security Filter + File Scanner | 🟢 Milestone 1.5 & 1.6 Complete |
