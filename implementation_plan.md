@@ -564,7 +564,7 @@ gantt
 - **Goal:** View improvement over time.
 - **Sub-tasks:**
   - [x] **Step 4.4a: Backend Skill Progress & Improvement Telemetry Service & REST API** (schemas/progress.py, services/skill_progress.py, api/v1/progress.py, main.py, tests/test_skill_progress.py, 6/6 tests passing)
-  - [ ] **Step 4.4b: Next.js 15 Progress Dashboard UI & Interactive Learning Timeline Visualizer**
+  - [x] **Step 4.4b: Next.js 15 Progress Dashboard UI & Interactive Learning Timeline Visualizer** (types/progress.ts, lib/progressApi.ts, LearningTimelineChart.tsx, WeaknessVelocityCard.tsx, CategoryMasteryGrid.tsx, FocusTopicsPanel.tsx, dashboard/progress/page.tsx, production build verified)
 - **Components:** Timeline charts in UI.
 - **Dependencies:** 4.1
 

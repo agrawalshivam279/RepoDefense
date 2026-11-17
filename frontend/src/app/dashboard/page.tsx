@@ -9,6 +9,7 @@ import {
   Loader2,
   Plus,
   RefreshCw,
+  TrendingUp,
 } from "lucide-react";
 import { AddProjectModal } from "@/components/domain/AddProjectModal";
 import { ProjectCard } from "@/components/domain/ProjectCard";
@@ -113,6 +114,13 @@ export default function DashboardPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          <Link
+            href="/dashboard/progress"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-800 bg-slate-900/60 hover:bg-slate-800 text-emerald-400 font-semibold text-xs transition-colors shadow-sm"
+          >
+            <TrendingUp className="w-4 h-4" />
+            <span>Skill Progress</span>
+          </Link>
           <button
             onClick={fetchProjects}
             disabled={loading}
