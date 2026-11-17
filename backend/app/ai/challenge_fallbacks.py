@@ -122,7 +122,7 @@ def build_fallback_challenge(
         title=title,
         scenario=scenario,
         starter_code=starter_code,
-        language=language,
+        language="python",
         requirements=requirements,
         hints=hints,
     )
@@ -133,36 +133,31 @@ def build_fallback_evaluation(
     candidate_solution: str,
     requirements: List[str],
 ) -> ChallengeEvaluationResponse:
-    """Evaluate candidate solution deterministically based on static code heuristics."""
+    """Evaluate candidate solution deterministically with offline-mode limitations."""
     code_lower = candidate_solution.lower()
     strengths: List[str] = []
     missing: List[str] = []
 
     if any(k in code_lower for k in ["pool", "create_pool", "acquire"]):
-        strengths.append("Implemented bounded connection pool acquisition pattern.")
+        strengths.append("Identified connection pool acquisition construct.")
     if any(k in code_lower for k in ["timeout", "wait_for", "503", "backoff"]):
-        strengths.append("Handled timeouts and backpressure to protect downstream systems.")
+        strengths.append("Identified timeout or backpressure mechanism.")
     if any(k in code_lower for k in ["for_update", "atomic", "lock", "mutex", "nx"]):
-        strengths.append("Employed concurrency controls to avoid race conditions.")
+        strengths.append("Identified concurrency synchronization pattern.")
     if any(k in code_lower for k in ["try", "except", "finally"]):
-        strengths.append("Used structured exception handling for error isolation.")
+        strengths.append("Identified structured exception handling block.")
 
-    if len(strengths) >= 2 and len(candidate_solution.strip()) > 60:
-        passed = True
-        score = 85.0
-        critique = (
-            "Strong architectural solution. You correctly recognized the failure mode, "
-            "applied appropriate resource boundaries and concurrency synchronization, and "
-            "structured the code for operational stability under load."
-        )
-    else:
-        passed = False
-        score = 55.0
-        missing.append("Ensure full requirement coverage with resource boundaries and timeouts.")
-        critique = (
-            "The proposed solution is incomplete or superficial. In production, "
-            "this implementation does not sufficiently isolate the failure domain."
-        )
+    # Offline fallback cannot formally certify requirement coverage
+    passed = False
+    score = 65.0 if len(strengths) >= 2 and len(candidate_solution.strip()) > 60 else 45.0
+    missing.append("Offline evaluation: Full requirement certification requires online LLM review.")
+
+    critique = (
+        "Preliminary offline analysis detected potential architectural keywords: "
+        f"{', '.join(strengths) if strengths else 'none identified'}. "
+        "However, offline heuristic evaluation cannot certify code semantics, "
+        "deadlock safety, or requirement satisfaction. Connect LLM credentials for full grading."
+    )
 
     model_solution = (
         "# Production Reference Solution\n"

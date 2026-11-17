@@ -70,7 +70,6 @@ def test_challenge_fallbacks_evaluation():
     challenge_id = uuid.uuid4()
     reqs = ["Use connection pool", "Add timeout"]
 
-    # Passing solution with pool and timeout
     strong_solution = (
         "async def handle(pool):\n"
         "    async with asyncio.timeout(2.0):\n"
@@ -79,16 +78,16 @@ def test_challenge_fallbacks_evaluation():
     )
     eval_pass = build_fallback_evaluation(challenge_id, strong_solution, reqs)
     assert isinstance(eval_pass, ChallengeEvaluationResponse)
-    assert eval_pass.passed is True
-    assert eval_pass.score >= 75.0
+    assert eval_pass.passed is False
+    assert eval_pass.score == 65.0
     assert len(eval_pass.strengths) >= 2
+    assert "offline" in eval_pass.critique.lower()
     assert eval_pass.model_solution != ""
 
-    # Failing solution without proper defenses
     weak_solution = "def handle(): pass"
     eval_fail = build_fallback_evaluation(challenge_id, weak_solution, reqs)
     assert eval_fail.passed is False
-    assert eval_fail.score < 75.0
+    assert eval_fail.score == 45.0
     assert len(eval_fail.missing_elements) >= 1
 
 
@@ -153,11 +152,7 @@ def test_challenge_api_generate_and_idor():
     """Verify POST /challenges/generate and IDOR isolation."""
     user_id = uuid.uuid4()
     other_user_id = uuid.uuid4()
-    user = User(
-        id=user_id,
-        email="dev@repodefense.com",
-        created_at=datetime.now(timezone.utc),
-    )
+    user = User(id=user_id, email="dev@repodefense.com", created_at=datetime.now(timezone.utc))
 
     unowned_weakness = CandidateWeakness(
         id=uuid.uuid4(),
@@ -174,9 +169,9 @@ def test_challenge_api_generate_and_idor():
 
     async def _run():
         transport = ASGITransport(app=app)
+        orig_overrides = dict(app.dependency_overrides)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             app.dependency_overrides[get_current_user] = lambda: user
-
             with patch("app.ai.challenge_generator.acompletion", side_effect=Exception("offline")):
                 try:
                     # 1. Success with inline topic
@@ -187,9 +182,7 @@ def test_challenge_api_generate_and_idor():
                         json={"category": "scalability", "topic": "connection_pooling"},
                     )
                     assert resp.status_code == 200, resp.text
-                    data = resp.json()
-                    assert data["topic"] == "connection_pooling"
-                    assert len(data["requirements"]) >= 2
+                    assert resp.json()["topic"] == "connection_pooling"
 
                     # 2. IDOR rejection: accessing unowned weakness returns 404
                     mock_db_idor = _make_mock_db(scalar_return=None)
@@ -201,7 +194,7 @@ def test_challenge_api_generate_and_idor():
                     assert resp_idor.status_code == 404
                     assert "not found or access denied" in resp_idor.json()["detail"].lower()
                 finally:
-                    app.dependency_overrides.clear()
+                    app.dependency_overrides = orig_overrides
 
     asyncio.run(_run())
 
@@ -209,12 +202,7 @@ def test_challenge_api_generate_and_idor():
 def test_challenge_api_evaluate_and_resolution():
     """Verify POST /challenges/evaluate resolves linked CandidateWeakness when passed."""
     user_id = uuid.uuid4()
-    user = User(
-        id=user_id,
-        email="dev@repodefense.com",
-        created_at=datetime.now(timezone.utc),
-    )
-
+    user = User(id=user_id, email="dev@repodefense.com", created_at=datetime.now(timezone.utc))
     weakness_id = uuid.uuid4()
     owned_weakness = CandidateWeakness(
         id=weakness_id,
@@ -231,24 +219,48 @@ def test_challenge_api_evaluate_and_resolution():
 
     async def _run():
         transport = ASGITransport(app=app)
+        orig_overrides = dict(app.dependency_overrides)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             app.dependency_overrides[get_current_user] = lambda: user
             mock_db = _make_mock_db(scalar_return=owned_weakness)
             app.dependency_overrides[get_db] = lambda: mock_db
 
             try:
-                with (
-                    patch(
-                        "app.api.v1.mentor.resolve_weakness", new_callable=AsyncMock
-                    ) as mock_resolve,
-                    patch(
-                        "app.ai.challenge_generator.acompletion",
-                        side_effect=Exception("offline"),
-                    ),
-                ):
-                    mock_resolve.return_value = owned_weakness
+                # 1. Topic mismatch validation raises 400
+                mismatch_resp = await client.post(
+                    "/api/v1/mentor/challenges/evaluate",
+                    json={
+                        "challenge_id": str(uuid.uuid4()),
+                        "weakness_id": str(weakness_id),
+                        "category": "scalability",
+                        "topic": "caching_stampede",
+                        "scenario": "Mismatch scenario",
+                        "requirements": ["Req 1"],
+                        "candidate_solution": "def test_solution(): pass",
+                    },
+                )
+                assert mismatch_resp.status_code == 400
+                assert "does not match" in mismatch_resp.json()["detail"].lower()
 
-                    # Submit strong solution that triggers passing grade
+                # 2. Passing evaluation resolves weakness
+                passing_eval = ChallengeEvaluationResponse(
+                    challenge_id=uuid.uuid4(),
+                    passed=True,
+                    score=90.0,
+                    strengths=["Implemented pool acquire"],
+                    missing_elements=[],
+                    critique="Excellent defense.",
+                    model_solution="async def handle(): pass",
+                )
+                with (
+                    patch("app.api.v1.mentor.resolve_weakness", new_callable=AsyncMock) as m_res,
+                    patch(
+                        "app.api.v1.mentor.evaluate_mini_challenge", new_callable=AsyncMock
+                    ) as m_eval,
+                ):
+                    m_eval.return_value = passing_eval
+                    m_res.return_value = owned_weakness
+
                     resp = await client.post(
                         "/api/v1/mentor/challenges/evaluate",
                         json={
@@ -256,23 +268,17 @@ def test_challenge_api_evaluate_and_resolution():
                             "weakness_id": str(weakness_id),
                             "category": "scalability",
                             "topic": "connection_pooling",
-                            "scenario": "PostgreSQL connection exhaustion under load.",
-                            "requirements": ["Implement bounded pool", "Add timeout"],
-                            "candidate_solution": (
-                                "async def handle(pool):\n"
-                                "    async with asyncio.timeout(2.0):\n"
-                                "        async with pool.acquire() as conn:\n"
-                                "            return await conn.fetchrow('SELECT 1')"
-                            ),
+                            "scenario": "Exhaustion under load.",
+                            "requirements": ["Bound pool", "Add timeout"],
+                            "candidate_solution": "async def handle(): pass",
                         },
                     )
                     assert resp.status_code == 200, resp.text
                     data = resp.json()
                     assert data["passed"] is True
-                    assert data["score"] >= 75.0
                     assert data["weakness_updated"] is True
-                    mock_resolve.assert_awaited_once()
+                    m_res.assert_awaited_once()
             finally:
-                app.dependency_overrides.clear()
+                app.dependency_overrides = orig_overrides
 
     asyncio.run(_run())

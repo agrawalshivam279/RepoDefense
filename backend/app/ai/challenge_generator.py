@@ -24,6 +24,7 @@ from app.schemas.challenge import (
     MiniChallengeDifficulty,
     MiniChallengeResponse,
 )
+from app.security.secrets import redact_secrets
 
 logger = structlog.get_logger(__name__)
 
@@ -51,15 +52,19 @@ async def generate_mini_challenge(
     llm_api_key: Optional[str] = None,
 ) -> MiniChallengeResponse:
     """Synthesize a targeted architectural mini-challenge using LiteLLM with fallback."""
+    clean_code_context = redact_secrets(code_context) if code_context else None
+    clean_prompt = redact_secrets(question_prompt) if question_prompt else None
+    clean_candidate_resp = redact_secrets(candidate_response) if candidate_response else None
+
     user_prompt = format_challenge_generation_prompt(
         category=category,
         topic=topic,
         difficulty=difficulty.value,
         language=language,
-        question_prompt=question_prompt,
-        candidate_response=candidate_response,
+        question_prompt=clean_prompt,
+        candidate_response=clean_candidate_resp,
         feedback=feedback,
-        code_context=code_context,
+        code_context=clean_code_context,
     )
 
     selected_model = model or settings.LLM_MODEL
@@ -118,12 +123,13 @@ async def evaluate_mini_challenge(
     llm_api_key: Optional[str] = None,
 ) -> ChallengeEvaluationResponse:
     """Evaluate candidate's solution using LiteLLM with deterministic fallback."""
+    clean_solution = redact_secrets(candidate_solution)
     user_prompt = format_challenge_evaluation_prompt(
         category=category,
         topic=topic,
         scenario=scenario,
         requirements=requirements,
-        candidate_solution=candidate_solution,
+        candidate_solution=clean_solution,
         language=language,
     )
 
@@ -153,13 +159,25 @@ async def evaluate_mini_challenge(
         raw_text = resp.choices[0].message.content or ""
         parsed = _clean_json_response(raw_text)
 
-        score = float(parsed.get("score", 50.0))
-        passed = bool(parsed.get("passed", score >= 75.0))
+        try:
+            raw_score = float(parsed.get("score", 50.0))
+        except (TypeError, ValueError):
+            raw_score = 50.0
+        score = max(0.0, min(100.0, raw_score))
+
+        raw_passed = parsed.get("passed")
+        if isinstance(raw_passed, str):
+            passed_bool = raw_passed.strip().lower() == "true"
+        else:
+            passed_bool = bool(raw_passed)
+
+        # Enforce consistency: passed must be true boolean AND satisfy >= 75.0 threshold
+        passed = passed_bool and (score >= 75.0)
 
         return ChallengeEvaluationResponse(
             challenge_id=challenge_id,
             passed=passed,
-            score=max(0.0, min(100.0, score)),
+            score=score,
             strengths=list(parsed.get("strengths", [])),
             missing_elements=list(parsed.get("missing_elements", [])),
             critique=str(parsed.get("critique", "Evaluation completed.")),

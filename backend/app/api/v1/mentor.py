@@ -228,6 +228,14 @@ async def evaluate_challenge(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Weakness record not found or access denied.",
             )
+        if weakness.topic.lower() != request.topic.lower():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    f"Challenge topic '{request.topic}' does not match "
+                    f"linked weakness topic '{weakness.topic}'."
+                ),
+            )
 
     eval_result = await evaluate_mini_challenge(
         challenge_id=request.challenge_id,
