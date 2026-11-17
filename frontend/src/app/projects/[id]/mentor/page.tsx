@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   BookOpen,
@@ -25,7 +25,9 @@ export default function MentorModePage() {
   const [activeTab, setActiveTab] = useState<MentorActiveTab>("remediation");
   const [token, setToken] = useState<string | null>(null);
   const [overview, setOverview] = useState<ProjectOverviewResponse | null>(null);
+  const [overviewError, setOverviewError] = useState<boolean>(false);
   const [authLoading, setAuthLoading] = useState<boolean>(true);
+  const prevProjectIdRef = useRef<string>(projectId);
 
   // Subscribe to auth state changes and keep token refreshed
   useEffect(() => {
@@ -65,10 +67,25 @@ export default function MentorModePage() {
     };
   }, [router]);
 
+  const loadProjectOverview = useCallback(async () => {
+    if (!projectId || !token) return;
+    try {
+      const meta = await getProjectOverview(projectId, token);
+      setOverview(meta);
+      setOverviewError(false);
+    } catch {
+      setOverviewError(true);
+    }
+  }, [projectId, token]);
+
   // Load project overview metadata with cancellation and isolation per projectId
   useEffect(() => {
     let isCancelled = false;
-    setOverview(null);
+    if (prevProjectIdRef.current !== projectId) {
+      prevProjectIdRef.current = projectId;
+      setOverview(null);
+      setOverviewError(false);
+    }
 
     if (!projectId || !token) return;
 
@@ -77,9 +94,12 @@ export default function MentorModePage() {
         const meta = await getProjectOverview(projectId, token as string);
         if (!isCancelled) {
           setOverview(meta);
+          setOverviewError(false);
         }
       } catch {
-        // Non-blocking project header metadata failure
+        if (!isCancelled) {
+          setOverviewError(true);
+        }
       }
     }
 
@@ -123,6 +143,19 @@ export default function MentorModePage() {
             </div>
           </div>
         </header>
+
+        {overviewError && (
+          <div className="flex items-center justify-between p-3 rounded-xl border border-rose-900/40 bg-rose-950/20 text-xs text-rose-300">
+            <span>Failed to load project metadata. Showing fallback repository details.</span>
+            <button
+              type="button"
+              onClick={loadProjectOverview}
+              className="px-2.5 py-1 rounded-lg bg-rose-900/40 hover:bg-rose-900/60 text-white font-medium border border-rose-700/50 transition-colors"
+            >
+              Retry
+            </button>
+          </div>
+        )}
 
         {/* Sub-Tabs Switcher */}
         <div className="flex items-center gap-2 border-b border-slate-800 pb-3">

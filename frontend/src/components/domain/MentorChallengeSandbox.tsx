@@ -2,25 +2,15 @@
 
 import React, { useRef, useState } from "react";
 import {
-  AlertCircle,
-  Database,
-  Flame,
-  Gauge,
-  Layers,
-  Loader2,
-  Lock,
-  RefreshCw,
-  Search,
-  Sparkles,
+  AlertCircle, Database, Flame, Gauge, Layers,
+  Loader2, Lock, RefreshCw, Search, Sparkles
 } from "lucide-react";
 import { ChallengeEditor } from "@/components/domain/ChallengeEditor";
 import { MiniChallengeCard } from "@/components/domain/MiniChallengeCard";
 import { SolutionEvaluationViewer } from "@/components/domain/SolutionEvaluationViewer";
 import { generateMiniChallenge, submitChallengeSolution } from "@/lib/challengeApi";
-import {
-  type ChallengeEvaluationResponse,
-  type MiniChallengeDifficulty,
-  type MiniChallengeResponse,
+import type {
+  ChallengeEvaluationResponse, MiniChallengeDifficulty, MiniChallengeResponse,
 } from "@/types/challenge";
 import { QUICK_MENTOR_TOPICS, type QuickTopicOption } from "@/types/mentor";
 
@@ -58,8 +48,17 @@ export function MentorChallengeSandbox({
 
   const activeEvalReqId = useRef(0);
   const lastSolutionRef = useRef<string>("");
+  const lastGenParamsRef = useRef<{
+    topic: string;
+    category: string;
+    difficulty: MiniChallengeDifficulty;
+  }>({ topic: defaultTopic, category: defaultCategory, difficulty: "intermediate" });
 
-  const handleGenerate = async (tgtTopic = topic, tgtCategory = category) => {
+  const handleGenerate = async (
+    tgtTopic = topic,
+    tgtCategory = category,
+    tgtDifficulty = difficulty
+  ) => {
     const trimmed = tgtTopic.trim();
     if (!trimmed) return;
     if (Array.from(trimmed).length > 128) {
@@ -67,22 +66,29 @@ export function MentorChallengeSandbox({
       return;
     }
 
+    lastGenParamsRef.current = {
+      topic: trimmed,
+      category: tgtCategory || "architecture",
+      difficulty: tgtDifficulty,
+    };
     setGenerating(true);
     setError(null);
     setEvaluation(null);
     setFailedOp(null);
     activeEvalReqId.current++;
+    setEvaluating(false);
 
     try {
       const res = await generateMiniChallenge(token, {
         topic: trimmed,
         category: tgtCategory || "architecture",
-        difficulty,
+        difficulty: tgtDifficulty,
         language: "python",
       });
       setChallenge(res);
       setTopic(trimmed);
       setCategory(tgtCategory);
+      setDifficulty(tgtDifficulty);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to generate challenge.");
       setFailedOp("generate");
@@ -129,7 +135,8 @@ export function MentorChallengeSandbox({
     if (failedOp === "evaluate" && lastSolutionRef.current) {
       handleSubmitSolution(lastSolutionRef.current);
     } else {
-      handleGenerate();
+      const { topic: t, category: c, difficulty: d } = lastGenParamsRef.current;
+      handleGenerate(t, c, d);
     }
   };
 
@@ -220,15 +227,9 @@ export function MentorChallengeSandbox({
             className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 transition-colors shrink-0"
           >
             {generating ? (
-              <>
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                <span>Synthesizing...</span>
-              </>
+              <><Loader2 className="h-3.5 w-3.5 animate-spin" /><span>Synthesizing...</span></>
             ) : (
-              <>
-                <Sparkles className="h-3.5 w-3.5" />
-                <span>Synthesize Challenge</span>
-              </>
+              <><Sparkles className="h-3.5 w-3.5" /><span>Synthesize Challenge</span></>
             )}
           </button>
         </form>
@@ -255,10 +256,7 @@ export function MentorChallengeSandbox({
       {/* Challenge Display & Editor */}
       {challenge && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-          <MiniChallengeCard
-            key={challenge.challenge_id}
-            challenge={challenge}
-          />
+          <MiniChallengeCard key={challenge.challenge_id} challenge={challenge} />
           <div className="space-y-6">
             <ChallengeEditor
               key={challenge.challenge_id}
@@ -268,7 +266,6 @@ export function MentorChallengeSandbox({
               isSubmitting={evaluating}
               onSubmit={handleSubmitSolution}
             />
-
             {evaluation && (
               <SolutionEvaluationViewer
                 evaluation={evaluation}

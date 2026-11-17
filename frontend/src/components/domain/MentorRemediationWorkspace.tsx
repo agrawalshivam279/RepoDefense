@@ -43,6 +43,9 @@ export function MentorRemediationWorkspace({
   const [error, setError] = useState<string | null>(null);
 
   const activeRequestIdRef = useRef(0);
+  const tokenRef = useRef(token);
+  tokenRef.current = token;
+
   const lastAttemptedRef = useRef<{ topic: string; category: string }>({
     topic: defaultTopic,
     category: defaultCategory,
@@ -64,7 +67,7 @@ export function MentorRemediationWorkspace({
       setError(null);
 
       try {
-        const res = await explainWeaknessOrTopic(token, {
+        const res = await explainWeaknessOrTopic(tokenRef.current, {
           topic: trimmedTopic,
           category: targetCategory || "architecture",
           language: "python",
@@ -85,7 +88,7 @@ export function MentorRemediationWorkspace({
         }
       }
     },
-    [token]
+    []
   );
 
   useEffect(() => {
