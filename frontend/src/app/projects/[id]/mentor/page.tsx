@@ -26,8 +26,10 @@ export default function MentorModePage() {
   const [token, setToken] = useState<string | null>(null);
   const [overview, setOverview] = useState<ProjectOverviewResponse | null>(null);
   const [overviewError, setOverviewError] = useState<boolean>(false);
+  const [overviewLoading, setOverviewLoading] = useState<boolean>(false);
   const [authLoading, setAuthLoading] = useState<boolean>(true);
   const prevProjectIdRef = useRef<string>(projectId);
+  const activeOverviewReqId = useRef(0);
 
   // Subscribe to auth state changes and keep token refreshed
   useEffect(() => {
@@ -67,48 +69,43 @@ export default function MentorModePage() {
     };
   }, [router]);
 
-  const loadProjectOverview = useCallback(async () => {
-    if (!projectId || !token) return;
+  const fetchProjectOverview = useCallback(async (pId: string, tok: string) => {
+    if (!pId || !tok) return;
+    const reqId = ++activeOverviewReqId.current;
+    setOverviewLoading(true);
     try {
-      const meta = await getProjectOverview(projectId, token);
-      setOverview(meta);
-      setOverviewError(false);
+      const meta = await getProjectOverview(pId, tok);
+      if (reqId === activeOverviewReqId.current) {
+        setOverview(meta);
+        setOverviewError(false);
+      }
     } catch {
-      setOverviewError(true);
+      if (reqId === activeOverviewReqId.current) {
+        setOverviewError(true);
+      }
+    } finally {
+      if (reqId === activeOverviewReqId.current) {
+        setOverviewLoading(false);
+      }
     }
-  }, [projectId, token]);
+  }, []);
 
   // Load project overview metadata with cancellation and isolation per projectId
   useEffect(() => {
-    let isCancelled = false;
     if (prevProjectIdRef.current !== projectId) {
       prevProjectIdRef.current = projectId;
       setOverview(null);
       setOverviewError(false);
     }
 
-    if (!projectId || !token) return;
-
-    async function loadMeta() {
-      try {
-        const meta = await getProjectOverview(projectId, token as string);
-        if (!isCancelled) {
-          setOverview(meta);
-          setOverviewError(false);
-        }
-      } catch {
-        if (!isCancelled) {
-          setOverviewError(true);
-        }
-      }
+    if (projectId && token) {
+      fetchProjectOverview(projectId, token);
     }
 
-    loadMeta();
-
     return () => {
-      isCancelled = true;
+      activeOverviewReqId.current++;
     };
-  }, [projectId, token]);
+  }, [projectId, token, fetchProjectOverview]);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
@@ -149,10 +146,13 @@ export default function MentorModePage() {
             <span>Failed to load project metadata. Showing fallback repository details.</span>
             <button
               type="button"
-              onClick={loadProjectOverview}
-              className="px-2.5 py-1 rounded-lg bg-rose-900/40 hover:bg-rose-900/60 text-white font-medium border border-rose-700/50 transition-colors"
+              disabled={overviewLoading || !projectId || !token}
+              onClick={() => {
+                if (projectId && token) fetchProjectOverview(projectId, token);
+              }}
+              className="px-2.5 py-1 rounded-lg bg-rose-900/40 hover:bg-rose-900/60 disabled:opacity-50 text-white font-medium border border-rose-700/50 transition-colors"
             >
-              Retry
+              {overviewLoading ? "Retrying..." : "Retry"}
             </button>
           </div>
         )}
