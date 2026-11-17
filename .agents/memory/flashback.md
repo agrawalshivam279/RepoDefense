@@ -4,7 +4,7 @@
 > **Tagline**: "Prove that you understand — and can defend — the software you built."  
 > **Core Loop**: Evidence → Claim → Defense → Stress Test → Evaluation → Mentor → Re-test  
 > **Status**: 🟢 Phase 1, 2 & 3 Complete — Phase 4 Ready  
-> **Last Synchronized**: 2026-11-14  
+> **Last Synchronized**: 2026-11-17  
 
 ---
 
@@ -18,6 +18,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **Backend API** | FastAPI (Python 3.12+) + Pydantic v2 + structlog | 🟢 Milestone 1.1 Complete |
 | **Database & Vectors** | PostgreSQL 17 + pgvector (Supabase) + SQLAlchemy asyncpg | 🟢 Milestone 1.2, Step 2.12a, RLS Lockdown (`3b7c9d4e2f1a`) & Step 4.1a (`4c8d1e2f3a4b`) Complete |
 | **Weakness Tracking & Skills** | PostgreSQL 17 + Vector(384) + SQLAlchemy asyncpg | 🟢 Milestone 4.1 Complete (Models, RLS Migration, Extraction Service & Skills API) |
+| **Mentor Mode & Remediation** | LiteLLM Teaching Synthesizer + Next.js 15 Remediation Visualizer | 🟢 Milestone 4.2 Complete (Steps 4.2a & 4.2b) |
 | **Authentication** | Supabase Auth (GitHub OAuth + Email/Password) | 🟢 Milestone 1.3 Complete |
 | **Background Queue** | ARQ (asyncio + Upstash Redis) | 🟢 Milestone 1.5 Complete |
 | **Static Code Ingestion & Cataloging** | Shallow Git Clone + Security Filter + File Scanner | 🟢 Milestone 1.5 & 1.6 Complete |
@@ -133,12 +134,17 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **Phase 1** | Ingestion & Core MVP (Scaffolding, Auth, Git Clone, Security Filter, Complete MVP) | 🟢 Complete |
 | **Phase 2** | Differentiation (Claims Extraction, Verification, Adaptive Questioning, Pushback Logic, Coverage Tracking, Ownership Engine, Architecture Audit, Mermaid Diagrams, Tech Audit, Enhanced Report) | 🟢 Complete (Milestones 2.1 - 2.12 Complete) |
 | **Phase 3** | The State Machine & Advanced Defense (PR Fetch & Diff Defense, Stress Testing, Incident Simulation, Architecture Defense, Bounded Simulation Stores & Unified Simulation Arena Hub) | 🟢 Complete (Milestones 3.1 - 3.8 Complete) |
-| **Phase 4** | Learning Loop & Weakness Tracking (UserSkill Models, Weakness Tracker, Mentor Mode, Targeted Re-Testing) | 🟡 In Progress (Milestone 4.2 In Progress) |
+| **Phase 4** | Learning Loop & Weakness Tracking (UserSkill Models, Weakness Tracker, Mentor Mode, Targeted Re-Testing) | 🟡 In Progress (Milestone 4.2 Complete — Next: Milestone 4.3 Mini Challenges) |
 | **Phase 5** | Evaluation & Export (Rubric Scoring, Transcript Generation, PDF & Badge Export) | ⚪ Planned |
 
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-11-17] — Step 4.2b: Next.js 15 Mentor Mode Teaching Visualizer & Interactive Code Remediation Panel
+- **Scope / Module**: Frontend Mentor Mode Teaching UI (`frontend/src/types/mentor.ts`, `frontend/src/lib/mentorApi.ts`, `frontend/src/lib/__tests__/mentorApi.test.ts`, `frontend/src/components/domain/CodeRemediationViewer.tsx`, `frontend/src/components/domain/MentorExplanationCard.tsx`, `frontend/src/components/domain/MentorDrawer.tsx`, `frontend/src/components/domain/ProjectNavHeader.tsx`, `frontend/src/app/projects/[id]/mentor/page.tsx`, `docs/specs/step-4-2b-mentor-mode-ui.md`)
+- **Details**: Designed and implemented the complete Next.js 15 App Router interactive visualizer and pedagogical code remediation workspace concluding Milestone 4.2 (Mentor Mode — Teaching Content) in Phase 4. Created 1:1 TypeScript data contracts in `mentor.ts` mirroring backend Pydantic models (`CodeRemediationSnippet`, `MentorExplanationRequest`, `MentorExplanationResponse`, `QUICK_MENTOR_TOPICS`). Implemented typed REST API client in `mentorApi.ts` connecting to `POST /api/v1/mentor/explain` and `GET /api/v1/mentor/explanations/{weakness_id}` with runtime validation (`validateMentorExplanationResponse`), non-empty fallback synthesis, Supabase JWT bearer token authentication, and comprehensive unit tests (`mentorApi.test.ts`, 11/11 passing). Built `CodeRemediationViewer.tsx` featuring tabbed Split vs. Unified views, syntax-colored diff panes, line numbers, file context headers, copy-to-clipboard, and architectural rationale callouts. Built `MentorExplanationCard.tsx` master card displaying root cause analysis, core design principles, mentor walkthrough, remediation code blocks, key takeaways, and Socratic challenge questions. Built slide-over `MentorDrawer.tsx` for weakness inspection. Wired dedicated interactive learning page at `/projects/[id]/mentor` with topic picker, custom topic input, quick topic pills, monotonic request sequence guards, and error states. Registered "Mentor Mode" in `ProjectNavHeader.tsx` under the Arena navigation group. Verified via `npm run typecheck` (0 errors), `npm run build` (all 21 routes compiled cleanly with 9.72 kB bundle for `/projects/[id]/mentor`), `npx tsx --test` (11/11 passed in 172ms), `python -m ruff check` (clean), zero arbitrary code execution, and strict <= 300 LOC limit across all 8 touched files (`89`, `144`, `175`, `185`, `154`, `143`, `229`, `273`). Concludes Milestone 4.2.
+- **Key Files**: `frontend/src/types/mentor.ts`, `frontend/src/lib/mentorApi.ts`, `frontend/src/lib/__tests__/mentorApi.test.ts`, `frontend/src/components/domain/CodeRemediationViewer.tsx`, `frontend/src/components/domain/MentorExplanationCard.tsx`, `frontend/src/components/domain/MentorDrawer.tsx`, `frontend/src/components/domain/ProjectNavHeader.tsx`, `frontend/src/app/projects/[id]/mentor/page.tsx`, `docs/specs/step-4-2b-mentor-mode-ui.md`
 
 ### [2026-11-17] — Step 4.2a: Backend Mentor Engine, Schemas, Teaching Content Synthesizer & REST API
 - **Scope / Module**: Backend Mentor Mode Teaching Engine (ackend/app/schemas/mentor.py, ackend/app/schemas/__init__.py, ackend/app/ai/mentor_generator.py, ackend/app/ai/mentor_prompts.py, ackend/app/api/v1/mentor.py, ackend/app/main.py, ackend/tests/test_mentor.py, docs/specs/step-4-2a-mentor-teaching-content.md)
