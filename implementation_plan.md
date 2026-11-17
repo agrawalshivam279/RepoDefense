@@ -562,6 +562,9 @@ gantt
 
 ### Milestone 4.4: Progress Dashboard
 - **Goal:** View improvement over time.
+- **Sub-tasks:**
+  - [x] **Step 4.4a: Backend Skill Progress & Improvement Telemetry Service & REST API** (schemas/progress.py, services/skill_progress.py, pi/v1/progress.py, main.py, 	ests/test_skill_progress.py, 6/6 tests passing)
+  - [ ] **Step 4.4b: Next.js 15 Progress Dashboard UI & Interactive Learning Timeline Visualizer**
 - **Components:** Timeline charts in UI.
 - **Dependencies:** 4.1
 
