@@ -266,7 +266,7 @@ async def get_user_progress_timeline(
 
     sorted_dates = sorted(date_points.keys())
     if days > 0:
-        cutoff = (datetime.now(timezone.utc).date() - timedelta(days=days)).isoformat()
+        cutoff = (datetime.now(timezone.utc).date() - timedelta(days=days - 1)).isoformat()
         sorted_dates = [d for d in sorted_dates if d >= cutoff]
 
     timeline: List[ProficiencyTrendPoint] = []

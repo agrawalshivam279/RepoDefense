@@ -496,7 +496,7 @@ The backend exposes a clean, modular REST API under `/api/v1`:
 | `POST` | `/api/v1/projects/{id}/defense/start` | Initialize a new interactive defense interview |
 | `POST` | `/api/v1/projects/{id}/defense/answer` | Submit a candidate defense answer to the FSM |
 | `GET` | `/api/v1/projects/{id}/defense/report` | Retrieve scored defense evaluation rubric & report |
-| `POST` | `/api/v1/projects/{id}/claims/upload` | Upload resume PDF and extract technical claims |
+| `POST` | `/api/v1/claims/upload` | Upload resume PDF and extract technical claims |
 | `POST` | `/api/v1/projects/{id}/claims/verify` | Verify claims against AST and pgvector evidence |
 | `POST` | `/api/v1/incident-simulation/start` | Launch an interactive SRE War Room incident scenario |
 | `POST` | `/api/v1/stress-test/evaluate` | Inject scaling constraints and evaluate architecture |
