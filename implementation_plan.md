@@ -556,7 +556,7 @@ gantt
 - **Goal:** Generate small coding challenges to fix gaps.
 - **Sub-tasks:**
   - [x] **Step 4.3a: Backend Mini Challenge Generator, Evaluation Engine & REST API** (schemas/challenge.py, ai/challenge_generator.py & challenge_prompts.py & challenge_fallbacks.py, api/v1/mentor.py, POST /challenges/generate & /challenges/evaluate, IDOR isolation, WeaknessTracker resolution, 5/5 tests passing)
-  - [ ] **Step 4.3b: Next.js 15 Mini Challenge Interactive Sandbox & Solution Evaluation UI** (challengeApi.ts, MiniChallengeCard.tsx, ChallengeEditor.tsx, SolutionEvaluationViewer.tsx, integration into /projects/[id]/mentor)
+  - [x] **Step 4.3b: Next.js 15 Mini Challenge Interactive Sandbox & Solution Evaluation UI** (challengeApi.ts, MiniChallengeCard.tsx, ChallengeEditor.tsx, SolutionEvaluationViewer.tsx, MentorChallengeSandbox.tsx, MentorRemediationWorkspace.tsx, integration into /projects/[id]/mentor, 9/9 tests passing)
 - **Components:** Challenge generation logic and solution evaluation.
 - **Dependencies:** 4.2
 
