@@ -67,6 +67,7 @@ async def record_evaluation_turn(
             UserSkill.topic == clean_topic,
         )
         .with_for_update()
+        .execution_options(populate_existing=True)
     )
     skill_res = await session.execute(skill_stmt)
     skill = skill_res.scalar_one_or_none()

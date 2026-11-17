@@ -8,6 +8,13 @@ from app.schemas.architecture import (
     PatternConfidenceTier,
     PatternIndicator,
 )
+from app.schemas.challenge import (
+    ChallengeEvaluationResponse,
+    GenerateChallengeRequest,
+    MiniChallengeDifficulty,
+    MiniChallengeResponse,
+    SubmitChallengeSolutionRequest,
+)
 from app.schemas.chunk import (
     ChunkType,
     CodeChunk,
@@ -148,6 +155,11 @@ __all__ = [
     "ClaimVerificationResult",
     "CodeChunk",
     "CodeRemediationSnippet",
+    "ChallengeEvaluationResponse",
+    "GenerateChallengeRequest",
+    "MiniChallengeDifficulty",
+    "MiniChallengeResponse",
+    "SubmitChallengeSolutionRequest",
     "CoverageStatus",
     "CoverageTier",
     "DefenseQuestionProgress",
