@@ -67,20 +67,14 @@ def test_empty_user_progress_overview():
 
         overview = await get_user_progress_overview(mock_db, user_id)
 
-        assert overview.overall_proficiency == 0.0
-        assert overview.total_evaluations == 0
-        assert overview.total_passed == 0
-        assert overview.overall_pass_rate_pct == 0.0
-        assert overview.active_skills_count == 0
-        assert overview.mastered_skills_count == 0
-        assert overview.learning_streak_days == 0
-        assert overview.weakness_velocity.total_identified == 0
-        assert overview.weakness_velocity.total_resolved == 0
-        assert overview.weakness_velocity.resolution_rate_pct == 0.0
-        assert overview.weakness_velocity.average_resolution_hours is None
-        assert overview.category_deltas == []
-        assert overview.top_improved_topics == []
-        assert overview.needs_focus_topics == []
+        assert overview.overall_proficiency == 0.0 and overview.total_evaluations == 0
+        assert overview.total_passed == 0 and overview.overall_pass_rate_pct == 0.0
+        assert overview.active_skills_count == 0 and overview.mastered_skills_count == 0
+        assert overview.learning_streak_days == 0 and overview.category_deltas == []
+        assert overview.top_improved_topics == [] and overview.needs_focus_topics == []
+        wv = overview.weakness_velocity
+        assert wv.total_identified == 0 and wv.total_resolved == 0
+        assert wv.resolution_rate_pct == 0.0 and wv.average_resolution_hours is None
 
     asyncio.run(_impl())
 
@@ -92,77 +86,39 @@ def test_populated_user_progress_overview():
         now = datetime.now(timezone.utc)
 
         skill_master = UserSkill(
-            id=uuid.uuid4(),
-            user_id=user_id,
-            category="scalability",
-            topic="connection_pooling",
-            proficiency_score=85.0,
-            total_evaluations=10,
-            passed_evaluations=9,
-            failed_evaluations=1,
-            last_evaluated_at=now,
+            id=uuid.uuid4(), user_id=user_id, category="scalability", topic="connection_pooling",
+            proficiency_score=85.0, total_evaluations=10, passed_evaluations=9,
+            failed_evaluations=1, last_evaluated_at=now,
         )
         skill_weak = UserSkill(
-            id=uuid.uuid4(),
-            user_id=user_id,
-            category="concurrency",
-            topic="lost_updates",
-            proficiency_score=45.0,
-            total_evaluations=4,
-            passed_evaluations=1,
-            failed_evaluations=3,
-            last_evaluated_at=now - timedelta(days=1),
+            id=uuid.uuid4(), user_id=user_id, category="concurrency", topic="lost_updates",
+            proficiency_score=45.0, total_evaluations=4, passed_evaluations=1,
+            failed_evaluations=3, last_evaluated_at=now - timedelta(days=1),
         )
-
         w1 = CandidateWeakness(
-            id=uuid.uuid4(),
-            user_id=user_id,
-            project_id=uuid.uuid4(),
-            simulation_mode="core_defense",
-            category="scalability",
-            topic="connection_pooling",
-            severity="critical",
-            question_prompt="q",
-            feedback="f",
-            resolved=True,
-            created_at=now - timedelta(hours=6),
-            resolved_at=now - timedelta(hours=2),
+            id=uuid.uuid4(), user_id=user_id, project_id=uuid.uuid4(), simulation_mode="core",
+            category="scalability", topic="connection_pooling", severity="critical",
+            question_prompt="q", feedback="f", resolved=True,
+            created_at=now - timedelta(hours=6), resolved_at=now - timedelta(hours=2),
         )
         w2 = CandidateWeakness(
-            id=uuid.uuid4(),
-            user_id=user_id,
-            project_id=uuid.uuid4(),
-            simulation_mode="core_defense",
-            category="concurrency",
-            topic="lost_updates",
-            severity="major",
-            question_prompt="q",
-            feedback="f",
-            resolved=False,
-            created_at=now - timedelta(hours=10),
-            resolved_at=None,
+            id=uuid.uuid4(), user_id=user_id, project_id=uuid.uuid4(), simulation_mode="core",
+            category="concurrency", topic="lost_updates", severity="major", question_prompt="q",
+            feedback="f", resolved=False, created_at=now - timedelta(hours=10), resolved_at=None,
         )
 
         mock_db = _make_mock_db(skills=[skill_master, skill_weak], weaknesses=[w1, w2])
 
         overview = await get_user_progress_overview(mock_db, user_id)
 
-        assert overview.overall_proficiency == 65.0
-        assert overview.total_evaluations == 14
-        assert overview.total_passed == 10
-        assert overview.overall_pass_rate_pct == 71.4
-        assert overview.active_skills_count == 2
-        assert overview.mastered_skills_count == 1
-
-        # Velocity
-        assert overview.weakness_velocity.total_identified == 2
-        assert overview.weakness_velocity.total_resolved == 1
-        assert overview.weakness_velocity.resolution_rate_pct == 50.0
-        assert overview.weakness_velocity.critical_total == 1
-        assert overview.weakness_velocity.critical_resolved == 1
-        assert overview.weakness_velocity.major_total == 1
-        assert overview.weakness_velocity.major_resolved == 0
-        assert overview.weakness_velocity.average_resolution_hours == 4.0
+        assert overview.overall_proficiency == 65.0 and overview.total_evaluations == 14
+        assert overview.total_passed == 10 and overview.overall_pass_rate_pct == 71.4
+        assert overview.active_skills_count == 2 and overview.mastered_skills_count == 1
+        wv = overview.weakness_velocity
+        assert wv.total_identified == 2 and wv.total_resolved == 1
+        assert wv.resolution_rate_pct == 50.0 and wv.average_resolution_hours == 4.0
+        assert wv.critical_total == 1 and wv.critical_resolved == 1
+        assert wv.major_total == 1 and wv.major_resolved == 0
 
         # Categories
         cat_map = {c.category: c for c in overview.category_deltas}
@@ -189,28 +145,14 @@ def test_timeline_points_aggregation():
         yesterday = now - timedelta(days=1)
 
         skill1 = UserSkill(
-            id=uuid.uuid4(),
-            user_id=user_id,
-            category="security",
-            topic="auth_jwt",
-            proficiency_score=80.0,
-            total_evaluations=5,
-            passed_evaluations=4,
-            failed_evaluations=1,
-            last_evaluated_at=now,
+            id=uuid.uuid4(), user_id=user_id, category="security", topic="auth_jwt",
+            proficiency_score=80.0, total_evaluations=5, passed_evaluations=4,
+            failed_evaluations=1, last_evaluated_at=now,
         )
         w1 = CandidateWeakness(
-            id=uuid.uuid4(),
-            user_id=user_id,
-            project_id=uuid.uuid4(),
-            simulation_mode="system_architecture",
-            category="db",
-            topic="indexing",
-            severity="medium",
-            question_prompt="Indexing bottleneck",
-            feedback="Add composite index.",
-            resolved=True,
-            resolved_at=yesterday,
+            id=uuid.uuid4(), user_id=user_id, project_id=uuid.uuid4(), simulation_mode="arch",
+            category="db", topic="indexing", severity="medium", question_prompt="q",
+            feedback="f", resolved=True, resolved_at=yesterday,
         )
 
         mock_db = _make_mock_db(skills=[skill1], weaknesses=[w1])
@@ -289,5 +231,41 @@ def test_progress_api_endpoints():
         finally:
             app.dependency_overrides.clear()
             app.dependency_overrides.update(orig_overrides)
+
+    asyncio.run(_impl())
+
+def test_timeline_window_overlap_consistency():
+    """Verify carried scores for overlapping dates remain consistent across windows."""
+    async def _impl():
+        user_id = uuid.uuid4()
+        now = datetime.now(timezone.utc)
+        d_day3 = now - timedelta(days=3)
+        d_day2 = now - timedelta(days=2)
+
+        s_old = UserSkill(
+            id=uuid.uuid4(), user_id=user_id, category="sec", topic="jwt",
+            proficiency_score=20.0, total_evaluations=2, passed_evaluations=1,
+            failed_evaluations=1, last_evaluated_at=d_day3,
+        )
+        s_today = UserSkill(
+            id=uuid.uuid4(), user_id=user_id, category="arch", topic="mvc",
+            proficiency_score=80.0, total_evaluations=3, passed_evaluations=3,
+            failed_evaluations=0, last_evaluated_at=now,
+        )
+        w_mid = CandidateWeakness(
+            id=uuid.uuid4(), user_id=user_id, project_id=uuid.uuid4(),
+            simulation_mode="arch", category="db", topic="indexing",
+            severity="medium", question_prompt="q", feedback="f",
+            resolved=True, resolved_at=d_day2,
+        )
+
+        mock_db = _make_mock_db(skills=[s_old, s_today], weaknesses=[w_mid])
+        tl_wide = await get_user_progress_timeline(mock_db, user_id, days=5)
+        tl_narrow = await get_user_progress_timeline(mock_db, user_id, days=3)
+
+        overlap_str = d_day2.strftime("%Y-%m-%d")
+        pt_wide = next(p for p in tl_wide if p.date == overlap_str)
+        pt_narrow = next(p for p in tl_narrow if p.date == overlap_str)
+        assert pt_wide.average_proficiency == pt_narrow.average_proficiency == 20.0
 
     asyncio.run(_impl())

@@ -1,5 +1,7 @@
 import asyncio
+import os
 import re
+import signal
 import tempfile
 import uuid
 from pathlib import Path
@@ -52,6 +54,24 @@ def sanitize_git_branch(branch: str) -> str:
     return cleaned
 
 
+async def _cleanup_proc(proc: asyncio.subprocess.Process) -> None:
+    """Terminates process group and suppresses ProcessLookupError on finished process."""
+    try:
+        if hasattr(os, "killpg") and hasattr(os, "getpgid"):
+            try:
+                os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+            except (ProcessLookupError, PermissionError):
+                proc.kill()
+        else:
+            proc.kill()
+    except ProcessLookupError:
+        pass
+    try:
+        await asyncio.wait_for(proc.wait(), timeout=5.0)
+    except (asyncio.TimeoutError, Exception):
+        pass
+
+
 async def run_git_shallow_clone(
     github_url: str,
     branch: str,
@@ -59,22 +79,7 @@ async def run_git_shallow_clone(
     depth: int = 100,
     timeout: float = 120.0,
 ) -> str:
-    """Performs a shallow git clone of the target repository and returns HEAD commit hash.
-
-    Args:
-        github_url: Validated GitHub repository URL.
-        branch: Target branch name.
-        target_dir: Directory where the repository should be cloned.
-        depth: Commit history depth to fetch (defaults to 100 for history analysis).
-        timeout: Subprocess execution timeout in seconds.
-
-    Returns:
-        40-character commit hash string.
-
-    Raises:
-        RuntimeError: If git command exits with non-zero status.
-        asyncio.TimeoutError: If git clone exceeds timeout.
-    """
+    """Performs shallow git clone of repository and returns HEAD commit hash."""
     safe_branch = sanitize_git_branch(branch)
     clone_cmd = [
         "git",
@@ -92,12 +97,12 @@ async def run_git_shallow_clone(
         *clone_cmd,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
+        start_new_session=True,
     )
     try:
         stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
     except (asyncio.TimeoutError, asyncio.CancelledError):
-        proc.kill()
-        await proc.wait()
+        await _cleanup_proc(proc)
         raise
     if proc.returncode != 0:
         err_msg = stderr.decode(errors="replace").strip()
@@ -110,12 +115,12 @@ async def run_git_shallow_clone(
         *rev_cmd,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
+        start_new_session=True,
     )
     try:
         stdout_rev, stderr_rev = await asyncio.wait_for(proc_rev.communicate(), timeout=10.0)
     except (asyncio.TimeoutError, asyncio.CancelledError):
-        proc_rev.kill()
-        await proc_rev.wait()
+        await _cleanup_proc(proc_rev)
         raise
     if proc_rev.returncode != 0:
         err_msg = stderr_rev.decode(errors="replace").strip()
@@ -127,22 +132,7 @@ async def run_git_shallow_clone(
 
 
 async def clone_and_sanitize_repository(ctx: dict[str, Any], project_id: str) -> dict[str, Any]:
-    """Background ARQ job that clones, sanitizes, and analyzes a GitHub repository.
-
-    Flow:
-        1. Look up project in DB and verify existence.
-        2. Set project status to 'cloning'.
-        3. Shallow clone repo into isolated tempdir using run_git_shallow_clone.
-        4. Run sanitize_workspace to enforce quotas, strip secrets, and remove binary files.
-        5. Scan workspace files and detect programming languages.
-        6. Persist AnalyzedFile records to DB linked to a new RepositorySnapshot.
-        7. Deterministically extract and persist CodeSymbol AST records via Tree-sitter.
-        8. Extract and persist third-party dependencies and container/CI configs.
-        9. Extract recent git commit history and aggregate contributor ownership.
-        10. Extract deterministic architectural evidence items.
-        11. Generate local vector embeddings and store in pgvector.
-        12. Synthesize structured AI project summary and update snapshot.
-    """
+    """Background ARQ job that clones, sanitizes, analyzes, and vectorizes a GitHub repo."""
     project_uuid = uuid.UUID(project_id)
     logger.info("starting_clone_job", project_id=project_id)
 

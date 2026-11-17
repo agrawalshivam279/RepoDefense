@@ -273,10 +273,6 @@ async def get_user_progress_timeline(
             entry["passed"] += 1
 
     sorted_dates = sorted(date_points.keys())
-    if days > 0:
-        cutoff = (datetime.now(timezone.utc).date() - timedelta(days=days - 1)).isoformat()
-        sorted_dates = [d for d in sorted_dates if d >= cutoff]
-
     running_prof = (
         round(sum(s.proficiency_score for s in skills) / len(skills), 1)
         if skills
@@ -295,4 +291,7 @@ async def get_user_progress_timeline(
                 passed_count=int(data["passed"]),
             )
         )
+    if days > 0:
+        cutoff = (datetime.now(timezone.utc).date() - timedelta(days=days - 1)).isoformat()
+        timeline = [pt for pt in timeline if pt.date >= cutoff]
     return timeline
