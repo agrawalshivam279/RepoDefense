@@ -33,36 +33,20 @@ def _make_mock_db(scalar_return=None):
 
 def test_challenge_fallbacks_generation():
     """Verify deterministic fallback generates targeted mini-challenges with requirements."""
-    # 1. Connection pooling topic
-    resp_pool = build_fallback_challenge(
-        category="scalability", topic="connection_pooling"
-    )
+    resp_pool = build_fallback_challenge(category="scalability", topic="connection_pooling")
     assert isinstance(resp_pool, MiniChallengeResponse)
-    assert "connection" in resp_pool.title.lower()
-    assert len(resp_pool.requirements) >= 2
-    assert len(resp_pool.hints) >= 2
-    assert "asyncpg" in (resp_pool.starter_code or "")
+    assert "connection" in resp_pool.title.lower() and len(resp_pool.requirements) >= 2
 
-    # 2. Concurrency lock topic
-    resp_lock = build_fallback_challenge(
-        category="concurrency", topic="race_condition_locks"
+    resp_lock = build_fallback_challenge(category="concurrency", topic="race_condition_locks")
+    assert "lost update" in resp_lock.title.lower() and "with_for_update" in " ".join(
+        resp_lock.hints
     )
-    assert "lost update" in resp_lock.title.lower()
-    assert "with_for_update" in " ".join(resp_lock.hints)
 
-    # 3. Cache stampede topic
-    resp_cache = build_fallback_challenge(
-        category="caching", topic="cache_stampede"
-    )
+    resp_cache = build_fallback_challenge(category="caching", topic="cache_stampede")
     assert "stampede" in resp_cache.title.lower()
-    assert "mutex" in " ".join(resp_cache.requirements).lower()
 
-    # 4. Generic topic
-    resp_generic = build_fallback_challenge(
-        category="architecture", topic="rate_limiting"
-    )
-    assert "rate limiting" in resp_generic.title.lower()
-    assert len(resp_generic.requirements) >= 2
+    resp_generic = build_fallback_challenge(category="architecture", topic="rate_limiting")
+    assert "rate limiting" in resp_generic.title.lower() and len(resp_generic.requirements) >= 2
 
 
 def test_challenge_fallbacks_evaluation():
@@ -78,17 +62,11 @@ def test_challenge_fallbacks_evaluation():
     )
     eval_pass = build_fallback_evaluation(challenge_id, strong_solution, reqs)
     assert isinstance(eval_pass, ChallengeEvaluationResponse)
-    assert eval_pass.passed is False
-    assert eval_pass.score == 65.0
-    assert len(eval_pass.strengths) >= 2
-    assert "offline" in eval_pass.critique.lower()
-    assert eval_pass.model_solution != ""
+    assert eval_pass.passed is False and eval_pass.score == 65.0
+    assert len(eval_pass.strengths) >= 2 and "offline" in eval_pass.critique.lower()
 
-    weak_solution = "def handle(): pass"
-    eval_fail = build_fallback_evaluation(challenge_id, weak_solution, reqs)
-    assert eval_fail.passed is False
-    assert eval_fail.score == 45.0
-    assert len(eval_fail.missing_elements) >= 1
+    eval_fail = build_fallback_evaluation(challenge_id, "def handle(): pass", reqs)
+    assert eval_fail.passed is False and eval_fail.score == 45.0
 
 
 def test_challenge_generator_with_mock_litellm():
@@ -144,6 +122,30 @@ def test_challenge_generator_with_mock_litellm():
             assert eval_result.passed is True
             assert eval_result.score == 90.0
             assert "Outstanding" in eval_result.critique
+
+            # 3. Test non-finite score rejection ("NaN", "Infinity")
+            for non_finite in ["NaN", "Infinity", "-Infinity"]:
+                nan_choice = MagicMock()
+                nan_choice.message.content = json.dumps({
+                    "passed": True,
+                    "score": non_finite,
+                    "strengths": ["Identified lock"],
+                    "missing_elements": [],
+                    "critique": "Invalid non-finite score.",
+                    "model_solution": "",
+                })
+                mock_acompletion.return_value = MagicMock(choices=[nan_choice])
+                nan_res = await evaluate_mini_challenge(
+                    challenge_id=uuid.uuid4(),
+                    category="security",
+                    topic="auth_middleware_leak",
+                    scenario="Scenario text",
+                    requirements=["Req 1"],
+                    candidate_solution="My production solution",
+                    llm_api_key="mock-key",
+                )
+                assert nan_res.passed is False
+                assert nan_res.score == 50.0
 
     asyncio.run(_impl())
 

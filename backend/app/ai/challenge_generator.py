@@ -1,6 +1,7 @@
 """AI-driven synthesizer and evaluation engine for Mentor Mode Mini Challenges."""
 
 import json
+import math
 import re
 import uuid
 from typing import Any, Dict, List, Optional
@@ -161,6 +162,8 @@ async def evaluate_mini_challenge(
 
         try:
             raw_score = float(parsed.get("score", 50.0))
+            if not math.isfinite(raw_score):
+                raw_score = 50.0
         except (TypeError, ValueError):
             raw_score = 50.0
         score = max(0.0, min(100.0, raw_score))
