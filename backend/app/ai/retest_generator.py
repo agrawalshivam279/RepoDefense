@@ -93,27 +93,17 @@ async def generate_targeted_retest_question(
         c_raw = parsed.get("architectural_constraint")
         r_raw = parsed.get("evaluation_rubric")
 
-        q_text = (
-            str(q_raw).strip()
-            if isinstance(q_raw, str) and q_raw.strip()
-            else fallback["question_text"]
-        )
-        constraint = (
-            str(c_raw).strip()
-            if isinstance(c_raw, str) and c_raw.strip()
-            else fallback["architectural_constraint"]
-        )
-        rubric = (
-            str(r_raw).strip()
-            if isinstance(r_raw, str) and r_raw.strip()
-            else fallback["evaluation_rubric"]
-        )
-
-        return {
-            "question_text": q_text,
-            "architectural_constraint": constraint,
-            "evaluation_rubric": rubric,
-        }
+        if (
+            isinstance(q_raw, str) and q_raw.strip()
+            and isinstance(c_raw, str) and c_raw.strip()
+            and isinstance(r_raw, str) and r_raw.strip()
+        ):
+            return {
+                "question_text": q_raw.strip(),
+                "architectural_constraint": c_raw.strip(),
+                "evaluation_rubric": r_raw.strip(),
+            }
+        return fallback
     except Exception as exc:
         logger.warning("retest_question_generation_failed_using_fallback", error=str(exc))
         return fallback

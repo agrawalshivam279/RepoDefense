@@ -15,12 +15,24 @@ from app.main import app
 from app.models.project import User
 from app.models.skill import CandidateWeakness, UserSkill
 from app.services.retest_service import (
+    _ACTIVE_RETEST_QUESTIONS,
     RetestNotFoundError,
     _store_active_question,
     create_targeted_retest_session,
     evaluate_retest_answer,
     get_eligible_retest_weaknesses,
 )
+
+
+@pytest.fixture(autouse=True)
+def restore_active_questions():
+    """Capture and restore _ACTIVE_RETEST_QUESTIONS across test cases."""
+    saved = dict(_ACTIVE_RETEST_QUESTIONS)
+    try:
+        yield
+    finally:
+        _ACTIVE_RETEST_QUESTIONS.clear()
+        _ACTIVE_RETEST_QUESTIONS.update(saved)
 
 
 def _make_mock_db(skills=None, weaknesses=None, single_weakness=None, single_skill=None):
