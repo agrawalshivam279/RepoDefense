@@ -580,7 +580,7 @@ gantt
 - **Goal:** Compare user skills to standard senior engineer expectations.
 - **Sub-tasks:**
   - [x] **Step 4.6a: Backend Senior Principal Benchmark Engine, Skill Gap Aggregator & REST API** (schemas/skill_gap.py, services/skill_gap.py, api/v1/skill_gap.py, tests/test_skill_gap.py, 7/7 tests passing)
-  - [ ] **Step 4.6b: Next.js 15 Senior Benchmark Radar Visualizer & Skill Gap Matrix UI** (types/skillGap.ts, lib/skillGapApi.ts, SkillRadarChart.tsx, BenchmarkComparisonMatrix.tsx, RecommendedRemediationsCard.tsx, dashboard/skill-gap/page.tsx)
+  - [x] **Step 4.6b: Next.js 15 Senior Benchmark Radar Visualizer & Skill Gap Matrix UI** (types/skillGap.ts, lib/skillGapApi.ts, SkillRadarChart.tsx, BenchmarkComparisonMatrix.tsx, SkillGapRemediationsCard.tsx, dashboard/skill-gap/page.tsx, 3/3 tests passing)
 - **Components:** Baseline comparison logic and senior engineer benchmark comparison.
 - **Dependencies:** 4.4
 
