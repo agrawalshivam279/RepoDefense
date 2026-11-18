@@ -36,18 +36,35 @@ class PublicShareRecord:
     is_active: bool
     created_at: datetime
     expires_at: Optional[datetime] = None
+    snapshot_id: Optional[str] = None
 
 
 class PublicReportStore:
     """Thread-safe in-memory registry for public defense report share tokens."""
 
-    def __init__(self) -> None:
+    def __init__(self, max_capacity: int = 1000) -> None:
         self._tokens: Dict[str, PublicShareRecord] = {}
         self._session_tokens: Dict[str, str] = {}
+        self.max_capacity = max_capacity
         self._lock = asyncio.Lock()
 
     async def save(self, record: PublicShareRecord) -> PublicShareRecord:
         async with self._lock:
+            now = datetime.now(timezone.utc)
+            # Evict expired records
+            expired = [t for t, r in self._tokens.items() if r.expires_at and now > r.expires_at]
+            for t in expired:
+                r = self._tokens.pop(t, None)
+                if r:
+                    self._session_tokens.pop(r.session_id, None)
+
+            # Evict oldest if capacity reached
+            while len(self._tokens) >= self.max_capacity:
+                oldest_token = next(iter(self._tokens))
+                oldest_rec = self._tokens.pop(oldest_token, None)
+                if oldest_rec:
+                    self._session_tokens.pop(oldest_rec.session_id, None)
+
             self._tokens[record.share_token] = record
             self._session_tokens[record.session_id] = record.share_token
             return record
@@ -61,13 +78,27 @@ class PublicReportStore:
             token = self._session_tokens.get(session_id)
             return self._tokens.get(token) if token else None
 
-    async def delete_by_session(self, session_id: str) -> bool:
+    async def delete_by_session(
+        self,
+        session_id: str,
+        user_id: Optional[str] = None,
+        project_id: Optional[str] = None,
+    ) -> bool:
         async with self._lock:
-            token = self._session_tokens.pop(session_id, None)
-            if token:
-                self._tokens.pop(token, None)
-                return True
-            return False
+            token = self._session_tokens.get(session_id)
+            if not token:
+                return False
+            rec = self._tokens.get(token)
+            if not rec:
+                self._session_tokens.pop(session_id, None)
+                return False
+            if user_id and rec.user_id != user_id:
+                return False
+            if project_id and rec.project_id != project_id:
+                return False
+            self._session_tokens.pop(session_id, None)
+            self._tokens.pop(token, None)
+            return True
 
     async def clear(self) -> None:
         async with self._lock:
@@ -94,22 +125,20 @@ def build_share_response(
     base_api_url: str = "http://localhost:8000",
 ) -> PublicShareTokenResponse:
     """Builds the share response with web verification URLs and embed snippets."""
-    clean_web = base_web_url.rstrip("/")
-    clean_api = base_api_url.rstrip("/")
+    clean_web, clean_api = base_web_url.rstrip("/"), base_api_url.rstrip("/")
     share_url = f"{clean_web}/verify/{record.share_token}"
     badge_url = f"{clean_api}/api/v1/public/badges/{record.share_token}.svg"
-
-    md = f"[![RepoDefense Certified]({badge_url})]({share_url})"
-    html = f'<a href="{share_url}"><img src="{badge_url}" alt="RepoDefense Certified" /></a>'
-
     return PublicShareTokenResponse(
         session_id=record.session_id,
         project_id=record.project_id,
         share_token=record.share_token,
         share_url=share_url,
         badge_url=badge_url,
-        markdown_badge=md,
-        html_badge=html,
+        markdown_badge=f"[![RepoDefense Certified]({badge_url})]({share_url})",
+        html_badge=(
+            f'<a href="{share_url}"><img src="{badge_url}" '
+            'alt="RepoDefense Certified" /></a>'
+        ),
         is_active=record.is_active,
         created_at=record.created_at.isoformat(),
         expires_at=record.expires_at.isoformat() if record.expires_at else None,
@@ -122,6 +151,7 @@ async def create_or_update_share_token(
     payload: CreateShareTokenRequest,
     base_web_url: str = "http://localhost:3000",
     base_api_url: str = "http://localhost:8000",
+    snapshot_id: Optional[str] = None,
 ) -> PublicShareTokenResponse:
     """Generates or updates a public share token for a completed defense session."""
     if session.status != DefenseStage.SESSION_COMPLETED:
@@ -132,6 +162,7 @@ async def create_or_update_share_token(
 
     existing = await public_share_store.get_by_session(session.session_id)
     token = existing.share_token if existing else f"rd_{secrets.token_urlsafe(24)}"
+    bound_snapshot_id = snapshot_id or (existing.snapshot_id if existing else None)
 
     record = PublicShareRecord(
         share_token=token,
@@ -141,6 +172,7 @@ async def create_or_update_share_token(
         is_active=payload.is_active,
         created_at=existing.created_at if existing else now,
         expires_at=expires_at,
+        snapshot_id=bound_snapshot_id,
     )
     await public_share_store.save(record)
     return build_share_response(record, base_web_url, base_api_url)
@@ -166,13 +198,19 @@ async def resolve_public_report(
     project_stmt = select(Project).where(Project.id == uuid.UUID(record.project_id))
     project = (await db.execute(project_stmt)).scalar_one_or_none()
 
-    snap_stmt = (
-        select(RepositorySnapshot)
-        .where(RepositorySnapshot.project_id == uuid.UUID(record.project_id))
-        .order_by(RepositorySnapshot.created_at.desc())
-        .limit(1)
-    )
-    snapshot = (await db.execute(snap_stmt)).scalar_one_or_none()
+    if record.snapshot_id:
+        snap_stmt = select(RepositorySnapshot).where(
+            RepositorySnapshot.id == uuid.UUID(record.snapshot_id)
+        )
+        snapshot = (await db.execute(snap_stmt)).scalar_one_or_none()
+    else:
+        snap_stmt = (
+            select(RepositorySnapshot)
+            .where(RepositorySnapshot.project_id == uuid.UUID(record.project_id))
+            .order_by(RepositorySnapshot.created_at.desc())
+            .limit(1)
+        )
+        snapshot = (await db.execute(snap_stmt)).scalar_one_or_none()
     commit_sha = snapshot.commit_hash[:7] if snapshot else "verified"
 
     tier = determine_certification_tier(enhanced.overall_score, enhanced.verdict)
@@ -214,13 +252,10 @@ def generate_defense_svg_badge(tier: str, score: float) -> str:
     label = "RepoDefense"
     right_text = f"{tier} • {score:.1f}/10"
 
-    # Color palette
-    if tier == "Certified Principal":
-        bg_right = "#059669"  # Emerald 600
-    elif tier == "Solid Architect":
-        bg_right = "#0284c7"  # Sky 600
-    else:
-        bg_right = "#d97706"  # Amber 600
+    bg_right = (
+        "#059669" if tier == "Certified Principal"
+        else ("#0284c7" if tier == "Solid Architect" else "#d97706")
+    )
 
     left_width = 90
     right_width = max(110, len(right_text) * 7 + 20)

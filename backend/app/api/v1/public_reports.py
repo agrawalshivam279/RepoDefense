@@ -4,14 +4,14 @@ import uuid
 from typing import Optional
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.fsm import defense_store
 from app.core.database import get_db
 from app.core.security import get_current_user
-from app.models.project import Project, User
+from app.models.project import Project, RepositorySnapshot, User
 from app.schemas.public_report import (
     CreateShareTokenRequest,
     PublicDefenseReportResponse,
@@ -28,6 +28,17 @@ from app.services.public_report import (
 logger = structlog.get_logger(__name__)
 
 router = APIRouter(tags=["Public Defense Reports"])
+
+
+def _get_public_origins(request: Request) -> tuple[str, str]:
+    """Resolves deployed web and API base URLs from request headers or defaults."""
+    web_origin = (
+        request.headers.get("origin")
+        or request.headers.get("referer")
+        or "http://localhost:3000"
+    ).rstrip("/")
+    api_origin = str(request.base_url).rstrip("/")
+    return web_origin, api_origin
 
 
 async def _verify_project_ownership(
@@ -58,6 +69,7 @@ async def _verify_project_ownership(
 async def create_public_share(
     project_id: uuid.UUID,
     session_id: str,
+    request: Request,
     payload: Optional[CreateShareTokenRequest] = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -71,14 +83,25 @@ async def create_public_share(
             detail=f"Defense session '{session_id}' not found for this project.",
         )
 
+    web_url, api_url = _get_public_origins(request)
+    snap_stmt = (
+        select(RepositorySnapshot)
+        .where(RepositorySnapshot.project_id == project_id)
+        .order_by(RepositorySnapshot.created_at.desc())
+        .limit(1)
+    )
+    snapshot = (await db.execute(snap_stmt)).scalar_one_or_none()
+    snapshot_id = str(snapshot.id) if snapshot else None
+
     req = payload or CreateShareTokenRequest()
     try:
         return await create_or_update_share_token(
             session=session,
             project=project,
             payload=req,
-            base_web_url="http://localhost:3000",
-            base_api_url="http://localhost:8000",
+            base_web_url=web_url,
+            base_api_url=api_url,
+            snapshot_id=snapshot_id,
         )
     except ValueError as exc:
         raise HTTPException(
@@ -96,6 +119,7 @@ async def create_public_share(
 async def get_public_share_info(
     project_id: uuid.UUID,
     session_id: str,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> PublicShareTokenResponse:
@@ -107,7 +131,8 @@ async def get_public_share_info(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Public share link not configured for this defense session.",
         )
-    return build_share_response(record)
+    web_url, api_url = _get_public_origins(request)
+    return build_share_response(record, base_web_url=web_url, base_api_url=api_url)
 
 
 @router.delete(
@@ -123,7 +148,21 @@ async def revoke_public_share(
 ) -> dict:
     """Revokes public access token for a defense session."""
     await _verify_project_ownership(project_id, current_user.id, db)
-    revoked = await public_share_store.delete_by_session(session_id)
+    record = await public_share_store.get_by_session(session_id)
+    if (
+        not record
+        or record.project_id != str(project_id)
+        or record.user_id != str(current_user.id)
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Public share record not found or unauthorized.",
+        )
+    revoked = await public_share_store.delete_by_session(
+        session_id=session_id,
+        user_id=str(current_user.id),
+        project_id=str(project_id),
+    )
     return {"revoked": revoked, "session_id": session_id}
 
 
@@ -174,7 +213,7 @@ async def get_public_badge_endpoint(
         content=svg_content,
         media_type="image/svg+xml",
         headers={
-            "Cache-Control": "public, max-age=300, s-maxage=3600",
+            "Cache-Control": "public, max-age=60, must-revalidate",
             "Content-Type": "image/svg+xml; charset=utf-8",
         },
     )

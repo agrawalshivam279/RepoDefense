@@ -25,14 +25,19 @@ from app.services.public_report import (
 
 @pytest.fixture(autouse=True)
 def cleanup_stores():
-    """Ensures in-memory stores are pristine between tests."""
+    """Ensures in-memory stores are captured and restored."""
+    saved_tokens = dict(public_share_store._tokens)
+    saved_sessions = dict(public_share_store._session_tokens)
+    saved_defense = dict(defense_store._sessions)
     public_share_store._tokens.clear()
     public_share_store._session_tokens.clear()
     defense_store._sessions.clear()
-    yield
-    public_share_store._tokens.clear()
-    public_share_store._session_tokens.clear()
-    defense_store._sessions.clear()
+    try:
+        yield
+    finally:
+        public_share_store._tokens = saved_tokens
+        public_share_store._session_tokens = saved_sessions
+        defense_store._sessions = saved_defense
 
 
 def _make_mock_db(project: Project = None, snapshot: RepositorySnapshot = None) -> AsyncMock:
@@ -215,6 +220,7 @@ async def test_api_public_reports_flow():
     )
     await defense_store.save(session)
 
+    saved_overrides = dict(app.dependency_overrides)
     app.dependency_overrides[get_current_user] = lambda: user
     app.dependency_overrides[get_db] = lambda: _make_mock_db(project=project, snapshot=snapshot)
 
@@ -262,9 +268,27 @@ async def test_api_public_reports_flow():
                 assert "image/svg+xml" in badge.headers["content-type"]
                 assert "Certified Principal" in badge.text
 
-            # 4. Revoke & verify 404
+            # 4. IDOR verification: User B cannot delete User A's share
+            attacker = User(id=uuid.uuid4(), email="attacker@example.com")
+            attacker_proj = Project(
+                id=uuid.uuid4(),
+                user_id=attacker.id,
+                name="attacker-repo",
+                github_url="https://github.com/attacker/repo",
+            )
+            app.dependency_overrides[get_current_user] = lambda: attacker
+            app.dependency_overrides[get_db] = lambda: _make_mock_db(project=attacker_proj)
+
+            idor_res = await client.delete(
+                f"/api/v1/projects/{attacker_proj.id}/defense/{session_id}/share"
+            )
+            assert idor_res.status_code == 404
+
+            # 5. Legitimate owner revokes & verify 404
+            app.dependency_overrides[get_current_user] = lambda: user
+            app.dependency_overrides[get_db] = lambda: _make_mock_db(project=project)
             rev = await client.delete(f"/api/v1/projects/{proj_id}/defense/{session_id}/share")
             assert rev.status_code == 200 and rev.json()["revoked"] is True
             assert (await client.get(f"/api/v1/public/reports/{token}")).status_code == 404
     finally:
-        app.dependency_overrides.clear()
+        app.dependency_overrides = saved_overrides
