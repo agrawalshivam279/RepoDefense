@@ -570,7 +570,10 @@ gantt
 
 ### Milestone 4.5: Targeted Re-Testing
 - **Goal:** Generate a session focusing only on previous failures.
-- **Components:** Filtered question generation.
+- **Sub-tasks:**
+  - [x] **Step 4.5a: Backend Targeted Re-Testing Service, Generator & REST API** (schemas/retest.py, ai/retest_generator.py, ai/retest_prompts.py, ai/retest_fallbacks.py, services/retest_service.py, api/v1/retest.py, main.py, tests/test_retest.py, 6/6 tests passing)
+  - [ ] **Step 4.5b: Next.js 15 Targeted Re-Test Workspace & Interactive Evaluation UI** (types/retest.ts, lib/retestApi.ts, RetestWeaknessSelector.tsx, RetestSessionCard.tsx, RetestDefenseEditor.tsx, RetestEvaluationModal.tsx, projects/[id]/retest/page.tsx)
+- **Components:** Filtered question generation and targeted defense workspace.
 - **Dependencies:** 4.1
 
 ### Milestone 4.6: Skill Gap Analysis
