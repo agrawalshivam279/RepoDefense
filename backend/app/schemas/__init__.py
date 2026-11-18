@@ -144,6 +144,14 @@ from app.schemas.skill import (
     UserSkillUpdate,
     WeaknessSeverity,
 )
+from app.schemas.skill_gap import (
+    CategoryGapMetric,
+    GapStatus,
+    RemediationPriority,
+    RemediationRecommendation,
+    SkillGapAnalysisResponse,
+    TargetRoleBenchmark,
+)
 from app.schemas.summary import (
     ProjectSummary,
     ProjectSummaryInput,
@@ -265,6 +273,13 @@ __all__ = [
     "EligibleWeaknessesResponse",
     "RetestEvaluationResponse",
     "RetestQuestion",
+    "CategoryGapMetric",
+    "GapStatus",
+    "RemediationPriority",
+    "RemediationRecommendation",
+    "SkillGapAnalysisResponse",
+    "TargetRoleBenchmark",
+
     "SubmitRetestAnswerRequest",
     "TargetedRetestSessionCreate",
     "TargetedRetestSessionResponse",
