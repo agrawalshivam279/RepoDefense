@@ -7,8 +7,8 @@ from app.ai.fsm import defense_store
 from app.api.v1.incident_simulation import incident_session_store
 from app.core.config import settings
 from app.core.database import get_read_only_db
-from app.core.security import get_current_user
-from app.models.project import User
+from app.core.security import get_current_token_payload
+from app.schemas.auth import TokenPayload
 from app.schemas.health import (
     SimulationModeStatus,
     SimulationReadinessResponse,
@@ -113,7 +113,7 @@ async def get_incident_store_telemetry() -> StoreTelemetry:
 )
 async def get_learning_loop_health(
     response: Response,
-    current_user: User = Depends(get_current_user),
+    token_payload: TokenPayload = Depends(get_current_token_payload),
     db: AsyncSession = Depends(get_read_only_db),
 ) -> LearningLoopHealthResponse:
     """Returns diagnostic operational readiness for all Phase 4 Learning Loop modules."""

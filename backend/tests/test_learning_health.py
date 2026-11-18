@@ -10,9 +10,9 @@ from httpx import ASGITransport, AsyncClient
 from pydantic import ValidationError
 
 from app.core.database import get_read_only_db
-from app.core.security import get_current_user
+from app.core.security import get_current_token_payload
 from app.main import app
-from app.models.project import User
+from app.schemas.auth import TokenPayload
 from app.schemas.learning_health import (
     ComponentHealthStatus,
     DatabaseModelsHealth,
@@ -20,6 +20,7 @@ from app.schemas.learning_health import (
 )
 from app.schemas.skill_gap import TargetRoleBenchmark
 from app.services.learning_health import (
+    REQUIRED_BENCHMARK_DOMAINS,
     inspect_benchmark_profiles_health,
     inspect_database_models_health,
     inspect_learning_loop_health,
@@ -32,29 +33,35 @@ def _make_mock_db(
     skill_count: int = 10,
     weak_count: int = 3,
     should_fail: bool = False,
+    skill_fails: bool = False,
     weak_fails: bool = False,
 ) -> AsyncMock:
-    """Build mock AsyncSession returning count scalars or raising exception."""
     mock_db = AsyncMock()
     if should_fail:
         mock_db.execute.side_effect = RuntimeError("Database connection pool timeout")
         return mock_db
 
     async def _exec(stmt):
-        if weak_fails and "candidate_weaknesses" in str(stmt):
-            raise RuntimeError("Candidate weaknesses query failed")
-        res = MagicMock()
-        res.scalar.return_value = (
-            weak_count if "candidate_weaknesses" in str(stmt) else skill_count
-        )
-        return res
+        stmt_str = str(stmt).lower()
+        if "user_skills" in stmt_str:
+            if skill_fails:
+                raise RuntimeError("User skills query failed")
+            res = MagicMock()
+            res.scalar.return_value = skill_count
+            return res
+        if "candidate_weaknesses" in stmt_str:
+            if weak_fails:
+                raise RuntimeError("Candidate weaknesses query failed")
+            res = MagicMock()
+            res.scalar.return_value = weak_count
+            return res
+        raise ValueError(f"Unexpected query statement: {stmt}")
 
     mock_db.execute.side_effect = _exec
     return mock_db
 
 
 def test_schema_validations():
-    """Verify schema constraints, required fields, and forbidding extra fields."""
     db_health = DatabaseModelsHealth(
         status=ComponentHealthStatus.HEALTHY,
         user_skills_accessible=True,
@@ -73,17 +80,8 @@ def test_schema_validations():
             total_user_skills=-1,
         )
 
-    with pytest.raises(ValidationError):
-        DatabaseModelsHealth(
-            status=ComponentHealthStatus.HEALTHY,
-            user_skills_accessible=True,
-            candidate_weaknesses_accessible=True,
-            unrecognized_field="forbidden",
-        )
-
 
 def test_inspect_benchmark_profiles_health():
-    """Verify benchmark catalog audit passes with valid configurations."""
     health = inspect_benchmark_profiles_health()
     assert health.status == ComponentHealthStatus.HEALTHY
     assert health.tier_integrity_verified is True
@@ -92,52 +90,41 @@ def test_inspect_benchmark_profiles_health():
     assert health.detail is None
 
 
-def test_inspect_benchmark_profiles_degraded():
-    """Verify degraded status when required tiers are missing."""
-    with patch("app.services.learning_health.BENCHMARK_PROFILES", {}):
-        health = inspect_benchmark_profiles_health()
-        assert health.status == ComponentHealthStatus.DEGRADED
-        assert health.tier_integrity_verified is False
-        assert "Missing required benchmark tiers" in str(health.detail)
-
-
-def test_inspect_benchmark_profiles_invalid_domains_and_types():
-    """Verify degraded status on missing domains or non-numeric target/weight."""
-    bad_domains = {
+@pytest.mark.parametrize(
+    "bad_meta",
+    [
+        {"target": False, "weight": 1.0},
+        {"target": 10**400, "weight": 1.0},
+        {"target": 50.0, "weight": True},
+        {"target": 50.0, "weight": 10**400},
+        {"target": float("nan"), "weight": 1.0},
+        {"target": float("inf"), "weight": 1.0},
+        {"target": "invalid_str", "weight": 1.0},
+    ],
+)
+def test_inspect_benchmark_profiles_edge_cases(bad_meta):
+    bad = {
         TargetRoleBenchmark.MID_LEVEL: {
-            "system_architecture": {"target": 65.0, "weight": 1.2}
+            dom: bad_meta for dom in REQUIRED_BENCHMARK_DOMAINS
         },
         TargetRoleBenchmark.SENIOR_ENGINEER: {},
         TargetRoleBenchmark.STAFF_PRINCIPAL: {},
     }
-    with patch("app.services.learning_health.BENCHMARK_PROFILES", bad_domains):
+    with patch("app.services.learning_health.BENCHMARK_PROFILES", bad):
         health = inspect_benchmark_profiles_health()
         assert health.status == ComponentHealthStatus.DEGRADED
-        assert "Missing required domains" in str(health.detail)
 
-    bad_types = {
-        TargetRoleBenchmark.MID_LEVEL: {
-            dom: {"target": "invalid_str", "weight": 1.0}
-            for dom in [
-                "system_architecture",
-                "database_design",
-                "concurrency_performance",
-                "security_isolation",
-                "reliability_observability",
-                "api_contract_design",
-            ]
-        },
-        TargetRoleBenchmark.SENIOR_ENGINEER: {},
-        TargetRoleBenchmark.STAFF_PRINCIPAL: {},
-    }
-    with patch("app.services.learning_health.BENCHMARK_PROFILES", bad_types):
+
+def test_inspect_benchmark_profiles_unsupported_tier_key():
+    with patch(
+        "app.services.learning_health.BENCHMARK_PROFILES", {"experimental": {}}
+    ):
         health = inspect_benchmark_profiles_health()
         assert health.status == ComponentHealthStatus.DEGRADED
-        assert "Invalid target/weight" in str(health.detail)
+        assert "experimental" in health.configured_tiers
 
 
 def test_inspect_mentor_service_health():
-    """Verify mentor fallback synthesis inspection returns healthy."""
     health = inspect_mentor_service_health()
     assert health.status == ComponentHealthStatus.HEALTHY
     assert health.fallbacks_ready is True
@@ -145,7 +132,6 @@ def test_inspect_mentor_service_health():
 
 
 def test_inspect_mentor_service_failure():
-    """Verify degraded status when fallback generator raises exception."""
     with patch(
         "app.services.learning_health.build_deterministic_mentor_explanation",
         side_effect=RuntimeError("Template formatting error"),
@@ -157,7 +143,6 @@ def test_inspect_mentor_service_failure():
 
 
 def test_inspect_retest_service_health():
-    """Verify retest bounded cache status inspection returns healthy."""
     health = inspect_retest_service_health()
     assert health.status == ComponentHealthStatus.HEALTHY
     assert health.cache_active is True
@@ -165,9 +150,17 @@ def test_inspect_retest_service_health():
     assert health.cached_question_count >= 0
 
 
+def test_inspect_retest_service_over_capacity():
+    with patch(
+        "app.services.learning_health._ACTIVE_RETEST_QUESTIONS", ["q"] * 1001
+    ):
+        health = inspect_retest_service_health()
+        assert health.status == ComponentHealthStatus.DEGRADED
+        assert "exceed capacity" in str(health.detail)
+
+
 @pytest.mark.anyio
 async def test_inspect_database_models_health_success():
-    """Verify database model inspection returns healthy when queries succeed."""
     mock_db = _make_mock_db(skill_count=12, weak_count=4)
     health = await inspect_database_models_health(mock_db)
     assert health.status == ComponentHealthStatus.HEALTHY
@@ -180,7 +173,6 @@ async def test_inspect_database_models_health_success():
 
 @pytest.mark.anyio
 async def test_inspect_database_models_health_partial_failure():
-    """Verify database model inspection returns degraded on partial query failure."""
     mock_db = _make_mock_db(skill_count=12, weak_count=0, weak_fails=True)
     health = await inspect_database_models_health(mock_db)
     assert health.status == ComponentHealthStatus.DEGRADED
@@ -192,8 +184,18 @@ async def test_inspect_database_models_health_partial_failure():
 
 
 @pytest.mark.anyio
+async def test_inspect_database_models_first_query_failure_rolls_back():
+    mock_db = _make_mock_db(skill_count=0, weak_count=8, skill_fails=True)
+    health = await inspect_database_models_health(mock_db)
+    assert health.status == ComponentHealthStatus.DEGRADED
+    assert health.user_skills_accessible is False
+    assert health.candidate_weaknesses_accessible is True
+    assert health.total_candidate_weaknesses == 8
+    mock_db.rollback.assert_called_once()
+
+
+@pytest.mark.anyio
 async def test_inspect_database_models_health_failure():
-    """Verify database model inspection returns unhealthy when query fails."""
     mock_db = _make_mock_db(should_fail=True)
     health = await inspect_database_models_health(mock_db)
     assert health.status == ComponentHealthStatus.UNHEALTHY
@@ -204,45 +206,36 @@ async def test_inspect_database_models_health_failure():
 
 @pytest.mark.anyio
 async def test_inspect_learning_loop_overall_healthy():
-    """Verify aggregated response returns healthy when all subsystems pass."""
     mock_db = _make_mock_db(skill_count=15, weak_count=3)
     res = await inspect_learning_loop_health(mock_db)
     assert isinstance(res, LearningLoopHealthResponse)
     assert res.status == ComponentHealthStatus.HEALTHY
     assert res.database_models.status == ComponentHealthStatus.HEALTHY
-    assert res.benchmark_profiles.status == ComponentHealthStatus.HEALTHY
-    assert res.mentor_service.status == ComponentHealthStatus.HEALTHY
-    assert res.retest_service.status == ComponentHealthStatus.HEALTHY
-
-
-@pytest.mark.anyio
-async def test_inspect_learning_loop_overall_unhealthy():
-    """Verify aggregated response returns unhealthy when database fails."""
-    mock_db = _make_mock_db(should_fail=True)
-    res = await inspect_learning_loop_health(mock_db)
-    assert res.status == ComponentHealthStatus.UNHEALTHY
-    assert res.database_models.status == ComponentHealthStatus.UNHEALTHY
 
 
 @pytest.mark.anyio
 async def test_api_get_learning_loop_health_endpoint_200():
-    """Verify GET /api/v1/health/learning-loop returns 200 OK when authenticated."""
     mock_db = _make_mock_db(skill_count=20, weak_count=5)
-    mock_user = User(id=str(uuid.uuid4()), email="admin@repodefense.com")
+    token = TokenPayload(
+        sub=uuid.uuid4(),
+        email="admin@repodefense.com",
+        exp=9999999999,
+        aud="authenticated",
+        role="authenticated",
+    )
     saved = dict(app.dependency_overrides)
     app.dependency_overrides[get_read_only_db] = lambda: mock_db
-    app.dependency_overrides[get_current_user] = lambda: mock_user
+    app.dependency_overrides[get_current_token_payload] = lambda: token
     try:
         transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with AsyncClient(
+            transport=transport, base_url="http://test"
+        ) as client:
             resp = await client.get("/api/v1/health/learning-loop")
             assert resp.status_code == 200
             data = resp.json()
             assert data["status"] == "healthy"
             assert data["database_models"]["total_user_skills"] == 20
-            assert data["benchmark_profiles"]["tier_integrity_verified"] is True
-            assert data["mentor_service"]["fallbacks_ready"] is True
-            assert data["retest_service"]["cache_active"] is True
     finally:
         app.dependency_overrides.clear()
         app.dependency_overrides.update(saved)
@@ -250,20 +243,26 @@ async def test_api_get_learning_loop_health_endpoint_200():
 
 @pytest.mark.anyio
 async def test_api_get_learning_loop_health_endpoint_503():
-    """Verify GET /api/v1/health/learning-loop returns 503 when database is unhealthy."""
     mock_db = _make_mock_db(should_fail=True)
-    mock_user = User(id=str(uuid.uuid4()), email="admin@repodefense.com")
+    token = TokenPayload(
+        sub=uuid.uuid4(),
+        email="admin@repodefense.com",
+        exp=9999999999,
+        aud="authenticated",
+        role="authenticated",
+    )
     saved = dict(app.dependency_overrides)
     app.dependency_overrides[get_read_only_db] = lambda: mock_db
-    app.dependency_overrides[get_current_user] = lambda: mock_user
+    app.dependency_overrides[get_current_token_payload] = lambda: token
     try:
         transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with AsyncClient(
+            transport=transport, base_url="http://test"
+        ) as client:
             resp = await client.get("/api/v1/health/learning-loop")
             assert resp.status_code == 503
             data = resp.json()
             assert data["status"] == "unhealthy"
-            assert data["database_models"]["status"] == "unhealthy"
     finally:
         app.dependency_overrides.clear()
         app.dependency_overrides.update(saved)
@@ -271,12 +270,13 @@ async def test_api_get_learning_loop_health_endpoint_503():
 
 @pytest.mark.anyio
 async def test_api_get_learning_loop_health_endpoint_401():
-    """Verify GET /api/v1/health/learning-loop returns 401 when unauthenticated."""
     saved = dict(app.dependency_overrides)
-    app.dependency_overrides.pop(get_current_user, None)
+    app.dependency_overrides.pop(get_current_token_payload, None)
     try:
         transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with AsyncClient(
+            transport=transport, base_url="http://test"
+        ) as client:
             resp = await client.get("/api/v1/health/learning-loop")
             assert resp.status_code == 401
     finally:

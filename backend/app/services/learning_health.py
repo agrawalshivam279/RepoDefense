@@ -5,6 +5,7 @@ re-test caches.
 """
 
 import math
+from typing import Any
 
 import structlog
 from sqlalchemy import func, select
@@ -45,31 +46,47 @@ REQUIRED_BENCHMARK_DOMAINS = {
 }
 
 
+def _format_tier(t: Any) -> str:
+    return t.value if isinstance(t, TargetRoleBenchmark) else str(t)
+
+
+def _is_valid_target(val: Any) -> bool:
+    if isinstance(val, bool) or not isinstance(val, (int, float)):
+        return False
+    if isinstance(val, float):
+        return math.isfinite(val) and 0.0 <= val <= 100.0
+    return 0 <= val <= 100
+
+
+def _is_valid_weight(val: Any) -> bool:
+    if isinstance(val, bool) or not isinstance(val, (int, float)):
+        return False
+    if isinstance(val, float):
+        return math.isfinite(val) and val > 0.0
+    return 0 < val <= 1000
+
+
+async def _count_table(db: AsyncSession, model: Any) -> tuple[int, bool, str | None]:
+    name = getattr(model, "__name__", "Table")
+    try:
+        res = await db.execute(select(func.count()).select_from(model))
+        return int(res.scalar() or 0), True, None
+    except Exception as exc:
+        logger.error(f"learning_health_{name.lower()}_error", error=str(exc))
+        try:
+            await db.rollback()
+        except Exception:
+            pass
+        return 0, False, f"{name} table inaccessible"
+
+
 async def inspect_database_models_health(db: AsyncSession) -> DatabaseModelsHealth:
     """Inspects accessibility and record counts for UserSkill and CandidateWeakness tables."""
-    skill_count = 0
-    skill_accessible = False
-    weak_count = 0
-    weak_accessible = False
-    errors: list[str] = []
+    skill_count, skill_ok, skill_err = await _count_table(db, UserSkill)
+    weak_count, weak_ok, weak_err = await _count_table(db, CandidateWeakness)
+    errors = [e for e in (skill_err, weak_err) if e]
 
-    try:
-        skill_res = await db.execute(select(func.count()).select_from(UserSkill))
-        skill_count = int(skill_res.scalar() or 0)
-        skill_accessible = True
-    except Exception as exc:
-        logger.error("learning_health_user_skills_error", error=str(exc))
-        errors.append("UserSkill table inaccessible")
-
-    try:
-        weak_res = await db.execute(select(func.count()).select_from(CandidateWeakness))
-        weak_count = int(weak_res.scalar() or 0)
-        weak_accessible = True
-    except Exception as exc:
-        logger.error("learning_health_weaknesses_error", error=str(exc))
-        errors.append("CandidateWeakness table inaccessible")
-
-    if skill_accessible and weak_accessible:
+    if skill_ok and weak_ok:
         return DatabaseModelsHealth(
             status=ComponentHealthStatus.HEALTHY,
             user_skills_accessible=True,
@@ -79,11 +96,11 @@ async def inspect_database_models_health(db: AsyncSession) -> DatabaseModelsHeal
             detail=None,
         )
 
-    if skill_accessible or weak_accessible:
+    if skill_ok or weak_ok:
         return DatabaseModelsHealth(
             status=ComponentHealthStatus.DEGRADED,
-            user_skills_accessible=skill_accessible,
-            candidate_weaknesses_accessible=weak_accessible,
+            user_skills_accessible=skill_ok,
+            candidate_weaknesses_accessible=weak_ok,
             total_user_skills=skill_count,
             total_candidate_weaknesses=weak_count,
             detail="; ".join(errors),
@@ -101,6 +118,18 @@ async def inspect_database_models_health(db: AsyncSession) -> DatabaseModelsHeal
 
 def inspect_benchmark_profiles_health() -> BenchmarkProfilesHealth:
     """Validates presence and schema integrity of senior benchmark tiers and domain categories."""
+    invalid_keys = [
+        k for k in BENCHMARK_PROFILES.keys() if not isinstance(k, TargetRoleBenchmark)
+    ]
+    if invalid_keys:
+        return BenchmarkProfilesHealth(
+            status=ComponentHealthStatus.DEGRADED,
+            configured_tiers=[_format_tier(k) for k in BENCHMARK_PROFILES.keys()],
+            total_categories=0,
+            tier_integrity_verified=False,
+            detail=f"Unsupported benchmark tier key(s): {[str(k) for k in invalid_keys]}",
+        )
+
     required_tiers = {
         TargetRoleBenchmark.MID_LEVEL,
         TargetRoleBenchmark.SENIOR_ENGINEER,
@@ -111,7 +140,7 @@ def inspect_benchmark_profiles_health() -> BenchmarkProfilesHealth:
     if missing_tiers:
         return BenchmarkProfilesHealth(
             status=ComponentHealthStatus.DEGRADED,
-            configured_tiers=[t.value for t in BENCHMARK_PROFILES.keys()],
+            configured_tiers=[_format_tier(t) for t in BENCHMARK_PROFILES.keys()],
             total_categories=0,
             tier_integrity_verified=False,
             detail=f"Missing required benchmark tiers: {[t.value for t in missing_tiers]}",
@@ -122,7 +151,7 @@ def inspect_benchmark_profiles_health() -> BenchmarkProfilesHealth:
         if not isinstance(domains, dict):
             return BenchmarkProfilesHealth(
                 status=ComponentHealthStatus.DEGRADED,
-                configured_tiers=[t.value for t in BENCHMARK_PROFILES.keys()],
+                configured_tiers=[_format_tier(t) for t in BENCHMARK_PROFILES.keys()],
                 total_categories=0,
                 tier_integrity_verified=False,
                 detail=f"Tier '{tier.value}' configuration must be a dictionary",
@@ -131,7 +160,7 @@ def inspect_benchmark_profiles_health() -> BenchmarkProfilesHealth:
         if missing_domains:
             return BenchmarkProfilesHealth(
                 status=ComponentHealthStatus.DEGRADED,
-                configured_tiers=[t.value for t in BENCHMARK_PROFILES.keys()],
+                configured_tiers=[_format_tier(t) for t in BENCHMARK_PROFILES.keys()],
                 total_categories=len(domains),
                 tier_integrity_verified=False,
                 detail=(
@@ -144,27 +173,17 @@ def inspect_benchmark_profiles_health() -> BenchmarkProfilesHealth:
             if not isinstance(meta, dict):
                 return BenchmarkProfilesHealth(
                     status=ComponentHealthStatus.DEGRADED,
-                    configured_tiers=[t.value for t in BENCHMARK_PROFILES.keys()],
+                    configured_tiers=[_format_tier(t) for t in BENCHMARK_PROFILES.keys()],
                     total_categories=len(domains),
                     tier_integrity_verified=False,
                     detail=f"Domain '{domain}' metadata must be a dictionary",
                 )
             target = meta.get("target")
             weight = meta.get("weight")
-            is_valid_target = (
-                isinstance(target, (int, float))
-                and math.isfinite(target)
-                and 0.0 <= float(target) <= 100.0
-            )
-            is_valid_weight = (
-                isinstance(weight, (int, float))
-                and math.isfinite(weight)
-                and float(weight) > 0.0
-            )
-            if not is_valid_target or not is_valid_weight:
+            if not _is_valid_target(target) or not _is_valid_weight(weight):
                 return BenchmarkProfilesHealth(
                     status=ComponentHealthStatus.DEGRADED,
-                    configured_tiers=[t.value for t in BENCHMARK_PROFILES.keys()],
+                    configured_tiers=[_format_tier(t) for t in BENCHMARK_PROFILES.keys()],
                     total_categories=len(domains),
                     tier_integrity_verified=False,
                     detail=f"Invalid target/weight in tier '{tier.value}' for domain '{domain}'",
@@ -173,7 +192,7 @@ def inspect_benchmark_profiles_health() -> BenchmarkProfilesHealth:
     total_cats = categories_per_tier[0] if categories_per_tier else 0
     return BenchmarkProfilesHealth(
         status=ComponentHealthStatus.HEALTHY,
-        configured_tiers=[t.value for t in BENCHMARK_PROFILES.keys()],
+        configured_tiers=[_format_tier(t) for t in BENCHMARK_PROFILES.keys()],
         total_categories=total_cats,
         tier_integrity_verified=True,
         detail=None,
@@ -214,12 +233,23 @@ def inspect_mentor_service_health() -> MentorServiceHealth:
 def inspect_retest_service_health() -> RetestServiceHealth:
     """Verifies bounded question cache initialization and capacity bounds."""
     cached_count = len(_ACTIVE_RETEST_QUESTIONS)
+    is_over_capacity = cached_count > _MAX_CACHED_QUESTIONS
+    status = (
+        ComponentHealthStatus.DEGRADED
+        if is_over_capacity
+        else ComponentHealthStatus.HEALTHY
+    )
+    detail = (
+        f"Cache entries ({cached_count}) exceed capacity ({_MAX_CACHED_QUESTIONS})"
+        if is_over_capacity
+        else None
+    )
     return RetestServiceHealth(
-        status=ComponentHealthStatus.HEALTHY,
+        status=status,
         cache_active=True,
         cached_question_count=cached_count,
         max_cache_capacity=_MAX_CACHED_QUESTIONS,
-        detail=None,
+        detail=detail,
     )
 
 
