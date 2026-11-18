@@ -58,12 +58,13 @@ class PublicReportStore:
                 if r:
                     self._session_tokens.pop(r.session_id, None)
 
-            # Evict oldest if capacity reached
-            while len(self._tokens) >= self.max_capacity:
-                oldest_token = next(iter(self._tokens))
-                oldest_rec = self._tokens.pop(oldest_token, None)
-                if oldest_rec:
-                    self._session_tokens.pop(oldest_rec.session_id, None)
+            # Evict oldest if capacity reached when inserting a new token
+            if record.share_token not in self._tokens:
+                while len(self._tokens) >= self.max_capacity:
+                    oldest_token = next(iter(self._tokens))
+                    oldest_rec = self._tokens.pop(oldest_token, None)
+                    if oldest_rec:
+                        self._session_tokens.pop(oldest_rec.session_id, None)
 
             self._tokens[record.share_token] = record
             self._session_tokens[record.session_id] = record.share_token
@@ -114,9 +115,8 @@ def determine_certification_tier(score: float, verdict: str) -> str:
     v_lower = verdict.lower()
     if score >= 7.5 or "certified" in v_lower or "principal" in v_lower:
         return "Certified Principal"
-    if score >= 5.0 or "solid" in v_lower or "passed" in v_lower:
-        return "Solid Architect"
-    return "Remediation Required"
+    is_solid = score >= 5.0 or "solid" in v_lower or "passed" in v_lower
+    return "Solid Architect" if is_solid else "Remediation Required"
 
 
 def build_share_response(
@@ -216,13 +216,10 @@ async def resolve_public_report(
     tier = determine_certification_tier(enhanced.overall_score, enhanced.verdict)
     cat_scores = [
         PublicCategoryScore(
-            category=cs.category,
-            score=cs.score,
-            questions_count=cs.questions_count,
-            status=cs.status,
-            summary=cs.summary,
+            category=c.category, score=c.score,
+            questions_count=c.questions_count, status=c.status, summary=c.summary,
         )
-        for cs in enhanced.category_scores
+        for c in enhanced.category_scores
     ]
 
     report = PublicDefenseReportResponse(

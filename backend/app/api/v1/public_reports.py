@@ -2,6 +2,7 @@
 
 import uuid
 from typing import Optional
+from urllib.parse import urlsplit
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
@@ -32,11 +33,20 @@ router = APIRouter(tags=["Public Defense Reports"])
 
 def _get_public_origins(request: Request) -> tuple[str, str]:
     """Resolves deployed web and API base URLs from request headers or defaults."""
-    web_origin = (
-        request.headers.get("origin")
-        or request.headers.get("referer")
-        or "http://localhost:3000"
-    ).rstrip("/")
+    raw_origin = request.headers.get("origin")
+    if raw_origin:
+        web_origin = raw_origin.rstrip("/")
+    else:
+        referer = request.headers.get("referer")
+        if referer:
+            parts = urlsplit(referer)
+            web_origin = (
+                f"{parts.scheme}://{parts.netloc}"
+                if parts.scheme and parts.netloc
+                else "http://localhost:3000"
+            )
+        else:
+            web_origin = "http://localhost:3000"
     api_origin = str(request.base_url).rstrip("/")
     return web_origin, api_origin
 

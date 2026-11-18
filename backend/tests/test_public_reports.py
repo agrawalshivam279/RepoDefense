@@ -15,6 +15,7 @@ from app.models.project import Project, RepositorySnapshot, User
 from app.schemas.defense import DefenseSessionState, DefenseStage
 from app.schemas.report import CategoryScore, EnhancedDefenseReportResponse
 from app.services.public_report import (
+    PublicReportStore,
     PublicShareRecord,
     determine_certification_tier,
     generate_defense_svg_badge,
@@ -100,6 +101,14 @@ async def test_public_share_store_crud():
     assert await public_share_store.delete_by_session("sess_1") is True
     assert await public_share_store.get_by_token("rd_test123") is None
 
+    # Capacity eviction does not evict existing token on update
+    small = PublicReportStore(max_capacity=2)
+    await small.save(PublicShareRecord("t1", "s1", "p1", "u1", True, now))
+    await small.save(PublicShareRecord("t2", "s2", "p2", "u2", True, now))
+    await small.save(PublicShareRecord("t1", "s1", "p1", "u1", False, now))
+    assert (await small.get_by_token("t1")).is_active is False
+    assert (await small.get_by_token("t2")) is not None
+
 
 @pytest.mark.anyio
 async def test_resolve_public_report_success():
@@ -112,14 +121,10 @@ async def test_resolve_public_report_success():
     )
     await defense_store.save(
         DefenseSessionState(
-            session_id=session_id,
-            project_id=str(proj_id),
-            status=DefenseStage.SESSION_COMPLETED,
-            current_question_index=1,
-            questions=[],
-            transcript=[],
-            created_at=now.isoformat(),
-            updated_at=now.isoformat(),
+            session_id=session_id, project_id=str(proj_id),
+            status=DefenseStage.SESSION_COMPLETED, current_question_index=1,
+            questions=[], transcript=[],
+            created_at=now.isoformat(), updated_at=now.isoformat(),
         )
     )
     project = Project(
@@ -140,19 +145,13 @@ async def test_resolve_public_report_success():
         summary="Candidate showed exceptional command.",
         category_scores=[
             CategoryScore(
-                category="architecture",
-                score=8.5,
-                questions_count=2,
-                status="passed",
-                summary="Solid patterns",
+                category="architecture", score=8.5, questions_count=2,
+                status="passed", summary="Solid patterns",
             )
         ],
-        key_strengths=["Clean boundaries"],
-        critical_blind_spots=[],
-        actionable_recommendations=[],
-        total_questions=2,
-        completed_at=now.isoformat(),
-        architecture_primary_pattern="Layered",
+        key_strengths=["Clean boundaries"], critical_blind_spots=[],
+        actionable_recommendations=[], total_questions=2,
+        completed_at=now.isoformat(), architecture_primary_pattern="Layered",
         tech_health_score=95,
     )
 
@@ -227,19 +226,25 @@ async def test_api_public_reports_flow():
     transport = ASGITransport(app=app)
     try:
         async with AsyncClient(transport=transport, base_url="http://test") as client:
-            # 1. Create Share Token (Authenticated)
+            # 1. Create Share Token (Authenticated with Referer)
             res = await client.post(
                 f"/api/v1/projects/{proj_id}/defense/{session_id}/share",
+                headers={"referer": "https://dashboard.example.com/p/1?k=v#frag"},
                 json={"is_active": True, "expires_in_days": 30},
             )
             assert res.status_code == 200
             token = res.json()["share_token"]
             assert token.startswith("rd_")
+            assert res.json()["share_url"].startswith("https://dashboard.example.com/verify/")
 
             # 2. Get Share Info (Authenticated)
-            info = await client.get(f"/api/v1/projects/{proj_id}/defense/{session_id}/share")
+            info = await client.get(
+                f"/api/v1/projects/{proj_id}/defense/{session_id}/share",
+                headers={"referer": "https://dashboard.example.com/other"},
+            )
             assert info.status_code == 200
             assert info.json()["share_token"] == token
+            assert info.json()["share_url"].startswith("https://dashboard.example.com/verify/")
 
             # 3. Public Report & SVG Badge (Unauthenticated)
             mock_rep = EnhancedDefenseReportResponse(
@@ -248,12 +253,9 @@ async def test_api_public_reports_flow():
                 overall_score=7.8,
                 verdict="Certified Principal Defense",
                 summary="Great defense.",
-                category_scores=[],
-                key_strengths=["Architecture"],
-                critical_blind_spots=[],
-                actionable_recommendations=[],
-                total_questions=1,
-                completed_at=now.isoformat(),
+                category_scores=[], key_strengths=["Architecture"],
+                critical_blind_spots=[], actionable_recommendations=[],
+                total_questions=1, completed_at=now.isoformat(),
             )
             with patch(
                 "app.services.public_report.generate_enhanced_defense_report",
