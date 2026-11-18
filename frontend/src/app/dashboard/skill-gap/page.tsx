@@ -43,9 +43,18 @@ export default function SkillGapPage() {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!res.ok) return;
-        const projects = await res.json();
-        if (!cancelled && Array.isArray(projects) && projects.length > 0 && projects[0]?.id) {
-          setProjectId(projects[0].id);
+        const rawProjects: unknown = await res.json();
+        if (!cancelled && Array.isArray(rawProjects) && rawProjects.length > 0) {
+          const first = rawProjects[0];
+          if (
+            typeof first === "object" &&
+            first !== null &&
+            "id" in first &&
+            typeof first.id === "string" &&
+            first.id.trim().length > 0
+          ) {
+            setProjectId(first.id);
+          }
         }
       } catch {
         // non-blocking fallback
