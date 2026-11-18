@@ -43,8 +43,10 @@ def restore_active_questions():
 def _make_mock_db(skills=None, weaknesses=None, single_weakness=None, single_skill=None):
     """Build mock AsyncSession returning configured entities based on query target."""
     mock_db = AsyncMock()
+    mock_db.executed = []
 
     async def _exec(stmt):
+        mock_db.executed.append(stmt)
         res = MagicMock()
         s = str(stmt).lower()
         if "user_skills" in s:
@@ -199,7 +201,7 @@ def test_evaluate_retest_answer_pass():
 
 
 def test_evaluate_retest_idor_protection():
-    """Verify that evaluating a non-owned weakness raises RetestNotFoundError."""
+    """Verify that evaluating a non-owned weakness raises RetestNotFoundError with IDOR check."""
 
     async def _impl():
         user_id, w_id = uuid.uuid4(), uuid.uuid4()
@@ -210,6 +212,10 @@ def test_evaluate_retest_idor_protection():
                 question_id="q-idor", weakness_id=w_id,
                 candidate_response="Valid text longer than ten chars.",
             )
+        assert any(
+            user_id in getattr(st.compile(), "params", {}).values()
+            for st in mock_db.executed
+        )
 
     asyncio.run(_impl())
 
@@ -227,6 +233,12 @@ def test_retest_api_endpoints():
         )
         saved = dict(app.dependency_overrides)
         try:
+            transport = ASGITransport(app=app)
+            # Unauthenticated 401 gate
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                unauth_resp = await client.get("/api/v1/retest/weaknesses")
+                assert unauth_resp.status_code == 401
+
             app.dependency_overrides[get_current_user] = lambda: test_user
             mock_db = _make_mock_db(
                 weaknesses=[weakness], single_weakness=weakness, single_skill=None
@@ -236,7 +248,6 @@ def test_retest_api_endpoints():
                 "passed": True, "score": 80.0, "feedback": "Good.",
                 "key_improvements": ["CAS"], "remaining_gaps": [],
             }
-            transport = ASGITransport(app=app)
             async with AsyncClient(transport=transport, base_url="http://test") as client:
                 w_resp = await client.get("/api/v1/retest/weaknesses")
                 assert w_resp.status_code == 200 and w_resp.json()["total_eligible"] == 1
