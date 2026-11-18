@@ -46,7 +46,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **Incident Simulation & War Room** | SRE Chaos Engine + Next.js 15 War Room UI | 🟢 Milestone 3.4 Complete (Steps 3.4a & 3.4b) |
 | **Stress Test / What-If Mode** | Scaling Scenario Generator & Next.js 15 Arena UI | 🟢 Milestone 3.5 Complete (Steps 3.5a & 3.5b) |
 | **IDE Code Viewer** | Monaco / Prism code viewer with AST evidence highlights | ⚪ Phase 4 Planned |
-| **Evaluation & Export** | Rubric generator + PDF transcript export | ⚪ Phase 5 Planned |
+| **Evaluation & Export** | Public Verification Service + Dynamic SVG Badges + Rubrics | 🟡 In Progress (Step 5.1a Complete) |
 
 ---
 
@@ -139,11 +139,16 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **Phase 2** | Differentiation (Claims Extraction, Verification, Adaptive Questioning, Pushback Logic, Coverage Tracking, Ownership Engine, Architecture Audit, Mermaid Diagrams, Tech Audit, Enhanced Report) | 🟢 Complete (Milestones 2.1 - 2.12 Complete) |
 | **Phase 3** | The State Machine & Advanced Defense (PR Fetch & Diff Defense, Stress Testing, Incident Simulation, Architecture Defense, Bounded Simulation Stores & Unified Simulation Arena Hub) | 🟢 Complete (Milestones 3.1 - 3.8 Complete) |
 | **Phase 4** | Learning Loop & Weakness Tracking (UserSkill Models, Weakness Tracker, Mentor Mode, Targeted Re-Testing, Skill Gap Analysis, Learning Hub) | 🟢 Complete (Milestones 4.1 - 4.7 Complete) |
-| **Phase 5** | Evaluation & Export (Rubric Scoring, Transcript Generation, PDF & Badge Export) | ⚪ Planned |
+| **Phase 5** | Evaluation & Export (Rubric Scoring, Transcript Generation, PDF & Badge Export) | 🟡 In Progress (Step 5.1a Complete) |
 
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-11-19] — Step 5.1a: Backend Public Defense Reports, Cryptographic Verification Tokens & Dynamic SVG Resume Badges
+- **Scope / Module**: Backend Public Reports & SVG Badge Engine (`backend/app/schemas/public_report.py`, `backend/app/services/public_report.py`, `backend/app/api/v1/public_reports.py`, `backend/app/main.py`, `backend/tests/test_public_reports.py`, `docs/specs/step-5-1a-public-defense-reports.md`)
+- **Details**: Designed and implemented the backend public verification and dynamic badge generation subsystem for Phase 5 (Evaluation & Export). Defined Pydantic v2 schemas in `schemas/public_report.py` (`CreateShareTokenRequest`, `PublicShareTokenResponse`, `PublicCategoryScore`, `PublicDefenseReportResponse`) with strict `extra="forbid"`. Built `public_report.py` service orchestrating thread-safe in-memory `PublicReportStore`, unguessable cryptographic token generation via `secrets.token_urlsafe(24)` with prefix `rd_`, public-safe report sanitization stripping internal file paths and user identities while preserving category scores, commit hashes, and verdicts, and dynamic Shields.io-compliant vector SVG badge generation across 3 certification tiers (Certified Principal in emerald `#059669`, Solid Architect in sky `#0284c7`, Remediation Required in amber `#d97706`). Exposed authenticated share endpoints (`POST`, `GET`, `DELETE /api/v1/projects/{id}/defense/{session_id}/share`) with IDOR project ownership checks, and unauthenticated public verification endpoints (`GET /api/v1/public/reports/{share_token}` and `GET /api/v1/public/badges/{share_token}.svg`) with cache headers. Authored 6 unit and API integration tests in `tests/test_public_reports.py` (21/21 full defense suite passing). All files strictly <= 300 LOC. Concludes Step 5.1a.
+- **Key Files**: `backend/app/schemas/public_report.py`, `backend/app/services/public_report.py`, `backend/app/api/v1/public_reports.py`, `backend/app/main.py`, `backend/tests/test_public_reports.py`, `docs/specs/step-5-1a-public-defense-reports.md`
 
 ### [2026-11-18] — Step 4.7b: Frontend Learning Hub Navigation, Breadcrumbs & Phase 4 UX Polish
 - **Scope / Module**: Frontend Learning Hub Navigation & UX (`frontend/src/types/learning.ts`, `frontend/src/lib/learningApi.ts`, `frontend/src/lib/__tests__/learningApi.test.ts`, `frontend/src/components/domain/LearningHubBreadcrumbs.tsx`, `frontend/src/components/domain/LearningNavGroup.tsx`, `frontend/src/components/domain/LearningHealthStatusCard.tsx`, `frontend/src/app/dashboard/learning/page.tsx`, `frontend/src/app/dashboard/page.tsx`, `frontend/src/app/dashboard/progress/page.tsx`, `frontend/src/app/dashboard/skill-gap/page.tsx`, `docs/specs/step-4-7b-learning-hub-navigation.md`)
