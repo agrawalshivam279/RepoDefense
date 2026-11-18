@@ -1,16 +1,23 @@
 """Simulation readiness and operational health diagnostic endpoints."""
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, Response, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.fsm import defense_store
 from app.api.v1.incident_simulation import incident_session_store
 from app.core.config import settings
+from app.core.database import get_db
 from app.schemas.health import (
     SimulationModeStatus,
     SimulationReadinessResponse,
     StoreTelemetry,
 )
+from app.schemas.learning_health import (
+    ComponentHealthStatus,
+    LearningLoopHealthResponse,
+)
 from app.services.arch_defense_store import arch_session_store
+from app.services.learning_health import inspect_learning_loop_health
 from app.services.stress_cache import stress_session_store
 
 router = APIRouter(tags=["Health"])
@@ -93,3 +100,15 @@ async def get_simulation_readiness() -> SimulationReadinessResponse:
 async def get_incident_store_telemetry() -> StoreTelemetry:
     """Returns telemetry metrics for the bounded incident simulation store."""
     return incident_session_store.get_stats()
+
+
+@router.get("/learning-loop", response_model=LearningLoopHealthResponse)
+async def get_learning_loop_health(
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+) -> LearningLoopHealthResponse:
+    """Returns diagnostic operational readiness for all Phase 4 Learning Loop modules."""
+    report = await inspect_learning_loop_health(db)
+    if report.status == ComponentHealthStatus.UNHEALTHY:
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    return report
