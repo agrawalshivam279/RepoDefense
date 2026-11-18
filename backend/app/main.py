@@ -25,6 +25,7 @@ from app.api.v1.projects import router as projects_router
 from app.api.v1.pull_requests import router as pr_router
 from app.api.v1.questions import router as questions_router
 from app.api.v1.retest import router as retest_router
+from app.api.v1.skill_gap import router as skill_gap_router
 from app.api.v1.skills import router as skills_router
 from app.api.v1.stress_test import router as stress_test_router
 from app.api.v1.tech_audit import router as tech_audit_router
@@ -78,6 +79,7 @@ app.include_router(stress_test_router, prefix=f"{settings.API_V1_STR}/v1/stress-
 app.include_router(arch_defense_router, prefix=f"{settings.API_V1_STR}/v1/arch-defense")
 app.include_router(analytics_router, prefix=f"{settings.API_V1_STR}/v1/analytics")
 app.include_router(skills_router, prefix=f"{settings.API_V1_STR}/v1/skills")
+app.include_router(skill_gap_router, prefix=f"{settings.API_V1_STR}/v1/skills")
 app.include_router(progress_router, prefix=f"{settings.API_V1_STR}/v1/progress")
 app.include_router(retest_router, prefix=f"{settings.API_V1_STR}/v1/retest")
 app.include_router(mentor_router, prefix=f"{settings.API_V1_STR}/v1/mentor")
