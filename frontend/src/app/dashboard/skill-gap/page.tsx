@@ -6,12 +6,15 @@ import {
   AlertCircle,
   ArrowLeft,
   CheckCircle2,
+  Compass,
   GraduationCap,
   Loader2,
   RefreshCw,
   Sparkles,
   Target,
 } from "lucide-react";
+import { LearningHubBreadcrumbs } from "@/components/domain/LearningHubBreadcrumbs";
+import { LearningNavGroup } from "@/components/domain/LearningNavGroup";
 import { BenchmarkComparisonMatrix } from "@/components/domain/BenchmarkComparisonMatrix";
 import { SkillGapRemediationsCard } from "@/components/domain/SkillGapRemediationsCard";
 import { SkillRadarChart } from "@/components/domain/SkillRadarChart";
@@ -106,16 +109,37 @@ export default function SkillGapPage() {
     <div className="min-h-screen bg-black text-zinc-100">
       {/* Navigation Header */}
       <header className="border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-md sticky top-0 z-20">
-        <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <Link
-              href="/dashboard/progress"
-              className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              <span>Progress Dashboard</span>
-            </Link>
-            <span className="text-zinc-700">/</span>
+        <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <LearningHubBreadcrumbs
+              items={[
+                { label: "Learning Hub", href: "/dashboard/learning", icon: Compass },
+                { label: "Senior Benchmarks", isCurrent: true },
+              ]}
+            />
+            {/* Role Benchmark Selector */}
+            <div className="flex items-center gap-1 rounded-lg border border-zinc-800 bg-zinc-900/80 p-1">
+              {(
+                [
+                  ["mid_level", "Mid-Level"],
+                  ["senior_engineer", "Senior"],
+                  ["staff_principal", "Staff / Principal"],
+                ] as const
+              ).map(([val, label]) => (
+                <button
+                  key={val}
+                  type="button"
+                  onClick={() => setTargetRole(val)}
+                  className={`rounded-md px-2.5 py-1 text-xs font-semibold transition-all ${
+                    targetRole === val ? "bg-indigo-600 text-white shadow-sm" : "text-zinc-400 hover:text-zinc-200"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600/20 text-indigo-400 border border-indigo-500/30">
                 <Target className="h-4 w-4" />
@@ -124,30 +148,7 @@ export default function SkillGapPage() {
                 Senior Benchmark & Skill Gap Analysis
               </h1>
             </div>
-          </div>
-
-          {/* Role Benchmark Selector */}
-          <div className="flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900/80 p-1">
-            {(
-              [
-                ["mid_level", "Mid-Level"],
-                ["senior_engineer", "Senior"],
-                ["staff_principal", "Staff / Principal"],
-              ] as const
-            ).map(([val, label]) => (
-              <button
-                key={val}
-                type="button"
-                onClick={() => setTargetRole(val)}
-                className={`rounded-md px-3 py-1 text-xs font-semibold transition-all ${
-                  targetRole === val
-                    ? "bg-indigo-600 text-white shadow-sm"
-                    : "text-zinc-400 hover:text-zinc-200"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
+            <LearningNavGroup activeModule="skill-gap" />
           </div>
         </div>
       </header>

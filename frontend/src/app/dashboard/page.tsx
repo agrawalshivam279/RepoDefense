@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   AlertCircle,
   ArrowLeft,
+  Compass,
   FolderGit2,
   Loader2,
   Plus,
@@ -115,6 +116,13 @@ export default function DashboardPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          <Link
+            href="/dashboard/learning"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-semibold text-xs transition-colors shadow-sm"
+          >
+            <Compass className="w-4 h-4" />
+            <span>Learning Hub</span>
+          </Link>
           <Link
             href="/dashboard/progress"
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-800 bg-slate-900/60 hover:bg-slate-800 text-emerald-400 font-semibold text-xs transition-colors shadow-sm"
