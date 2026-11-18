@@ -24,13 +24,15 @@ from app.services.public_report import (
 
 
 @pytest.fixture(autouse=True)
-async def cleanup_stores():
+def cleanup_stores():
     """Ensures in-memory stores are pristine between tests."""
-    await public_share_store.clear()
-    await defense_store.clear()
+    public_share_store._tokens.clear()
+    public_share_store._session_tokens.clear()
+    defense_store._sessions.clear()
     yield
-    await public_share_store.clear()
-    await defense_store.clear()
+    public_share_store._tokens.clear()
+    public_share_store._session_tokens.clear()
+    defense_store._sessions.clear()
 
 
 def _make_mock_db(project: Project = None, snapshot: RepositorySnapshot = None) -> AsyncMock:
