@@ -119,6 +119,15 @@ from app.schemas.report import (
     EnhancedDefenseReportResponse,
     ReportSynthesisOutput,
 )
+from app.schemas.retest import (
+    EligibleWeaknessesResponse,
+    EligibleWeaknessItem,
+    RetestEvaluationResponse,
+    RetestQuestion,
+    SubmitRetestAnswerRequest,
+    TargetedRetestSessionCreate,
+    TargetedRetestSessionResponse,
+)
 from app.schemas.skill import (
     CandidateWeaknessBase,
     CandidateWeaknessCreate,
@@ -252,4 +261,11 @@ __all__ = [
     "CategoryProgressDelta",
     "TopicMasteryItem",
     "UserProgressOverviewResponse",
+    "EligibleWeaknessItem",
+    "EligibleWeaknessesResponse",
+    "RetestEvaluationResponse",
+    "RetestQuestion",
+    "SubmitRetestAnswerRequest",
+    "TargetedRetestSessionCreate",
+    "TargetedRetestSessionResponse",
 ]
