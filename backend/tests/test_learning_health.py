@@ -2,6 +2,7 @@
 Hermetic unit and integration tests for Step 4.7a Learning Loop Telemetry & Health Probe.
 """
 
+import copy
 import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -20,13 +21,13 @@ from app.schemas.learning_health import (
 )
 from app.schemas.skill_gap import TargetRoleBenchmark
 from app.services.learning_health import (
-    REQUIRED_BENCHMARK_DOMAINS,
     inspect_benchmark_profiles_health,
     inspect_database_models_health,
     inspect_learning_loop_health,
     inspect_mentor_service_health,
     inspect_retest_service_health,
 )
+from app.services.skill_gap import BENCHMARK_PROFILES
 
 
 def _make_mock_db(
@@ -97,22 +98,21 @@ def test_inspect_benchmark_profiles_health():
         {"target": 10**400, "weight": 1.0},
         {"target": 50.0, "weight": True},
         {"target": 50.0, "weight": 10**400},
+        {"target": 50.0, "weight": 6.0},
         {"target": float("nan"), "weight": 1.0},
         {"target": float("inf"), "weight": 1.0},
         {"target": "invalid_str", "weight": 1.0},
     ],
 )
 def test_inspect_benchmark_profiles_edge_cases(bad_meta):
-    bad = {
-        TargetRoleBenchmark.MID_LEVEL: {
-            dom: bad_meta for dom in REQUIRED_BENCHMARK_DOMAINS
-        },
-        TargetRoleBenchmark.SENIOR_ENGINEER: {},
-        TargetRoleBenchmark.STAFF_PRINCIPAL: {},
-    }
+    bad = copy.deepcopy(BENCHMARK_PROFILES)
+    bad[TargetRoleBenchmark.MID_LEVEL]["system_architecture"] = bad_meta
     with patch("app.services.learning_health.BENCHMARK_PROFILES", bad):
         health = inspect_benchmark_profiles_health()
         assert health.status == ComponentHealthStatus.DEGRADED
+        assert "Invalid target/weight in tier 'mid_level' for domain 'system_architecture'" in str(
+            health.detail
+        )
 
 
 def test_inspect_benchmark_profiles_unsupported_tier_key():

@@ -62,8 +62,8 @@ def _is_valid_weight(val: Any) -> bool:
     if isinstance(val, bool) or not isinstance(val, (int, float)):
         return False
     if isinstance(val, float):
-        return math.isfinite(val) and val > 0.0
-    return 0 < val <= 1000
+        return math.isfinite(val) and 0.0 < val <= 5.0
+    return 0 < val <= 5
 
 
 async def _count_table(db: AsyncSession, model: Any) -> tuple[int, bool, str | None]:
@@ -156,17 +156,14 @@ def inspect_benchmark_profiles_health() -> BenchmarkProfilesHealth:
                 tier_integrity_verified=False,
                 detail=f"Tier '{tier.value}' configuration must be a dictionary",
             )
-        missing_domains = REQUIRED_BENCHMARK_DOMAINS - set(domains.keys())
-        if missing_domains:
+        if set(domains.keys()) != REQUIRED_BENCHMARK_DOMAINS:
+            diff = set(domains.keys()) ^ REQUIRED_BENCHMARK_DOMAINS
             return BenchmarkProfilesHealth(
                 status=ComponentHealthStatus.DEGRADED,
                 configured_tiers=[_format_tier(t) for t in BENCHMARK_PROFILES.keys()],
                 total_categories=len(domains),
                 tier_integrity_verified=False,
-                detail=(
-                    f"Missing required domains in tier '{tier.value}': "
-                    f"{sorted(missing_domains)}"
-                ),
+                detail=f"Domain mismatch in tier '{tier.value}': {sorted(diff)}",
             )
         categories_per_tier.append(len(domains))
         for domain, meta in domains.items():
@@ -188,6 +185,15 @@ def inspect_benchmark_profiles_health() -> BenchmarkProfilesHealth:
                     tier_integrity_verified=False,
                     detail=f"Invalid target/weight in tier '{tier.value}' for domain '{domain}'",
                 )
+
+    if len(set(categories_per_tier)) > 1:
+        return BenchmarkProfilesHealth(
+            status=ComponentHealthStatus.DEGRADED,
+            configured_tiers=[_format_tier(t) for t in BENCHMARK_PROFILES.keys()],
+            total_categories=0,
+            tier_integrity_verified=False,
+            detail=f"Inconsistent domain counts across tiers: {categories_per_tier}",
+        )
 
     total_cats = categories_per_tier[0] if categories_per_tier else 0
     return BenchmarkProfilesHealth(
