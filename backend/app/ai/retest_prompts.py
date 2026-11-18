@@ -7,13 +7,13 @@ from app.security.secrets import redact_secrets
 
 
 def sanitize_prompt_text(text: Optional[str], max_len: int = 2000) -> str:
-    """Sanitize and clamp untrusted candidate or repository input for LLM prompts."""
+    """Sanitize, redact secrets, clamp, and escape XML delimiters for LLM prompts."""
     if not text:
         return ""
     clean = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", text)
     clean = redact_secrets(clean)
-    clean = clean.strip()
-    return clean[:max_len]
+    clean = clean.strip()[:max_len]
+    return clean.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
 RETEST_SYSTEM_PROMPT = """You are a Principal Software Engineer conducting a rigorous re-test.
@@ -46,6 +46,9 @@ def format_retest_generation_prompt(
     candidate_prior_response: Optional[str] = None,
 ) -> str:
     """Format user prompt for generating a targeted re-test question with XML boundaries."""
+    sanitized_cat = sanitize_prompt_text(category, max_len=64)
+    sanitized_top = sanitize_prompt_text(topic, max_len=64)
+    sanitized_sev = sanitize_prompt_text(severity, max_len=32)
     sanitized_orig = sanitize_prompt_text(original_prompt, max_len=1500)
     sanitized_feed = sanitize_prompt_text(feedback, max_len=1500)
     sanitized_prior = sanitize_prompt_text(candidate_prior_response, max_len=1000)
@@ -59,9 +62,9 @@ def format_retest_generation_prompt(
     return f"""Synthesize a targeted re-test question based on the candidate's weakness.
 
 <weakness_context>
-Category: {category}
-Topic: {topic}
-Severity: {severity}
+Category: {sanitized_cat}
+Topic: {sanitized_top}
+Severity: {sanitized_sev}
 </weakness_context>
 
 <original_question>
@@ -92,6 +95,8 @@ def format_retest_evaluation_prompt(
     candidate_response: str,
 ) -> str:
     """Format prompt for evaluating the candidate's re-test defense."""
+    sanitized_cat = sanitize_prompt_text(category, max_len=64)
+    sanitized_top = sanitize_prompt_text(topic, max_len=64)
     sanitized_q = sanitize_prompt_text(retest_question, max_len=1500)
     sanitized_c = sanitize_prompt_text(constraint, max_len=1000)
     sanitized_rubric = sanitize_prompt_text(rubric, max_len=1000)
@@ -100,8 +105,8 @@ def format_retest_evaluation_prompt(
     return f"""Evaluate the candidate's defense against the targeted re-test question.
 
 <context>
-Category: {category}
-Topic: {topic}
+Category: {sanitized_cat}
+Topic: {sanitized_top}
 </context>
 
 <retest_question>
