@@ -105,9 +105,9 @@ async def test_public_share_store_crud():
     small = PublicReportStore(max_capacity=2)
     await small.save(PublicShareRecord("t1", "s1", "p1", "u1", True, now))
     await small.save(PublicShareRecord("t2", "s2", "p2", "u2", True, now))
-    await small.save(PublicShareRecord("t1", "s1", "p1", "u1", False, now))
-    assert (await small.get_by_token("t1")).is_active is False
-    assert (await small.get_by_token("t2")) is not None
+    await small.save(PublicShareRecord("t2", "s2", "p2", "u2", False, now))
+    assert (await small.get_by_token("t1")) is not None
+    assert (await small.get_by_token("t2")).is_active is False
 
 
 @pytest.mark.anyio
