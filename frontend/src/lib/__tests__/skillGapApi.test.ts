@@ -102,11 +102,91 @@ describe("skillGapApi - Network & Parsing", () => {
         },
         {
           name: "Error",
-          message: "Malformed skill gap analysis payload",
+          message: /Malformed skill gap analysis payload/,
         }
       );
     } finally {
       globalThis.fetch = originalFetch;
     }
+  });
+
+  it("rejects out-of-bounds scores and invalid enum values", async () => {
+    const originalFetch = globalThis.fetch;
+
+    // Out-of-bounds score in category
+    globalThis.fetch = async () =>
+      ({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          target_role: "senior_engineer",
+          overall_candidate_score: 50.0,
+          overall_benchmark_score: 80.0,
+          overall_readiness_pct: 62.5,
+          categories: [
+            {
+              category: "system_architecture",
+              current_score: 150.0, // Invalid > 100
+              benchmark_score: 85.0,
+              gap_deficit: 0.0,
+              status: "met",
+              weight: 1.0,
+              percentile_estimate: 50.0,
+            },
+          ],
+          recommendations: [],
+          strengths: [],
+          critical_gaps: [],
+        }),
+      } as Response);
+
+    await assert.rejects(
+      async () => {
+        await fetchSkillGapAnalysis("mock-token", "senior_engineer");
+      },
+      {
+        name: "Error",
+        message: /current_score must be a number between 0 and 100/,
+      }
+    );
+
+    // Invalid status in category
+    globalThis.fetch = async () =>
+      ({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          target_role: "senior_engineer",
+          overall_candidate_score: 50.0,
+          overall_benchmark_score: 80.0,
+          overall_readiness_pct: 62.5,
+          categories: [
+            {
+              category: "system_architecture",
+              current_score: 75.0,
+              benchmark_score: 85.0,
+              gap_deficit: 10.0,
+              status: "unexpected_status", // Invalid
+              weight: 1.0,
+              percentile_estimate: 50.0,
+            },
+          ],
+          recommendations: [],
+          strengths: [],
+          critical_gaps: [],
+        }),
+      } as Response);
+
+    await assert.rejects(
+      async () => {
+        await fetchSkillGapAnalysis("mock-token", "senior_engineer");
+      },
+      {
+        name: "Error",
+        message: /invalid or unsupported status/,
+      }
+    );
+
+    globalThis.fetch = originalFetch;
   });
 });

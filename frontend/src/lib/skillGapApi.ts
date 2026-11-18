@@ -1,6 +1,6 @@
 /**
  * REST API client for Skill Gap Analysis in Next.js 15.
- * Connects to /api/v1/skills/gap-analysis with schema validation.
+ * Connects to /api/v1/skills/gap-analysis with strict schema validation.
  */
 
 import type {
@@ -18,91 +18,117 @@ const VALID_GAP_STATUSES = new Set<GapStatus>(["surpassed", "met", "moderate_gap
 const VALID_PRIORITIES = new Set<RemediationPriority>(["critical", "high", "medium", "low"]);
 const VALID_ROLES = new Set<TargetRoleBenchmark>(["mid_level", "senior_engineer", "staff_principal"]);
 
-function clamp(val: number, min = 0, max = 100): number {
-  return Math.min(Math.max(val, min), max);
-}
-
 function isRecord(val: unknown): val is Record<string, unknown> {
   return typeof val === "object" && val !== null && !Array.isArray(val);
 }
 
+function isValidScore(val: unknown): val is number {
+  return typeof val === "number" && Number.isFinite(val) && val >= 0 && val <= 100;
+}
+
 function parseCategoryMetric(raw: unknown): CategoryGapMetric {
-  if (!isRecord(raw) || typeof raw.category !== "string") {
-    throw new Error("Invalid category gap metric payload");
+  if (!isRecord(raw) || typeof raw.category !== "string" || raw.category.trim().length === 0) {
+    throw new Error("Invalid category gap metric payload: missing or invalid category");
   }
-  const cur = typeof raw.current_score === "number" && Number.isFinite(raw.current_score)
-    ? clamp(raw.current_score)
-    : 0.0;
-  const bench = typeof raw.benchmark_score === "number" && Number.isFinite(raw.benchmark_score)
-    ? clamp(raw.benchmark_score)
-    : 80.0;
-  const def = typeof raw.gap_deficit === "number" && Number.isFinite(raw.gap_deficit)
-    ? clamp(raw.gap_deficit, 0, 100)
-    : 0.0;
-  const wt = typeof raw.weight === "number" && Number.isFinite(raw.weight) ? raw.weight : 1.0;
-  const pct = typeof raw.percentile_estimate === "number" && Number.isFinite(raw.percentile_estimate)
-    ? clamp(raw.percentile_estimate)
-    : 50.0;
-  const status: GapStatus = typeof raw.status === "string" && VALID_GAP_STATUSES.has(raw.status as GapStatus)
-    ? (raw.status as GapStatus)
-    : "moderate_gap";
+  if (!isValidScore(raw.current_score)) {
+    throw new Error("Invalid category gap metric payload: current_score must be a number between 0 and 100");
+  }
+  if (!isValidScore(raw.benchmark_score)) {
+    throw new Error("Invalid category gap metric payload: benchmark_score must be a number between 0 and 100");
+  }
+  if (!isValidScore(raw.gap_deficit)) {
+    throw new Error("Invalid category gap metric payload: gap_deficit must be a number between 0 and 100");
+  }
+  if (typeof raw.weight !== "number" || !Number.isFinite(raw.weight) || raw.weight < 0) {
+    throw new Error("Invalid category gap metric payload: weight must be a non-negative number");
+  }
+  if (!isValidScore(raw.percentile_estimate)) {
+    throw new Error("Invalid category gap metric payload: percentile_estimate must be a number between 0 and 100");
+  }
+  if (typeof raw.status !== "string" || !VALID_GAP_STATUSES.has(raw.status as GapStatus)) {
+    throw new Error("Invalid category gap metric payload: invalid or unsupported status");
+  }
 
   return {
     category: raw.category,
-    current_score: cur,
-    benchmark_score: bench,
-    gap_deficit: def,
-    status,
-    weight: wt,
-    percentile_estimate: pct,
+    current_score: raw.current_score,
+    benchmark_score: raw.benchmark_score,
+    gap_deficit: raw.gap_deficit,
+    status: raw.status as GapStatus,
+    weight: raw.weight,
+    percentile_estimate: raw.percentile_estimate,
   };
 }
 
 function parseRecommendation(raw: unknown): RemediationRecommendation {
-  if (!isRecord(raw) || typeof raw.topic !== "string") {
-    throw new Error("Invalid remediation recommendation payload");
+  if (!isRecord(raw) || typeof raw.topic !== "string" || raw.topic.trim().length === 0) {
+    throw new Error("Invalid remediation recommendation payload: missing or invalid topic");
   }
-  const priority: RemediationPriority = typeof raw.priority === "string" && VALID_PRIORITIES.has(raw.priority as RemediationPriority)
-    ? (raw.priority as RemediationPriority)
-    : "medium";
+  if (typeof raw.category !== "string" || raw.category.trim().length === 0) {
+    throw new Error("Invalid remediation recommendation payload: missing or invalid category");
+  }
+  if (typeof raw.priority !== "string" || !VALID_PRIORITIES.has(raw.priority as RemediationPriority)) {
+    throw new Error("Invalid remediation recommendation payload: invalid or unsupported priority");
+  }
+  if (typeof raw.rationale !== "string") {
+    throw new Error("Invalid remediation recommendation payload: rationale must be a string");
+  }
+  if (
+    typeof raw.unresolved_weakness_count !== "number" ||
+    !Number.isFinite(raw.unresolved_weakness_count) ||
+    raw.unresolved_weakness_count < 0
+  ) {
+    throw new Error("Invalid remediation recommendation payload: unresolved_weakness_count must be a non-negative integer");
+  }
+  if (typeof raw.suggested_action !== "string") {
+    throw new Error("Invalid remediation recommendation payload: suggested_action must be a string");
+  }
 
   return {
     topic: raw.topic,
-    category: typeof raw.category === "string" ? raw.category : "general",
-    priority,
-    rationale: typeof raw.rationale === "string" ? raw.rationale : "",
-    unresolved_weakness_count: typeof raw.unresolved_weakness_count === "number" ? Math.max(0, raw.unresolved_weakness_count) : 0,
-    suggested_action: typeof raw.suggested_action === "string" ? raw.suggested_action : "",
+    category: raw.category,
+    priority: raw.priority as RemediationPriority,
+    rationale: raw.rationale,
+    unresolved_weakness_count: raw.unresolved_weakness_count,
+    suggested_action: raw.suggested_action,
   };
 }
 
 function parseSkillGapAnalysis(raw: unknown): SkillGapAnalysisResponse {
   if (!isRecord(raw) || !Array.isArray(raw.categories)) {
-    throw new Error("Malformed skill gap analysis payload");
+    throw new Error("Malformed skill gap analysis payload: missing categories array");
+  }
+  if (typeof raw.target_role !== "string" || !VALID_ROLES.has(raw.target_role as TargetRoleBenchmark)) {
+    throw new Error("Malformed skill gap analysis payload: invalid or unsupported target_role");
+  }
+  if (!isValidScore(raw.overall_candidate_score)) {
+    throw new Error("Malformed skill gap analysis payload: overall_candidate_score must be a number between 0 and 100");
+  }
+  if (!isValidScore(raw.overall_benchmark_score)) {
+    throw new Error("Malformed skill gap analysis payload: overall_benchmark_score must be a number between 0 and 100");
+  }
+  if (!isValidScore(raw.overall_readiness_pct)) {
+    throw new Error("Malformed skill gap analysis payload: overall_readiness_pct must be a number between 0 and 100");
+  }
+  if (!Array.isArray(raw.recommendations)) {
+    throw new Error("Malformed skill gap analysis payload: recommendations must be an array");
+  }
+  if (!Array.isArray(raw.strengths) || !raw.strengths.every((s) => typeof s === "string")) {
+    throw new Error("Malformed skill gap analysis payload: strengths must be an array of strings");
+  }
+  if (!Array.isArray(raw.critical_gaps) || !raw.critical_gaps.every((s) => typeof s === "string")) {
+    throw new Error("Malformed skill gap analysis payload: critical_gaps must be an array of strings");
   }
 
-  const overallCand = typeof raw.overall_candidate_score === "number" && Number.isFinite(raw.overall_candidate_score)
-    ? clamp(raw.overall_candidate_score)
-    : 0.0;
-  const overallBench = typeof raw.overall_benchmark_score === "number" && Number.isFinite(raw.overall_benchmark_score)
-    ? clamp(raw.overall_benchmark_score)
-    : 80.0;
-  const overallReadiness = typeof raw.overall_readiness_pct === "number" && Number.isFinite(raw.overall_readiness_pct)
-    ? clamp(raw.overall_readiness_pct)
-    : 0.0;
-  const targetRole: TargetRoleBenchmark = typeof raw.target_role === "string" && VALID_ROLES.has(raw.target_role as TargetRoleBenchmark)
-    ? (raw.target_role as TargetRoleBenchmark)
-    : "senior_engineer";
-
   return {
-    target_role: targetRole,
-    overall_candidate_score: overallCand,
-    overall_benchmark_score: overallBench,
-    overall_readiness_pct: overallReadiness,
+    target_role: raw.target_role as TargetRoleBenchmark,
+    overall_candidate_score: raw.overall_candidate_score,
+    overall_benchmark_score: raw.overall_benchmark_score,
+    overall_readiness_pct: raw.overall_readiness_pct,
     categories: raw.categories.map(parseCategoryMetric),
-    recommendations: Array.isArray(raw.recommendations) ? raw.recommendations.map(parseRecommendation) : [],
-    strengths: Array.isArray(raw.strengths) ? raw.strengths.filter((s): s is string => typeof s === "string") : [],
-    critical_gaps: Array.isArray(raw.critical_gaps) ? raw.critical_gaps.filter((s): s is string => typeof s === "string") : [],
+    recommendations: raw.recommendations.map(parseRecommendation),
+    strengths: raw.strengths,
+    critical_gaps: raw.critical_gaps,
     analyzed_at: typeof raw.analyzed_at === "string" ? raw.analyzed_at : new Date().toISOString(),
   };
 }

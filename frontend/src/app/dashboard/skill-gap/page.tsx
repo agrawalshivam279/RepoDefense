@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   AlertCircle,
@@ -30,6 +30,8 @@ export default function SkillGapPage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadCounter, setReloadCounter] = useState<number>(0);
+
+  const activeRequestIdRef = useRef<number>(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -66,7 +68,8 @@ export default function SkillGapPage() {
     };
   }, []);
 
-  const loadData = useCallback(async (role: TargetRoleBenchmark, isCancelled?: () => boolean) => {
+  const loadData = useCallback(async (role: TargetRoleBenchmark) => {
+    const requestId = ++activeRequestIdRef.current;
     setLoading(true);
     setError(null);
     try {
@@ -78,22 +81,22 @@ export default function SkillGapPage() {
       }
 
       const res = await fetchSkillGapAnalysis(token, role);
-      if (isCancelled?.()) return;
+      if (activeRequestIdRef.current !== requestId) return;
       setData(res);
     } catch (err) {
-      if (!isCancelled?.()) {
-        setError(err instanceof Error ? err.message : "Failed to load skill gap analysis");
-      }
+      if (activeRequestIdRef.current !== requestId) return;
+      setError(err instanceof Error ? err.message : "Failed to load skill gap analysis");
     } finally {
-      if (!isCancelled?.()) setLoading(false);
+      if (activeRequestIdRef.current === requestId) {
+        setLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    loadData(targetRole, () => cancelled);
+    loadData(targetRole);
     return () => {
-      cancelled = true;
+      activeRequestIdRef.current++;
     };
   }, [targetRole, reloadCounter, loadData]);
 
