@@ -129,7 +129,7 @@ export function LearningHealthStatusCard({
                 </span>
               </div>
               <div className="flex justify-between font-mono">
-                <span className="text-zinc-500">Active Deficits:</span>
+                <span className="text-zinc-500">Total Deficits:</span>
                 <span className="font-semibold text-zinc-200">
                   {healthReport.database_models.total_candidate_weaknesses}
                 </span>

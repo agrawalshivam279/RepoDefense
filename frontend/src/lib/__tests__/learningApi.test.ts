@@ -165,5 +165,37 @@ describe("learningApi - Diagnostic Health & Telemetry", () => {
         }),
       /Invalid database_models\.status: unsupported status value/
     );
+
+    assert.throws(
+      () =>
+        parseLearningLoopHealthResponse({
+          status: "healthy",
+          database_models: {
+            status: "healthy",
+            user_skills_accessible: "not-a-bool",
+          },
+          benchmark_profiles: {},
+          mentor_service: {},
+          retest_service: {},
+        }),
+      /Invalid database_models\.user_skills_accessible: expected boolean/
+    );
+
+    assert.throws(
+      () =>
+        parseLearningLoopHealthResponse({
+          status: "healthy",
+          database_models: {
+            status: "healthy",
+            user_skills_accessible: true,
+            candidate_weaknesses_accessible: true,
+            total_user_skills: -5,
+          },
+          benchmark_profiles: {},
+          mentor_service: {},
+          retest_service: {},
+        }),
+      /Invalid database_models\.total_user_skills: expected non-negative number/
+    );
   });
 });

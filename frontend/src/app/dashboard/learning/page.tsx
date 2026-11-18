@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -79,8 +79,10 @@ export default function LearningHubPage() {
   const [healthReport, setHealthReport] = useState<LearningLoopHealthResponse | null>(null);
   const [healthLoading, setHealthLoading] = useState<boolean>(true);
   const [healthError, setHealthError] = useState<string | null>(null);
+  const probeIdRef = useRef<number>(0);
 
   const loadHealth = useCallback(async () => {
+    const currentProbeId = ++probeIdRef.current;
     setHealthLoading(true);
     setHealthError(null);
     try {
@@ -88,22 +90,32 @@ export default function LearningHubPage() {
         data: { session },
       } = await supabase.auth.getSession();
 
+      if (probeIdRef.current !== currentProbeId) return;
+
       if (!session) {
         setHealthError("Please sign in to inspect diagnostic telemetry");
         return;
       }
 
       const report = await fetchLearningLoopHealth(session.access_token);
+      if (probeIdRef.current !== currentProbeId) return;
       setHealthReport(report);
     } catch (err: unknown) {
+      if (probeIdRef.current !== currentProbeId) return;
       setHealthError(err instanceof Error ? err.message : "Failed to probe learning loop subsystems");
     } finally {
-      setHealthLoading(false);
+      if (probeIdRef.current === currentProbeId) {
+        setHealthLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
     loadHealth();
+    return () => {
+      // Invalidate in-flight probes on unmount or effect re-execution
+      probeIdRef.current += 1;
+    };
   }, [loadHealth]);
 
   return (
