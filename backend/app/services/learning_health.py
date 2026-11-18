@@ -163,7 +163,7 @@ def inspect_benchmark_profiles_health() -> BenchmarkProfilesHealth:
                 configured_tiers=[_format_tier(t) for t in BENCHMARK_PROFILES.keys()],
                 total_categories=len(domains),
                 tier_integrity_verified=False,
-                detail=f"Domain mismatch in tier '{tier.value}': {sorted(diff)}",
+                detail=f"Domain mismatch in tier '{tier.value}': {sorted(diff, key=str)}",
             )
         categories_per_tier.append(len(domains))
         for domain, meta in domains.items():

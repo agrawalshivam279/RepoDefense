@@ -124,6 +124,18 @@ def test_inspect_benchmark_profiles_unsupported_tier_key():
         assert "experimental" in health.configured_tiers
 
 
+def test_inspect_benchmark_profiles_mixed_type_domain_keys():
+    bad = copy.deepcopy(BENCHMARK_PROFILES)
+    domains = dict(bad[TargetRoleBenchmark.MID_LEVEL])
+    del domains["system_architecture"]
+    domains[42] = {"target": 70.0, "weight": 1.0}
+    bad[TargetRoleBenchmark.MID_LEVEL] = domains
+    with patch("app.services.learning_health.BENCHMARK_PROFILES", bad):
+        health = inspect_benchmark_profiles_health()
+        assert health.status == ComponentHealthStatus.DEGRADED
+        assert "Domain mismatch in tier 'mid_level'" in str(health.detail)
+
+
 def test_inspect_mentor_service_health():
     health = inspect_mentor_service_health()
     assert health.status == ComponentHealthStatus.HEALTHY
