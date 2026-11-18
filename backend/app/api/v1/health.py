@@ -6,7 +6,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.ai.fsm import defense_store
 from app.api.v1.incident_simulation import incident_session_store
 from app.core.config import settings
-from app.core.database import get_db
+from app.core.database import get_read_only_db
+from app.core.security import get_current_user
+from app.models.project import User
 from app.schemas.health import (
     SimulationModeStatus,
     SimulationReadinessResponse,
@@ -102,10 +104,17 @@ async def get_incident_store_telemetry() -> StoreTelemetry:
     return incident_session_store.get_stats()
 
 
-@router.get("/learning-loop", response_model=LearningLoopHealthResponse)
+@router.get(
+    "/learning-loop",
+    response_model=LearningLoopHealthResponse,
+    responses={
+        status.HTTP_503_SERVICE_UNAVAILABLE: {"model": LearningLoopHealthResponse}
+    },
+)
 async def get_learning_loop_health(
     response: Response,
-    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_read_only_db),
 ) -> LearningLoopHealthResponse:
     """Returns diagnostic operational readiness for all Phase 4 Learning Loop modules."""
     report = await inspect_learning_loop_health(db)
