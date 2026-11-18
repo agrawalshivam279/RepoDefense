@@ -119,14 +119,6 @@ from app.schemas.report import (
     EnhancedDefenseReportResponse,
     ReportSynthesisOutput,
 )
-from app.schemas.skill_gap import (
-    CategoryGapMetric,
-    GapStatus,
-    RemediationPriority,
-    RemediationRecommendation,
-    SkillGapAnalysisResponse,
-    TargetRoleBenchmark,
-)
 from app.schemas.retest import (
     EligibleWeaknessesResponse,
     EligibleWeaknessItem,
@@ -151,6 +143,14 @@ from app.schemas.skill import (
     UserSkillsOverviewResponse,
     UserSkillUpdate,
     WeaknessSeverity,
+)
+from app.schemas.skill_gap import (
+    CategoryGapMetric,
+    GapStatus,
+    RemediationPriority,
+    RemediationRecommendation,
+    SkillGapAnalysisResponse,
+    TargetRoleBenchmark,
 )
 from app.schemas.summary import (
     ProjectSummary,
