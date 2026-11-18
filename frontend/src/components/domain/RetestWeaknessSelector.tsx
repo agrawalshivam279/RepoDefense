@@ -46,6 +46,9 @@ export const RetestWeaknessSelector: React.FC<RetestWeaknessSelectorProps> = ({
     return weaknesses.filter((w) => w.category.toLowerCase() === activeCategory);
   }, [weaknesses, activeCategory]);
 
+  const maxSelectable = Math.min(weaknesses.length, 50);
+  const allSelected = maxSelectable > 0 && selectedIds.length >= maxSelectable;
+
   return (
     <div className="space-y-6">
       <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-6 backdrop-blur-sm">
@@ -66,10 +69,10 @@ export const RetestWeaknessSelector: React.FC<RetestWeaknessSelectorProps> = ({
             </span>
             <button
               type="button"
-              onClick={selectedIds.length === weaknesses.length ? onDeselectAll : onSelectAll}
+              onClick={allSelected ? onDeselectAll : onSelectAll}
               className="text-xs font-medium text-indigo-400 hover:text-indigo-300 transition-colors"
             >
-              {selectedIds.length === weaknesses.length ? "Deselect All" : "Select All"}
+              {allSelected ? "Deselect All" : "Select All (Max 50)"}
             </button>
           </div>
         </div>
@@ -131,12 +134,14 @@ export const RetestWeaknessSelector: React.FC<RetestWeaknessSelectorProps> = ({
                       id={`cb-${item.id}`}
                       aria-labelledby={`weakness-title-${item.id}`}
                       checked={isSelected}
+                      onClick={(e) => e.stopPropagation()}
                       onChange={() => onToggleWeakness(item.id)}
                       className="h-4 w-4 rounded border-zinc-700 bg-zinc-900 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-zinc-950"
                     />
                     <label
                       id={`weakness-title-${item.id}`}
                       htmlFor={`cb-${item.id}`}
+                      onClick={(e) => e.stopPropagation()}
                       className="text-sm font-semibold text-zinc-200 capitalize cursor-pointer"
                     >
                       {item.topic.replace(/_/g, " ")}
