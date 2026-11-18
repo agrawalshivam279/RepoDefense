@@ -173,26 +173,31 @@ class SkillGapService:
     ) -> list[RemediationRecommendation]:
         """Synthesize prioritized remediation plan from weaknesses and deficits."""
         recs: list[RemediationRecommendation] = []
-        topic_map: dict[str, dict[str, Any]] = {}
+        topic_map: dict[tuple[str, str], dict[str, Any]] = {}
+        sev_rank = {"critical": 3, "major": 2, "minor": 1}
 
         for w in weaknesses:
-            t = w.topic.lower()
-            if t not in topic_map:
-                topic_map[t] = {
+            key = (w.category.lower(), w.topic.lower())
+            w_sev = w.severity.lower() if hasattr(w, "severity") and w.severity else "major"
+            if key not in topic_map:
+                topic_map[key] = {
+                    "topic": w.topic,
                     "category": w.category.lower(),
                     "count": 0,
-                    "max_sev": w.severity.lower() if hasattr(w, "severity") else "major",
+                    "max_sev": w_sev,
                 }
-            topic_map[t]["count"] += 1
+            elif sev_rank.get(w_sev, 0) > sev_rank.get(topic_map[key]["max_sev"], 0):
+                topic_map[key]["max_sev"] = w_sev
+            topic_map[key]["count"] += 1
 
-        for topic, data in topic_map.items():
+        for data in topic_map.values():
             sev = data["max_sev"]
             priority = (
                 RemediationPriority.CRITICAL if sev == "critical"
                 else RemediationPriority.HIGH if sev == "major"
                 else RemediationPriority.MEDIUM
             )
-            title = topic.replace("_", " ").title()
+            title = data["topic"].replace("_", " ").title()
             recs.append(
                 RemediationRecommendation(
                     topic=title,
