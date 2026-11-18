@@ -592,11 +592,16 @@ gantt
 
 ## 8. PHASE 5 — POLISH / OPTIONAL
 
-### Milestone 5.1: GitHub OAuth App
-- **Goal:** Proper GitHub App integration for private repo access.
+### Milestone 5.1: Shareable Defense Reports & Resume Badges
+- **Goal:** Public links for verified defense scores and dynamic embeddable SVG resume badges.
+- **Sub-tasks:**
+  - [x] **Step 5.1a: Backend Public Report Verification Engine, Cryptographic Share Token & Dynamic SVG Resume Badge REST API** (schemas/public_report.py, services/public_report.py, api/v1/public_reports.py, main.py, tests/test_public_reports.py)
+  - [ ] **Step 5.1b: Next.js 15 Public Defense Verification Portal, Embeddable Badge Dialog & Shareable Report UI** (types/publicReport.ts, lib/publicReportApi.ts, PublicReportView.tsx, ShareBadgeModal.tsx, app/verify/[token]/page.tsx)
+- **Components:** Cryptographic token generation, public-safe report sanitization, SVG badge generator, and public verification portal.
+- **Dependencies:** 2.11, 4.7
 
-### Milestone 5.2: Shareable Defense Reports
-- **Goal:** Public links for verified defense scores.
+### Milestone 5.2: GitHub OAuth App
+- **Goal:** Dedicated GitHub App integration for private repo access.
 
 ### Milestone 5.3: Enhanced Onboarding
 - **Goal:** Tooltips, tours, and empty states.
