@@ -19,6 +19,7 @@ import {
   Network,
   PackageCheck,
   RefreshCw,
+  RotateCcw,
   Shield,
   Sparkles,
   UserCheck,
@@ -37,7 +38,8 @@ export type ProjectNavTab =
   | "stress-test"
   | "arch-defense"
   | "analytics"
-  | "mentor";
+  | "mentor"
+  | "retest";
 
 export type TabCategory = "analysis" | "arena" | "insights";
 
@@ -83,6 +85,7 @@ const TABS: NavTabItem[] = [
   // Telemetry & Learning Insights
   { id: "analytics", label: "Analytics", hrefSuffix: "/analytics", category: "insights", Icon: BarChart3, accentColor: "text-emerald-400" },
   { id: "mentor", label: "Mentor Mode", hrefSuffix: "/mentor", category: "insights", Icon: GraduationCap, accentColor: "text-indigo-400" },
+  { id: "retest", label: "Targeted Re-Test", hrefSuffix: "/retest", category: "insights", Icon: RotateCcw, accentColor: "text-purple-400" },
 ];
 
 export function ProjectNavHeader({
