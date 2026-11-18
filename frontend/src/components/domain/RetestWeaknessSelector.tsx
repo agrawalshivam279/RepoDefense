@@ -56,7 +56,7 @@ export const RetestWeaknessSelector: React.FC<RetestWeaknessSelectorProps> = ({
               Active Architectural Weaknesses
             </h2>
             <p className="mt-1 text-sm text-zinc-400">
-              Select specific gaps to target with Principal Engineer stress scenarios.
+              Select up to 50 active gaps to target with Principal Engineer stress scenarios.
             </p>
           </div>
 
@@ -128,13 +128,19 @@ export const RetestWeaknessSelector: React.FC<RetestWeaknessSelectorProps> = ({
                   <div className="flex items-center gap-2">
                     <input
                       type="checkbox"
+                      id={`cb-${item.id}`}
+                      aria-labelledby={`weakness-title-${item.id}`}
                       checked={isSelected}
-                      onChange={() => {}} // Controlled via card click
+                      onChange={() => onToggleWeakness(item.id)}
                       className="h-4 w-4 rounded border-zinc-700 bg-zinc-900 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-zinc-950"
                     />
-                    <h4 className="text-sm font-semibold text-zinc-200 capitalize">
+                    <label
+                      id={`weakness-title-${item.id}`}
+                      htmlFor={`cb-${item.id}`}
+                      className="text-sm font-semibold text-zinc-200 capitalize cursor-pointer"
+                    >
                       {item.topic.replace(/_/g, " ")}
-                    </h4>
+                    </label>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
                     <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${sev.className}`}>

@@ -83,6 +83,8 @@ export const RetestSessionCard: React.FC<RetestSessionCardProps> = ({
         <div className="rounded-lg border border-zinc-800/60 bg-zinc-900/40">
           <button
             type="button"
+            aria-expanded={showOriginal}
+            aria-controls="original-context-panel"
             onClick={() => setShowOriginal(!showOriginal)}
             className="flex w-full items-center justify-between px-3.5 py-2.5 text-xs font-medium text-zinc-400 hover:text-zinc-200 transition-colors"
           >
@@ -93,7 +95,10 @@ export const RetestSessionCard: React.FC<RetestSessionCardProps> = ({
             {showOriginal ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </button>
           {showOriginal && (
-            <div className="border-t border-zinc-800/60 px-3.5 py-3 text-xs leading-relaxed text-zinc-400 space-y-2">
+            <div
+              id="original-context-panel"
+              className="border-t border-zinc-800/60 px-3.5 py-3 text-xs leading-relaxed text-zinc-400 space-y-2"
+            >
               <div>
                 <span className="font-semibold text-zinc-300">Original Question: </span>
                 {question.original_prompt}
@@ -106,6 +111,8 @@ export const RetestSessionCard: React.FC<RetestSessionCardProps> = ({
         <div className="rounded-lg border border-zinc-800/60 bg-zinc-900/40">
           <button
             type="button"
+            aria-expanded={showRubric}
+            aria-controls="rubric-criteria-panel"
             onClick={() => setShowRubric(!showRubric)}
             className="flex w-full items-center justify-between px-3.5 py-2.5 text-xs font-medium text-zinc-400 hover:text-zinc-200 transition-colors"
           >
@@ -116,7 +123,10 @@ export const RetestSessionCard: React.FC<RetestSessionCardProps> = ({
             {showRubric ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </button>
           {showRubric && (
-            <div className="border-t border-zinc-800/60 px-3.5 py-3 text-xs leading-relaxed text-zinc-300">
+            <div
+              id="rubric-criteria-panel"
+              className="border-t border-zinc-800/60 px-3.5 py-3 text-xs leading-relaxed text-zinc-300"
+            >
               <div className="flex items-start gap-2">
                 <FileText className="h-4 w-4 text-indigo-400 shrink-0 mt-0.5" />
                 <p>{question.evaluation_rubric}</p>

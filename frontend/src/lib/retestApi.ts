@@ -77,7 +77,7 @@ export async function fetchEligibleWeaknesses(
     throw new Error(`Failed to load weaknesses (${res.status}): ${errorBody}`);
   }
 
-  const json = await res.json();
+  const json: unknown = await res.json();
   if (!isRecord(json) || !Array.isArray(json.weaknesses)) {
     throw new Error("Invalid response format from weaknesses endpoint");
   }
@@ -109,7 +109,7 @@ export async function createRetestSession(
     throw new Error(`Failed to create re-test session (${res.status}): ${errorBody}`);
   }
 
-  const json = await res.json();
+  const json: unknown = await res.json();
   if (!isRecord(json) || !Array.isArray(json.questions)) {
     throw new Error("Invalid response format from session creation endpoint");
   }
@@ -145,7 +145,7 @@ export async function submitRetestAnswer(
     throw new Error(`Failed to evaluate re-test answer (${res.status}): ${errorBody}`);
   }
 
-  const json = await res.json();
+  const json: unknown = await res.json();
   if (!isRecord(json)) {
     throw new Error("Invalid response from evaluate endpoint");
   }
