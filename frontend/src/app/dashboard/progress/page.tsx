@@ -10,6 +10,7 @@ import {
   Flame,
   Loader2,
   RefreshCw,
+  Target,
   TrendingUp,
 } from "lucide-react";
 import { CategoryMasteryGrid } from "@/components/domain/CategoryMasteryGrid";
@@ -155,6 +156,13 @@ export default function ProgressDashboardPage() {
                 <span>{overview.learning_streak_days} Day Streak</span>
               </div>
             )}
+            <Link
+              href="/dashboard/skill-gap"
+              className="flex items-center gap-1.5 rounded-lg border border-indigo-500/40 bg-indigo-500/10 px-3 py-1.5 text-xs font-semibold text-indigo-400 hover:bg-indigo-500/20"
+            >
+              <Target className="h-3.5 w-3.5" />
+              <span>Skill Gap Analysis</span>
+            </Link>
             <button
               onClick={loadData}
               className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
