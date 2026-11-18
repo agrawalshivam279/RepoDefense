@@ -72,6 +72,13 @@ def decode_access_token(token: str) -> TokenPayload:
     )
 
 
+def get_current_token_payload(
+    credentials: HTTPAuthorizationCredentials = Depends(security_scheme),
+) -> TokenPayload:
+    """FastAPI dependency validating the Bearer token without querying PostgreSQL."""
+    return decode_access_token(credentials.credentials)
+
+
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security_scheme),
     db: AsyncSession = Depends(get_db),

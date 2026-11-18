@@ -49,3 +49,13 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             raise
         finally:
             await session.close()
+
+
+async def get_read_only_db() -> AsyncGenerator[AsyncSession, None]:
+    """FastAPI dependency yielding a read-only async database session that safely rolls back."""
+    async with AsyncSessionLocal() as session:
+        try:
+            yield session
+        finally:
+            await session.rollback()
+            await session.close()
