@@ -569,16 +569,19 @@ gantt
 - **Dependencies:** 4.1
 
 ### Milestone 4.5: Targeted Re-Testing
-- **Goal:** Generate a session focusing only on previous failures.
+- **Goal:** [x] Generate a session focusing only on previous failures.
 - **Sub-tasks:**
   - [x] **Step 4.5a: Backend Targeted Re-Testing Service, Generator & REST API** (schemas/retest.py, ai/retest_generator.py, ai/retest_prompts.py, ai/retest_fallbacks.py, services/retest_service.py, api/v1/retest.py, main.py, tests/test_retest.py, 6/6 tests passing)
-  - [ ] **Step 4.5b: Next.js 15 Targeted Re-Test Workspace & Interactive Evaluation UI** (types/retest.ts, lib/retestApi.ts, RetestWeaknessSelector.tsx, RetestSessionCard.tsx, RetestDefenseEditor.tsx, RetestEvaluationModal.tsx, projects/[id]/retest/page.tsx)
+  - [x] **Step 4.5b: Next.js 15 Targeted Re-Test Workspace & Interactive Evaluation UI** (types/retest.ts, lib/retestApi.ts, RetestWeaknessSelector.tsx, RetestSessionCard.tsx, RetestDefenseEditor.tsx, RetestEvaluationModal.tsx, projects/[id]/retest/page.tsx, 4/4 tests passing)
 - **Components:** Filtered question generation and targeted defense workspace.
 - **Dependencies:** 4.1
 
 ### Milestone 4.6: Skill Gap Analysis
 - **Goal:** Compare user skills to standard senior engineer expectations.
-- **Components:** Baseline comparison logic.
+- **Sub-tasks:**
+  - [ ] **Step 4.6a: Backend Senior Principal Benchmark Engine, Skill Gap Aggregator & REST API** (schemas/skill_gap.py, services/skill_gap.py, api/v1/skill_gap.py, tests/test_skill_gap.py)
+  - [ ] **Step 4.6b: Next.js 15 Senior Benchmark Radar Visualizer & Skill Gap Matrix UI** (types/skillGap.ts, lib/skillGapApi.ts, SkillRadarChart.tsx, BenchmarkComparisonMatrix.tsx, RecommendedRemediationsCard.tsx, dashboard/skill-gap/page.tsx)
+- **Components:** Baseline comparison logic and senior engineer benchmark comparison.
 - **Dependencies:** 4.4
 
 ### Milestone 4.7: Phase 4 Polish & Deploy
