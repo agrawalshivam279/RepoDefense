@@ -46,7 +46,7 @@ export function SkillGapRemediationsCard({
       <div className="space-y-3 pt-1">
         {recommendations.map((rec) => {
           const priority = getPriorityBadge(rec.priority);
-          const retestHref = projectId ? `/projects/${projectId}/retest` : "/dashboard/progress";
+          const retestHref = projectId ? `/projects/${projectId}/retest` : "/dashboard";
 
           return (
             <div

@@ -26,8 +26,36 @@ import {
 export default function SkillGapPage() {
   const [data, setData] = useState<SkillGapAnalysisResponse | null>(null);
   const [targetRole, setTargetRole] = useState<TargetRoleBenchmark>("senior_engineer");
+  const [projectId, setProjectId] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [reloadCounter, setReloadCounter] = useState<number>(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchUserProjects() {
+      try {
+        const { data: authData } = await supabase.auth.getSession();
+        const token = authData.session?.access_token;
+        if (!token) return;
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+        const res = await fetch(`${apiUrl}/api/v1/projects`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const projects = await res.json();
+        if (!cancelled && Array.isArray(projects) && projects.length > 0 && projects[0]?.id) {
+          setProjectId(projects[0].id);
+        }
+      } catch {
+        // non-blocking fallback
+      }
+    }
+    fetchUserProjects();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const loadData = useCallback(async (role: TargetRoleBenchmark, isCancelled?: () => boolean) => {
     setLoading(true);
@@ -58,7 +86,9 @@ export default function SkillGapPage() {
     return () => {
       cancelled = true;
     };
-  }, [targetRole, loadData]);
+  }, [targetRole, reloadCounter, loadData]);
+
+  const allAtOrAbove = Boolean(data && data.categories.length > 0 && data.categories.every((c) => c.gap_deficit <= 0));
 
   return (
     <div className="min-h-screen bg-black text-zinc-100">
@@ -119,7 +149,7 @@ export default function SkillGapPage() {
             </div>
             <button
               type="button"
-              onClick={() => loadData(targetRole)}
+              onClick={() => setReloadCounter((c) => c + 1)}
               className="inline-flex items-center gap-1 rounded bg-red-500/20 px-2.5 py-1 font-semibold text-red-200 hover:bg-red-500/30"
             >
               <RefreshCw className="h-3 w-3" /> Retry
@@ -132,93 +162,114 @@ export default function SkillGapPage() {
             <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
           </div>
         ) : data ? (
-          <>
-            {/* Top Metric Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-5 backdrop-blur-sm">
-                <span className="text-xs text-zinc-400 font-medium">Role Readiness</span>
-                <div className="mt-2 flex items-baseline gap-2">
-                  <span className="text-3xl font-extrabold text-zinc-100 font-mono">
-                    {data.overall_readiness_pct}%
-                  </span>
-                  <span className="text-xs text-indigo-400">vs {getRoleDisplayName(data.target_role)}</span>
-                </div>
-                <div className="mt-3 h-1.5 w-full rounded-full bg-zinc-800 overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-indigo-500 transition-all duration-300"
-                    style={{ width: `${Math.min(100, Math.max(5, data.overall_readiness_pct))}%` }}
-                  />
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-5 backdrop-blur-sm">
-                <span className="text-xs text-zinc-400 font-medium">Your Composite Score</span>
-                <div className="mt-2 text-3xl font-extrabold text-emerald-400 font-mono">
-                  {data.overall_candidate_score}
-                  <span className="text-sm font-normal text-zinc-500"> / 100</span>
-                </div>
-                <p className="mt-2 text-[11px] text-zinc-500">
-                  Weighted across all assessed architectural categories
-                </p>
-              </div>
-
-              <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-5 backdrop-blur-sm">
-                <span className="text-xs text-zinc-400 font-medium">Target Benchmark</span>
-                <div className="mt-2 text-3xl font-extrabold text-indigo-400 font-mono">
-                  {data.overall_benchmark_score}
-                  <span className="text-sm font-normal text-zinc-500"> / 100</span>
-                </div>
-                <p className="mt-2 text-[11px] text-zinc-500">
-                  Standard expected bar for {getRoleDisplayName(data.target_role)}
-                </p>
-              </div>
-
-              <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-5 backdrop-blur-sm">
-                <span className="text-xs text-zinc-400 font-medium">Domain Health</span>
-                <div className="mt-2 flex items-center gap-3">
-                  <div className="flex items-center gap-1.5 text-xs text-emerald-400 font-semibold">
-                    <CheckCircle2 className="h-4 w-4" />
-                    <span>{data.strengths.length} Met</span>
-                  </div>
-                  <span className="text-zinc-600">|</span>
-                  <div className="flex items-center gap-1.5 text-xs text-rose-400 font-semibold">
-                    <Sparkles className="h-4 w-4" />
-                    <span>{data.critical_gaps.length} Gaps</span>
-                  </div>
-                </div>
-                <p className="mt-2 text-[11px] text-zinc-500">
-                  {data.critical_gaps.length === 0 ? "All domains at or above target bar" : "Targeted re-tests available to close deficits"}
-                </p>
+          data.categories.length === 0 ? (
+            <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-12 text-center space-y-4 backdrop-blur-sm">
+              <Sparkles className="mx-auto h-12 w-12 text-indigo-400" />
+              <h2 className="text-base font-bold text-zinc-100">No Assessment Data Available</h2>
+              <p className="text-xs text-zinc-400 max-w-md mx-auto leading-relaxed">
+                Complete repository defense interviews to benchmark your architectural competencies across system design, security, and scalability against senior standards.
+              </p>
+              <div className="pt-2">
+                <Link
+                  href="/dashboard"
+                  className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-500 transition-colors shadow-sm shadow-indigo-600/30"
+                >
+                  <span>Go to Repositories</span>
+                </Link>
               </div>
             </div>
-
-            {/* Radar Visualizer & Comparison Matrix */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-              <div className="lg:col-span-5 space-y-4">
+          ) : (
+            <>
+              {/* Top Metric Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-5 backdrop-blur-sm">
-                  <h3 className="text-sm font-bold text-zinc-100 flex items-center gap-2 mb-1">
-                    <GraduationCap className="h-4 w-4 text-emerald-400" />
-                    Architectural Competency Radar
-                  </h3>
-                  <p className="text-xs text-zinc-400 mb-4">
-                    Visual comparison of your demonstrated skills against the target engineering baseline.
+                  <span className="text-xs text-zinc-400 font-medium">Role Readiness</span>
+                  <div className="mt-2 flex items-baseline gap-2">
+                    <span className="text-3xl font-extrabold text-zinc-100 font-mono">
+                      {data.overall_readiness_pct}%
+                    </span>
+                    <span className="text-xs text-indigo-400">vs {getRoleDisplayName(data.target_role)}</span>
+                  </div>
+                  <div className="mt-3 h-1.5 w-full rounded-full bg-zinc-800 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-indigo-500 transition-all duration-300"
+                      style={{ width: `${Math.min(100, Math.max(5, data.overall_readiness_pct))}%` }}
+                    />
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-5 backdrop-blur-sm">
+                  <span className="text-xs text-zinc-400 font-medium">Your Composite Score</span>
+                  <div className="mt-2 text-3xl font-extrabold text-emerald-400 font-mono">
+                    {data.overall_candidate_score}
+                    <span className="text-sm font-normal text-zinc-500"> / 100</span>
+                  </div>
+                  <p className="mt-2 text-[11px] text-zinc-500">
+                    Weighted across all assessed architectural categories
                   </p>
-                  <SkillRadarChart
-                    categories={data.categories}
-                    candidateLabel="Candidate Score"
-                    benchmarkLabel={`${getRoleDisplayName(data.target_role)} Bar`}
-                  />
+                </div>
+
+                <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-5 backdrop-blur-sm">
+                  <span className="text-xs text-zinc-400 font-medium">Target Benchmark</span>
+                  <div className="mt-2 text-3xl font-extrabold text-indigo-400 font-mono">
+                    {data.overall_benchmark_score}
+                    <span className="text-sm font-normal text-zinc-500"> / 100</span>
+                  </div>
+                  <p className="mt-2 text-[11px] text-zinc-500">
+                    Standard expected bar for {getRoleDisplayName(data.target_role)}
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-5 backdrop-blur-sm">
+                  <span className="text-xs text-zinc-400 font-medium">Domain Health</span>
+                  <div className="mt-2 flex items-center gap-3">
+                    <div className="flex items-center gap-1.5 text-xs text-emerald-400 font-semibold">
+                      <CheckCircle2 className="h-4 w-4" />
+                      <span>{data.strengths.length} Met</span>
+                    </div>
+                    <span className="text-zinc-600">|</span>
+                    <div className="flex items-center gap-1.5 text-xs text-rose-400 font-semibold">
+                      <Sparkles className="h-4 w-4" />
+                      <span>{data.critical_gaps.length} Gaps</span>
+                    </div>
+                  </div>
+                  <p className="mt-2 text-[11px] text-zinc-500">
+                    {allAtOrAbove ? "All domains at or above target benchmark" : "Targeted re-tests available to close deficits"}
+                  </p>
                 </div>
               </div>
 
-              <div className="lg:col-span-7">
-                <BenchmarkComparisonMatrix categories={data.categories} />
-              </div>
-            </div>
+              {/* Radar Visualizer & Comparison Matrix */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                <div className="lg:col-span-5 space-y-4">
+                  <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-5 backdrop-blur-sm">
+                    <h3 className="text-sm font-bold text-zinc-100 flex items-center gap-2 mb-1">
+                      <GraduationCap className="h-4 w-4 text-emerald-400" />
+                      Architectural Competency Radar
+                    </h3>
+                    <p className="text-xs text-zinc-400 mb-4">
+                      Visual comparison of your demonstrated skills against the target engineering baseline.
+                    </p>
+                    <SkillRadarChart
+                      categories={data.categories}
+                      candidateLabel="Candidate Score"
+                      benchmarkLabel={`${getRoleDisplayName(data.target_role)} Bar`}
+                    />
+                  </div>
+                </div>
 
-            {/* Prioritized Remediations Roadmap */}
-            <SkillGapRemediationsCard recommendations={data.recommendations} />
-          </>
+                <div className="lg:col-span-7">
+                  <BenchmarkComparisonMatrix categories={data.categories} />
+                </div>
+              </div>
+
+              {/* Prioritized Remediations Roadmap */}
+              <SkillGapRemediationsCard
+                recommendations={data.recommendations}
+                projectId={projectId}
+              />
+            </>
+          )
         ) : null}
       </main>
     </div>

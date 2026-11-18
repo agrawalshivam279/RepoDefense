@@ -74,7 +74,10 @@ export function SkillRadarChart({
         </div>
       </div>
 
-      <svg width={size} height={size} className="overflow-visible select-none">
+      <svg
+        viewBox={`0 0 ${size} ${size}`}
+        className="w-full max-w-[340px] h-auto aspect-square overflow-visible select-none"
+      >
         {/* Concentric grid rings */}
         {rings.map((ringVal) => {
           const ringPoints = Array.from({ length: totalAxes })
