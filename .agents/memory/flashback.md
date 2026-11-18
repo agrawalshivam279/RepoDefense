@@ -3,7 +3,7 @@
 > **Product**: RepoDefense  
 > **Tagline**: "Prove that you understand — and can defend — the software you built."  
 > **Core Loop**: Evidence → Claim → Defense → Stress Test → Evaluation → Mentor → Re-test  
-> **Status**: 🟢 Phase 1, 2 & 3 Complete — Phase 4 Ready  
+> **Status**: 🟢 Phase 1, 2, 3 & 4 Complete — Phase 5 Ready  
 > **Last Synchronized**: 2026-11-17  
 
 ---
@@ -21,6 +21,8 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **Mentor Mode & Remediation** | LiteLLM Teaching Synthesizer + Next.js 15 Remediation Visualizer | 🟢 Milestone 4.2 Complete (Steps 4.2a & 4.2b) |
 | **Progress Dashboard & Telemetry** | Next.js 15 SVG Visualizer + Velocity & Telemetry API | 🟢 Milestone 4.4 Complete (Steps 4.4a & 4.4b) |
 | **Targeted Re-Testing & Evaluation** | AI Re-Test Generator + Next.js 15 Remediation Workspace & Scorecard | 🟢 Milestone 4.5 Complete (Steps 4.5a & 4.5b Complete) |
+| **Senior Benchmark & Skill Gap** | Benchmark Engine + Dual-Polygon SVG Radar Visualizer | 🟢 Milestone 4.6 Complete (Steps 4.6a & 4.6b Complete) |
+| **Learning Hub & Diagnostics** | Next.js 15 Learning Hub Portal + Diagnostic Health Probe | 🟢 Milestone 4.7 Complete (Steps 4.7a & 4.7b Complete) |
 | **Authentication** | Supabase Auth (GitHub OAuth + Email/Password) | 🟢 Milestone 1.3 Complete |
 | **Background Queue** | ARQ (asyncio + Upstash Redis) | 🟢 Milestone 1.5 Complete |
 | **Static Code Ingestion & Cataloging** | Shallow Git Clone + Security Filter + File Scanner | 🟢 Milestone 1.5 & 1.6 Complete |
@@ -142,6 +144,11 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-11-18] — Step 4.7b: Frontend Learning Hub Navigation, Breadcrumbs & Phase 4 UX Polish
+- **Scope / Module**: Frontend Learning Hub Navigation & UX (`frontend/src/types/learning.ts`, `frontend/src/lib/learningApi.ts`, `frontend/src/lib/__tests__/learningApi.test.ts`, `frontend/src/components/domain/LearningHubBreadcrumbs.tsx`, `frontend/src/components/domain/LearningNavGroup.tsx`, `frontend/src/components/domain/LearningHealthStatusCard.tsx`, `frontend/src/app/dashboard/learning/page.tsx`, `frontend/src/app/dashboard/page.tsx`, `frontend/src/app/dashboard/progress/page.tsx`, `frontend/src/app/dashboard/skill-gap/page.tsx`, `docs/specs/step-4-7b-learning-hub-navigation.md`)
+- **Details**: Designed and implemented the unified Learning Hub and navigation fabric concluding Milestone 4.7 and completing Phase 4 (Learning Loop). Defined TypeScript contracts in `types/learning.ts` for diagnostic subsystem telemetry, breadcrumbs, and learning modules. Implemented typed REST API client in `lib/learningApi.ts` connecting to `/api/v1/health/learning-loop` supporting both HTTP 200 operational telemetry and HTTP 503 outage diagnostic reports, verified via 4/4 hermetic unit tests in `learningApi.test.ts` (42/42 tests passing across suite). Created accessible, semantic breadcrumb navigation in `LearningHubBreadcrumbs.tsx` with ARIA labels and chevron separators. Created segmented navigation pill group in `LearningNavGroup.tsx` connecting Skill Progress, Senior Benchmarks, and Learning Hub with live pulsing health badges. Created `LearningHealthStatusCard.tsx` providing real-time operational status for skills database models, benchmark catalog tiers, mentor engine fallbacks, and re-test question caches. Authored the unified `/dashboard/learning` portal page showcasing the 6-stage closed remediation loop, module launchpads, and live health telemetry. Integrated navigation cross-links into `/dashboard`, `/dashboard/progress`, and `/dashboard/skill-gap`. Verified 100% via `npx tsc --noEmit` (0 errors), `npm run build` (all 25 routes compiled cleanly), and strict <= 300 LOC limit across all files. Concludes Milestone 4.7 and Phase 4.
+- **Key Files**: `frontend/src/types/learning.ts`, `frontend/src/lib/learningApi.ts`, `frontend/src/lib/__tests__/learningApi.test.ts`, `frontend/src/components/domain/LearningHubBreadcrumbs.tsx`, `frontend/src/components/domain/LearningNavGroup.tsx`, `frontend/src/components/domain/LearningHealthStatusCard.tsx`, `frontend/src/app/dashboard/learning/page.tsx`, `frontend/src/app/dashboard/page.tsx`, `frontend/src/app/dashboard/progress/page.tsx`, `frontend/src/app/dashboard/skill-gap/page.tsx`, `docs/specs/step-4-7b-learning-hub-navigation.md`
 
 ### [2026-11-18] — Step 4.7a: Backend Learning Loop Telemetry Hardening, Diagnostic Health Probe & Synthesis Benchmark API
 - **Scope / Module**: Backend Learning Loop Telemetry & Diagnostic Health (`backend/app/schemas/learning_health.py`, `backend/app/schemas/__init__.py`, `backend/app/services/learning_health.py`, `backend/app/core/database.py`, `backend/app/core/security.py`, `backend/app/api/v1/health.py`, `backend/tests/test_learning_health.py`, `docs/specs/step-4-7a-learning-loop-health-hardening.md`)

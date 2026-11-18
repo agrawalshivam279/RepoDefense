@@ -7,12 +7,15 @@ import {
   ArrowLeft,
   Award,
   CheckCircle2,
+  Compass,
   Flame,
   Loader2,
   RefreshCw,
   Target,
   TrendingUp,
 } from "lucide-react";
+import { LearningHubBreadcrumbs } from "@/components/domain/LearningHubBreadcrumbs";
+import { LearningNavGroup } from "@/components/domain/LearningNavGroup";
 import { CategoryMasteryGrid } from "@/components/domain/CategoryMasteryGrid";
 import { FocusTopicsPanel } from "@/components/domain/FocusTopicsPanel";
 import { LearningTimelineChart } from "@/components/domain/LearningTimelineChart";
@@ -130,15 +133,24 @@ export default function ProgressDashboardPage() {
   return (
     <div className="min-h-screen bg-background px-4 py-8 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl space-y-8">
-        {/* Header Navigation */}
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/60 pb-6">
-          <div className="flex items-center gap-4">
-            <Link
-              href="/dashboard"
-              className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
+        {/* Header Breadcrumbs & Segmented Nav */}
+        <div className="space-y-4 border-b border-border/60 pb-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <LearningHubBreadcrumbs
+              items={[
+                { label: "Learning Hub", href: "/dashboard/learning", icon: Compass },
+                { label: "Skill Progression", isCurrent: true },
+              ]}
+            />
+            {overview && overview.learning_streak_days > 0 && (
+              <div className="flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-500">
+                <Flame className="h-3.5 w-3.5 fill-amber-500" />
+                <span>{overview.learning_streak_days} Day Streak</span>
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-foreground">
                 Skill & Improvement Telemetry
@@ -147,29 +159,17 @@ export default function ProgressDashboardPage() {
                 Track architectural proficiency growth, remediation velocity, and mastery trajectory
               </p>
             </div>
-          </div>
 
-          <div className="flex items-center gap-3">
-            {overview && overview.learning_streak_days > 0 && (
-              <div className="flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-500">
-                <Flame className="h-3.5 w-3.5 fill-amber-500" />
-                <span>{overview.learning_streak_days} Day Streak</span>
-              </div>
-            )}
-            <Link
-              href="/dashboard/skill-gap"
-              className="flex items-center gap-1.5 rounded-lg border border-indigo-500/40 bg-indigo-500/10 px-3 py-1.5 text-xs font-semibold text-indigo-400 hover:bg-indigo-500/20"
-            >
-              <Target className="h-3.5 w-3.5" />
-              <span>Skill Gap Analysis</span>
-            </Link>
-            <button
-              onClick={loadData}
-              className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
-            >
-              <RefreshCw className="h-3.5 w-3.5" />
-              <span>Refresh</span>
-            </button>
+            <div className="flex items-center gap-3">
+              <LearningNavGroup activeModule="progress" />
+              <button
+                onClick={loadData}
+                className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                <span>Refresh</span>
+              </button>
+            </div>
           </div>
         </div>
 

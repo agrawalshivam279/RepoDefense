@@ -588,7 +588,7 @@ gantt
 - **Goal:** Comprehensive Phase 4 Learning Loop hardening, telemetry health verification, and unified learning navigation.
 - **Sub-tasks:**
   - [x] **Step 4.7a: Backend Learning Loop Telemetry Hardening, Diagnostic Health Probe & Synthesis Benchmark API** (schemas/learning_health.py, services/learning_health.py, api/v1/health.py GET /api/v1/health/learning-loop, tests/test_learning_health.py, 12/12 tests passing)
-  - [ ] **Step 4.7b: Frontend Learning Hub Navigation, Breadcrumbs & Phase 4 UX Polish** (types/learning.ts, lib/learningApi.ts, LearningHubBreadcrumbs.tsx, LearningNavGroup.tsx, app/learning/page.tsx, ProjectNavHeader integration)
+  - [x] **Step 4.7b: Frontend Learning Hub Navigation, Breadcrumbs & Phase 4 UX Polish** (types/learning.ts, lib/learningApi.ts, LearningHubBreadcrumbs.tsx, LearningNavGroup.tsx, app/learning/page.tsx, ProjectNavHeader integration)
 
 ## 8. PHASE 5 — POLISH / OPTIONAL
 
