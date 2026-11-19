@@ -48,6 +48,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **IDE Code Viewer** | Monaco / Prism code viewer with AST evidence highlights | ⚪ Phase 4 Planned |
 | **Evaluation & Export** | Public Verification Service + Dynamic SVG Badges + Rubrics | 🟢 Milestone 5.1 Complete (Steps 5.1a & 5.1b Complete) |
 | **GitHub App & Private Repos** | Webhook HMAC Verifier + App JWT + Installation Token Exchanger + Selector UI | 🟢 Milestone 5.2 Complete (Steps 5.2a & 5.2b Complete) |
+| **Enhanced Onboarding** | Spotlight Halo Tour + Contextual Tooltips + Zero-Data Empty States | 🟢 Milestone 5.3 Complete |
 
 ---
 
@@ -147,11 +148,15 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **Phase 2** | Differentiation (Claims Extraction, Verification, Adaptive Questioning, Pushback Logic, Coverage Tracking, Ownership Engine, Architecture Audit, Mermaid Diagrams, Tech Audit, Enhanced Report) | 🟢 Complete (Milestones 2.1 - 2.12 Complete) |
 | **Phase 3** | The State Machine & Advanced Defense (PR Fetch & Diff Defense, Stress Testing, Incident Simulation, Architecture Defense, Bounded Simulation Stores & Unified Simulation Arena Hub) | 🟢 Complete (Milestones 3.1 - 3.8 Complete) |
 | **Phase 4** | Learning Loop & Weakness Tracking (UserSkill Models, Weakness Tracker, Mentor Mode, Targeted Re-Testing, Skill Gap Analysis, Learning Hub) | 🟢 Complete (Milestones 4.1 - 4.7 Complete) |
-| **Phase 5** | Polish / Optional (Public Defense Reports, Resume Badges, Dedicated GitHub App for Private Repos) | 🟢 Milestone 5.1 & 5.2 Complete |
+| **Phase 5** | Polish / Optional (Public Defense Reports, Resume Badges, Dedicated GitHub App for Private Repos, Onboarding Tours & Empty States) | 🟢 Milestone 5.1, 5.2 & 5.3 Complete |
 
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-11-20] — Milestone 5.3: Next.js 15 Interactive Onboarding Tour, Contextual Tooltips & Empty States
+- **Scope / Module**: Frontend Onboarding, Guided Walkthrough & Empty States (`frontend/src/types/onboarding.ts`, `frontend/src/hooks/useOnboardingTour.ts`, `frontend/src/components/domain/OnboardingTourModal.tsx`, `frontend/src/components/ui/ContextTooltip.tsx`, `frontend/src/components/domain/EmptyState.tsx`, `frontend/src/lib/onboarding.ts`, `frontend/src/lib/__tests__/onboarding.test.ts`, `frontend/src/app/dashboard/page.tsx`, `docs/specs/step-5-3-enhanced-onboarding.md`)
+- **Details**: Designed and implemented the candidate onboarding suite across RepoDefense concluding Milestone 5.3 (Enhanced Onboarding). Defined TypeScript contracts in `types/onboarding.ts` for tour steps, target selectors, responsive placements (`top`, `bottom`, `left`, `right`, `center`), and bounding rectangles. Built `useOnboardingTour` hook orchestrating multi-step progression, keyboard navigation (`Escape` to dismiss, `ArrowRight`/`Enter` for next, `ArrowLeft` for previous), window resize/scroll tracking, and SSR-safe `localStorage` completion persistence. Created `OnboardingTourModal` with spotlight halo focus ring around target DOM elements, focus trap, and viewport-clamped positioning calculated via shared `calculateCardPosition`. Authored accessible `ContextTooltip` merging `aria-describedby` directly onto triggering children. Built `EmptyState` component with primary CTA, tour guide launcher, and architectural tips for zero-repository states. Integrated all components into `/dashboard`. Verified 100% via unit tests in `onboarding.test.ts`, `npx tsc --noEmit` (0 errors), Next.js 15 production build (`next build`, 26 routes compiled cleanly), 400/400 full backend pytest suite passing, zero arbitrary code execution, and strict <= 300 LOC limit across all files. Concludes Milestone 5.3.
 
 ### [2026-11-19] — Step 5.2b: Next.js 15 GitHub App Installation Flow & Private Repository Selector UI
 - **Scope / Module**: Frontend GitHub App Integration & Repository Selector (`frontend/src/types/githubApp.ts`, `frontend/src/lib/githubAppApi.ts`, `frontend/src/lib/__tests__/githubAppApi.test.ts`, `frontend/src/components/domain/GitHubAppRepoSelector.tsx`, `frontend/src/components/domain/AddProjectModal.tsx`, `frontend/src/app/dashboard/page.tsx`, `docs/specs/step-5-2b-github-app-ui.md`)

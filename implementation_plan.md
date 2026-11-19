@@ -609,7 +609,11 @@ gantt
 - **Dependencies:** 1.4, 1.5
 
 ### Milestone 5.3: Enhanced Onboarding
-- **Goal:** Tooltips, tours, and empty states.
+- **Goal:** [x] Interactive onboarding tours, contextual tooltips, and engaging empty states.
+- **Sub-tasks:**
+  - [x] **Step 5.3: Next.js 15 Interactive Onboarding Tour, Contextual Tooltips & Empty States** (types/onboarding.ts, hooks/useOnboardingTour.ts, OnboardingTourModal.tsx, ContextTooltip.tsx, EmptyState.tsx, onboarding.ts, onboarding.test.ts, /dashboard integration)
+- **Components:** Spotlight halo ring, responsive card positioning, focus trapping, accessible tooltips with merged aria-describedby, and zero-data empty state cards.
+- **Dependencies:** 1.4, 3.8, 5.2
 
 ### Milestone 5.4: Accessibility
 - **Goal:** ARIA labels, keyboard navigation, contrast checks.
