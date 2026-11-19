@@ -11,6 +11,7 @@ import {
   Loader2,
   Printer,
   RotateCcw,
+  Share2,
   Shield,
   ShieldAlert,
   ShieldCheck,
@@ -20,6 +21,7 @@ import {
 
 import { CategoryScorecard } from "@/components/domain/CategoryScorecard";
 import { ReportArchitectureSection } from "@/components/domain/ReportArchitectureSection";
+import { ShareBadgeModal } from "@/components/domain/ShareBadgeModal";
 import { getDefenseReport, getEnhancedDefenseReport } from "@/lib/defenseApi";
 import { supabase } from "@/lib/supabase";
 import type { EnhancedDefenseReportResponse } from "@/types/report";
@@ -34,21 +36,13 @@ function getVerdictMeta(verdict: string, score: number) {
       Icon: ShieldCheck,
     };
   }
-  if (score >= 5.0 || verdict.toLowerCase().includes("solid")) {
-    return {
-      title: verdict || "Solid Architectural Defense",
-      badgeClass: "bg-sky-500/10 text-sky-400 border-sky-500/30",
-      bannerClass: "bg-sky-950/20 border-sky-500/30",
-      scoreClass: "text-sky-400 border-sky-500/40 bg-sky-950/40",
-      Icon: Shield,
-    };
-  }
+  const isSolid = score >= 5.0 || verdict.toLowerCase().includes("solid");
   return {
-    title: verdict || "Architectural Remediation Required",
-    badgeClass: "bg-amber-500/10 text-amber-400 border-amber-500/30",
-    bannerClass: "bg-amber-950/20 border-amber-500/30",
-    scoreClass: "text-amber-400 border-amber-500/40 bg-amber-950/40",
-    Icon: ShieldAlert,
+    title: verdict || (isSolid ? "Solid Architectural Defense" : "Architectural Remediation Required"),
+    badgeClass: isSolid ? "bg-sky-500/10 text-sky-400 border-sky-500/30" : "bg-amber-500/10 text-amber-400 border-amber-500/30",
+    bannerClass: isSolid ? "bg-sky-950/20 border-sky-500/30" : "bg-amber-950/20 border-amber-500/30",
+    scoreClass: isSolid ? "text-sky-400 border-sky-500/40 bg-sky-950/40" : "text-amber-400 border-amber-500/40 bg-amber-950/40",
+    Icon: isSolid ? Shield : ShieldAlert,
   };
 }
 
@@ -58,6 +52,8 @@ export default function DefenseReportPage() {
   const sessionId = params?.id as string;
 
   const [report, setReport] = useState<EnhancedDefenseReportResponse | null>(null);
+  const [authToken, setAuthToken] = useState<string>("");
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -71,6 +67,7 @@ export default function DefenseReportPage() {
         router.push("/login");
         return;
       }
+      setAuthToken(authSession.access_token);
       try {
         const data = await getEnhancedDefenseReport(sessionId, authSession.access_token);
         setReport(data);
@@ -135,6 +132,15 @@ export default function DefenseReportPage() {
           </div>
         </div>
         <div className="no-print flex items-center gap-2 font-mono text-xs">
+          <button
+            type="button"
+            onClick={() => setIsShareModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-300 hover:text-white transition-colors"
+            title="Public Verification & Badge"
+          >
+            <Share2 className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Share & Badge</span>
+          </button>
           <button
             type="button"
             onClick={() => window.print()}
@@ -263,22 +269,20 @@ export default function DefenseReportPage() {
         <ReportArchitectureSection report={report} />
       </div>
 
+      <ShareBadgeModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        projectId={String(report.project_id)}
+        sessionId={sessionId}
+        token={authToken}
+      />
+
       {/* Print CSS Rules */}
       <style jsx global>{`
         @media print {
-          .no-print {
-            display: none !important;
-          }
-          body {
-            background-color: #020617 !important;
-            color: #f8fafc !important;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-          }
-          .page-break-inside-avoid {
-            break-inside: avoid;
-            page-break-inside: avoid;
-          }
+          .no-print { display: none !important; }
+          body { background-color: #020617 !important; color: #f8fafc !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .page-break-inside-avoid { break-inside: avoid; page-break-inside: avoid; }
         }
       `}</style>
     </div>
