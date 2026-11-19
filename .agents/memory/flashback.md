@@ -4,7 +4,7 @@
 > **Tagline**: "Prove that you understand — and can defend — the software you built."  
 > **Core Loop**: Evidence → Claim → Defense → Stress Test → Evaluation → Mentor → Re-test  
 > **Status**: 🟢 Phase 1, 2, 3 & 4 Complete — Phase 5 Ready  
-> **Last Synchronized**: 2026-11-19  
+> **Last Synchronized**: 2026-11-20  
 
 ---
 
@@ -49,6 +49,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **Evaluation & Export** | Public Verification Service + Dynamic SVG Badges + Rubrics | 🟢 Milestone 5.1 Complete (Steps 5.1a & 5.1b Complete) |
 | **GitHub App & Private Repos** | Webhook HMAC Verifier + App JWT + Installation Token Exchanger + Selector UI | 🟢 Milestone 5.2 Complete (Steps 5.2a & 5.2b Complete) |
 | **Enhanced Onboarding** | Spotlight Halo Tour + Contextual Tooltips + Zero-Data Empty States | 🟢 Milestone 5.3 Complete |
+| **Accessibility (WCAG 2.1 AA)** | Live Announcer Queue + WCAG Contrast Helpers + Skip Links + Reduced Motion | 🟢 Milestone 5.4 Complete |
 
 ---
 
@@ -148,11 +149,16 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **Phase 2** | Differentiation (Claims Extraction, Verification, Adaptive Questioning, Pushback Logic, Coverage Tracking, Ownership Engine, Architecture Audit, Mermaid Diagrams, Tech Audit, Enhanced Report) | 🟢 Complete (Milestones 2.1 - 2.12 Complete) |
 | **Phase 3** | The State Machine & Advanced Defense (PR Fetch & Diff Defense, Stress Testing, Incident Simulation, Architecture Defense, Bounded Simulation Stores & Unified Simulation Arena Hub) | 🟢 Complete (Milestones 3.1 - 3.8 Complete) |
 | **Phase 4** | Learning Loop & Weakness Tracking (UserSkill Models, Weakness Tracker, Mentor Mode, Targeted Re-Testing, Skill Gap Analysis, Learning Hub) | 🟢 Complete (Milestones 4.1 - 4.7 Complete) |
-| **Phase 5** | Polish / Optional (Public Defense Reports, Resume Badges, Dedicated GitHub App for Private Repos, Onboarding Tours & Empty States) | 🟢 Milestone 5.1, 5.2 & 5.3 Complete |
+| **Phase 5** | Polish / Optional (Public Defense Reports, Resume Badges, Dedicated GitHub App for Private Repos, Onboarding Tours & Empty States, WCAG 2.1 AA Accessibility) | 🟢 Milestone 5.1, 5.2, 5.3 & 5.4 Complete |
 
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-11-20] — Milestone 5.4: WCAG 2.1 AA Accessibility, Live Announcer Queue & Skip Navigation
+- **Scope / Module**: Frontend Accessibility & WCAG 2.1 AA Compliance (`frontend/src/types/accessibility.ts`, `frontend/src/lib/accessibility.ts`, `frontend/src/hooks/useAnnouncer.ts`, `frontend/src/components/ui/SkipToContent.tsx`, `frontend/src/components/ui/LiveAnnouncer.tsx`, `frontend/src/app/layout.tsx`, `frontend/src/app/globals.css`, `frontend/src/hooks/useOnboardingTour.ts`, `frontend/src/lib/__tests__/accessibility.test.ts`, `docs/specs/step-5-4-accessibility.md`)
+- **Details**: Designed and implemented the complete WCAG 2.1 AA accessibility subsystem for RepoDefense concluding Milestone 5.4. Defined TypeScript contracts in `types/accessibility.ts` for announcements (`id`, `message`, `politeness`, `timestamp`) and keyboard shortcuts. Created global pub/sub announcement bus and WCAG 2.1 mathematical relative luminance (`getRelativeLuminance`) and contrast ratio (`calculateContrastRatio`, unrounded for threshold checks, formatted via `formatContrastRatio`) calculation helpers in `lib/accessibility.ts`. Created `useAnnouncer` custom hook for ergonomic component-level assistive announcements. Implemented `LiveAnnouncer` with non-blocking array queues for polite and assertive live regions, isolating discrete messages, avoiding React batching dropouts, handling repeated messages without DOM skipping, and auto-purging entries via 8s TTL timers. Built `SkipToContent` component with programmatic `tabIndex={-1}` keyboard focus and `scrollIntoView` honoring `prefers-reduced-motion: reduce`. Updated root `layout.tsx` to mount `SkipToContent`, `LiveAnnouncer`, semantic `<header>`, and `<main id="main-content" tabIndex={-1}>`. Enhanced `globals.css` with high-contrast emerald focus outlines (`:focus-visible`) and `prefers-reduced-motion` animation-suppression rules. Updated `useOnboardingTour` to respect user motion preferences during element scrolling. Authored 4 unit tests in `accessibility.test.ts` verifying pub/sub dispatch, sRGB luminance, contrast calculations, and boundary threshold enforcement ([119,119,115] vs white strictly failing 4.5:1). Addressed all CodeRabbit review feedback. Verified 100% via `npx tsx --test` (4/4 passed), `npx tsc --noEmit` (0 errors), Next.js 15 production build (`next build`, all 26 routes compiled cleanly), zero arbitrary code execution, and strict <= 300 LOC limit across all files. Merged into `main` via PR #92 (`bf6d1f3`). Concludes Milestone 5.4.
+- **Key Files**: `frontend/src/types/accessibility.ts`, `frontend/src/lib/accessibility.ts`, `frontend/src/hooks/useAnnouncer.ts`, `frontend/src/components/ui/SkipToContent.tsx`, `frontend/src/components/ui/LiveAnnouncer.tsx`, `frontend/src/app/layout.tsx`, `frontend/src/app/globals.css`, `frontend/src/hooks/useOnboardingTour.ts`, `frontend/src/lib/__tests__/accessibility.test.ts`, `docs/specs/step-5-4-accessibility.md`
 
 ### [2026-11-20] — Milestone 5.3: Next.js 15 Interactive Onboarding Tour, Contextual Tooltips & Empty States
 - **Scope / Module**: Frontend Onboarding, Guided Walkthrough & Empty States (`frontend/src/types/onboarding.ts`, `frontend/src/hooks/useOnboardingTour.ts`, `frontend/src/components/domain/OnboardingTourModal.tsx`, `frontend/src/components/ui/ContextTooltip.tsx`, `frontend/src/components/domain/EmptyState.tsx`, `frontend/src/lib/onboarding.ts`, `frontend/src/lib/__tests__/onboarding.test.ts`, `frontend/src/app/dashboard/page.tsx`, `docs/specs/step-5-3-enhanced-onboarding.md`)

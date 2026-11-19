@@ -616,7 +616,11 @@ gantt
 - **Dependencies:** 1.4, 3.8, 5.2
 
 ### Milestone 5.4: Accessibility
-- **Goal:** ARIA labels, keyboard navigation, contrast checks.
+- **Goal:** [x] WCAG 2.1 AA Compliance, ARIA live region announcement queue, skip-to-content navigation, contrast calculation helpers, and reduced-motion preferences.
+- **Sub-tasks:**
+  - [x] **Step 5.4: WCAG 2.1 AA Accessibility, Live Announcer Queue & Skip Navigation** (types/accessibility.ts, lib/accessibility.ts, hooks/useAnnouncer.ts, SkipToContent.tsx, LiveAnnouncer.tsx, layout.tsx landmarks, globals.css focus-visible & reduced motion, accessibility.test.ts)
+- **Components:** Polite and assertive live region announcement queue with auto-cleanup, WCAG 2.1 relative luminance and contrast ratio calculations, skip link with programmatic focus management, and system reduced-motion preference integration across tour and skip interactions.
+- **Dependencies:** 5.1, 5.2, 5.3
 
 ### Milestone 5.5: Voice Interaction (optional)
 - **Goal:** Web Speech API integration for spoken defense.
