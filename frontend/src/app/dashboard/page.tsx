@@ -23,6 +23,22 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [initialInstallationId, setInitialInstallationId] = useState<number | null>(null);
+
+  // Auto-detect GitHub App post-installation callback parameters
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const instId = params.get('installation_id');
+      if (instId) {
+        const parsed = parseInt(instId, 10);
+        if (!isNaN(parsed) && parsed > 0) {
+          setInitialInstallationId(parsed);
+          setIsModalOpen(true);
+        }
+      }
+    }
+  }, []);
 
   const fetchProjects = useCallback(async () => {
     setLoading(true);
@@ -215,8 +231,12 @@ export default function DashboardPage() {
       {/* Add Project Modal */}
       <AddProjectModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setIsModalOpen(false);
+          setInitialInstallationId(null);
+        }}
         onProjectCreated={handleProjectCreated}
+        initialInstallationId={initialInstallationId}
       />
     </div>
   );
