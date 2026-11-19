@@ -4,7 +4,7 @@
 > **Tagline**: "Prove that you understand — and can defend — the software you built."  
 > **Core Loop**: Evidence → Claim → Defense → Stress Test → Evaluation → Mentor → Re-test  
 > **Status**: 🟢 Phase 1, 2, 3 & 4 Complete — Phase 5 Ready  
-> **Last Synchronized**: 2026-11-17  
+> **Last Synchronized**: 2026-11-19  
 
 ---
 
@@ -47,6 +47,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **Stress Test / What-If Mode** | Scaling Scenario Generator & Next.js 15 Arena UI | 🟢 Milestone 3.5 Complete (Steps 3.5a & 3.5b) |
 | **IDE Code Viewer** | Monaco / Prism code viewer with AST evidence highlights | ⚪ Phase 4 Planned |
 | **Evaluation & Export** | Public Verification Service + Dynamic SVG Badges + Rubrics | 🟢 Milestone 5.1 Complete (Steps 5.1a & 5.1b Complete) |
+| **GitHub App & Private Repos** | Webhook HMAC Verifier + App JWT + Installation Token Exchanger + Selector UI | 🟢 Milestone 5.2 Complete (Steps 5.2a & 5.2b Complete) |
 
 ---
 
