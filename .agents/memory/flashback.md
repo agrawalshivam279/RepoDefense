@@ -122,6 +122,13 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 - **Decision**: Enforce strict input sanitization (500MB max, 10k files max, binary exclusion, path traversal checks, secret redaction). In prompts, wrap untrusted code in strict boundary delimiters and mandate: *"Every question and evaluation must map to an AST symbol or verified code chunk"*.
 - **Consequences**: Bulletproof prompt isolation and hallucination-free interviews.
 
+### ADR-024: GitHub App Short-Lived Installation Token Exchange & URL Credential Redaction
+- **Date**: 2026-11-19
+- **Status**: Accepted
+- **Context**: Ingesting private repositories for architectural defense requires elevated access without forcing users to supply long-lived Personal Access Tokens (PATs) or storing secrets in the database.
+- **Decision**: Integrate with a dedicated GitHub App using RS256 JWT authentication. The backend exchanges short-lived App JWTs for temporary scoped Installation Access Tokens (1 hour expiry) on-the-fly. The database stores only the public repository URL and numeric installation_id. The background cloner worker dynamically resolves tokens at clone time and applies strict regex URL credential redaction (redact_token_from_url) to eliminate secret leakage in logs, traces, and error messages.
+- **Consequences**: Zero persistent credentials stored; seamless private repository ingestion; constant-time HMAC SHA-256 webhook verification.
+
 ### ADR-011: Supabase Public Schema RLS Lockdown & Data API Grant Revocation
 - **Date**: 2026-11-11
 - **Status**: Accepted
@@ -139,11 +146,17 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **Phase 2** | Differentiation (Claims Extraction, Verification, Adaptive Questioning, Pushback Logic, Coverage Tracking, Ownership Engine, Architecture Audit, Mermaid Diagrams, Tech Audit, Enhanced Report) | 🟢 Complete (Milestones 2.1 - 2.12 Complete) |
 | **Phase 3** | The State Machine & Advanced Defense (PR Fetch & Diff Defense, Stress Testing, Incident Simulation, Architecture Defense, Bounded Simulation Stores & Unified Simulation Arena Hub) | 🟢 Complete (Milestones 3.1 - 3.8 Complete) |
 | **Phase 4** | Learning Loop & Weakness Tracking (UserSkill Models, Weakness Tracker, Mentor Mode, Targeted Re-Testing, Skill Gap Analysis, Learning Hub) | 🟢 Complete (Milestones 4.1 - 4.7 Complete) |
-| **Phase 5** | Evaluation & Export (Rubric Scoring, Transcript Generation, PDF & Badge Export) | 🟢 Milestone 5.1 Complete (Steps 5.1a & 5.1b Complete) |
+| **Phase 5** | Polish / Optional (Public Defense Reports, Resume Badges, Dedicated GitHub App for Private Repos) | 🟡 Step 5.2a Complete — Step 5.2b In Progress |
 
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-11-19] — Step 5.2a: Backend GitHub App Installation Webhook, Private Repo Token Exchange & Ingestion Router
+- **Scope / Module**: Backend GitHub App Private Repository Ingestion (ackend/app/core/config.py, ackend/app/schemas/github_app.py, ackend/app/services/github_app.py, ackend/app/models/project.py, ackend/alembic/versions/5d9e2f3a4b5c_add_installation_id_to_projects.py, ackend/app/api/v1/github_app.py, ackend/app/workers/cloner.py, ackend/app/main.py, ackend/tests/test_github_app.py, docs/specs/step-5-2a-github-oauth-app.md)
+- **Details**: Implemented the complete backend subsystem for dedicated GitHub App integration initiating Milestone 5.2 (GitHub OAuth App) in Phase 5. Added GitHub App configuration settings (GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY, GITHUB_APP_WEBHOOK_SECRET, GITHUB_APP_CLIENT_ID, GITHUB_APP_CLIENT_SECRET, GITHUB_APP_SLUG). Created Pydantic v2 schemas (GitHubAppStatusResponse, GitHubAppRepoItem, GitHubAppRepoListResponse, PrivateRepoProjectCreate, GitHubWebhookResponse). Implemented github_app.py service featuring HMAC SHA-256 webhook signature verification with hmac.compare_digest, RS256 App JWT generation with pyjwt/cryptography, scoped installation token exchange via GitHub REST API, repository enumeration, authenticated clone URL construction (https://x-access-token:{token}@github.com/...), and strict regex credential redaction (
+edact_token_from_url). Added indexed nullable installation_id column to Project model backed by Alembic migration 5d9e2f3a4b5c applied to live database. Integrated token resolution into cloner.py background worker. Exposed FastAPI router at /api/v1/github-app with public /status, cryptographically verified /webhook, authenticated /installations/{id}/repositories, and /projects private repo registration enqueuing background clone jobs. Authored 9 hermetic unit and API integration tests in 	ests/test_github_app.py. Verified 100% with all tests passing, zero ruff lint errors, and strict <= 300 LOC limit across all 9 touched files. Concludes Step 5.2a.
+- **Key Files**: ackend/app/core/config.py, ackend/app/schemas/github_app.py, ackend/app/services/github_app.py, ackend/app/models/project.py, ackend/alembic/versions/5d9e2f3a4b5c_add_installation_id_to_projects.py, ackend/app/api/v1/github_app.py, ackend/app/workers/cloner.py, ackend/app/main.py, ackend/tests/test_github_app.py, docs/specs/step-5-2a-github-oauth-app.md
 
 ### [2026-11-19] — Step 5.1b: Next.js 15 Public Defense Verification Portal, Embeddable Badge Dialog & Shareable Report UI
 - **Scope / Module**: Frontend Public Verification Portal & Embeddable Badge Dialog (`frontend/src/types/publicReport.ts`, `frontend/src/lib/publicReportApi.ts`, `frontend/src/lib/__tests__/publicReportApi.test.ts`, `frontend/src/components/domain/ShareBadgeModal.tsx`, `frontend/src/app/verify/[token]/page.tsx`, `frontend/src/app/report/[id]/page.tsx`, `docs/specs/step-5-1b-public-defense-portal.md`)

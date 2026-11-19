@@ -16,6 +16,7 @@ from app.api.v1.claims import (
 from app.api.v1.commit_defense import router as commit_defense_router
 from app.api.v1.defense import router as defense_router
 from app.api.v1.diagram import router as diagram_router
+from app.api.v1.github_app import router as github_app_router
 from app.api.v1.health import router as health_router
 from app.api.v1.incident_simulation import router as incident_simulation_router
 from app.api.v1.mentor import router as mentor_router
@@ -84,6 +85,7 @@ app.include_router(skill_gap_router, prefix=f"{settings.API_V1_STR}/v1/skills")
 app.include_router(progress_router, prefix=f"{settings.API_V1_STR}/v1/progress")
 app.include_router(retest_router, prefix=f"{settings.API_V1_STR}/v1/retest")
 app.include_router(mentor_router, prefix=f"{settings.API_V1_STR}/v1/mentor")
+app.include_router(github_app_router, prefix=f"{settings.API_V1_STR}/v1")
 app.include_router(public_reports_router, prefix=f"{settings.API_V1_STR}/v1")
 app.include_router(health_router, prefix=f"{settings.API_V1_STR}/v1/health")
 

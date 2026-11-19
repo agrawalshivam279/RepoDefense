@@ -10,9 +10,12 @@ class TokenPayload(BaseModel):
 
     sub: uuid.UUID = Field(description="User unique identifier (UUID)")
     email: str = Field(description="User email address")
+    github_username: Union[str, None] = Field(default=None, description="Linked GitHub handle")
     exp: int = Field(description="Token expiration timestamp (epoch seconds)")
     aud: Union[str, list[str], None] = Field(default=None, description="Audience claim")
     role: Union[str, None] = Field(default=None, description="Supabase user role")
+    user_metadata: dict = Field(default_factory=dict, description="Supabase user metadata")
+    app_metadata: dict = Field(default_factory=dict, description="Supabase app metadata")
 
 
 class UserResponse(BaseModel):
@@ -20,6 +23,7 @@ class UserResponse(BaseModel):
 
     id: uuid.UUID = Field(description="Unique user identifier")
     email: str = Field(description="User email address")
+    github_username: Union[str, None] = Field(default=None, description="Linked GitHub handle")
     created_at: datetime = Field(description="User creation timestamp")
     updated_at: datetime = Field(description="Last update timestamp")
 

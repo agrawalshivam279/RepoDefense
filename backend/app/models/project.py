@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, List, Optional
 
-from sqlalchemy import DateTime, ForeignKey, String, Text
+from sqlalchemy import BigInteger, DateTime, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -28,6 +28,11 @@ class User(Base, TimestampMixin):
         unique=True,
         index=True,
         nullable=False,
+    )
+    github_username: Mapped[Optional[str]] = mapped_column(
+        String(255),
+        index=True,
+        nullable=True,
     )
 
     # Relationships
@@ -84,6 +89,11 @@ class Project(Base, TimestampMixin):
         String(50),
         default="pending",
         nullable=False,
+    )
+    installation_id: Mapped[Optional[int]] = mapped_column(
+        BigInteger,
+        nullable=True,
+        index=True,
     )
 
     # Relationships

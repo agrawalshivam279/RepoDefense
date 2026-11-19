@@ -28,6 +28,7 @@ from app.core.database import AsyncSessionLocal
 from app.models.project import Project, RepositorySnapshot
 from app.schemas.summary import ProjectSummaryInput
 from app.security.sanitizer import sanitize_workspace
+from app.services.github_app import redact_token_from_url, resolve_project_clone_url
 
 logger = structlog.get_logger(__name__)
 
@@ -36,12 +37,7 @@ _SAFE_BRANCH_REGEX = re.compile(r"^[a-zA-Z0-9_./-]+$")
 
 
 def sanitize_git_branch(branch: str) -> str:
-    """Validates and sanitizes a git branch name to prevent argument injection attacks.
-
-    Raises:
-        ValueError: If branch contains illegal characters, starts with a dash,
-                    or contains path traversal dots.
-    """
+    """Validates and sanitizes a git branch name to prevent argument injection attacks."""
     cleaned = branch.strip()
     if not cleaned:
         raise ValueError("Branch name cannot be empty")
@@ -92,7 +88,8 @@ async def run_git_shallow_clone(
         str(target_dir),
     ]
 
-    logger.info("git_clone_started", url=github_url, branch=safe_branch, target=str(target_dir))
+    clean_url = redact_token_from_url(github_url)
+    logger.info("git_clone_started", url=clean_url, branch=safe_branch, target=str(target_dir))
     proc = await asyncio.create_subprocess_exec(
         *clone_cmd,
         stdout=asyncio.subprocess.PIPE,
@@ -105,7 +102,8 @@ async def run_git_shallow_clone(
         await _cleanup_proc(proc)
         raise
     if proc.returncode != 0:
-        err_msg = stderr.decode(errors="replace").strip()
+        raw_err = stderr.decode(errors="replace").strip()
+        err_msg = redact_token_from_url(raw_err)
         logger.error("git_clone_failed", returncode=proc.returncode, stderr=err_msg)
         raise RuntimeError(f"git clone failed with code {proc.returncode}: {err_msg}")
 
@@ -123,7 +121,7 @@ async def run_git_shallow_clone(
         await _cleanup_proc(proc_rev)
         raise
     if proc_rev.returncode != 0:
-        err_msg = stderr_rev.decode(errors="replace").strip()
+        err_msg = redact_token_from_url(stderr_rev.decode(errors="replace").strip())
         raise RuntimeError(f"git rev-parse HEAD failed: {err_msg}")
 
     commit_hash = stdout_rev.decode().strip()
@@ -145,7 +143,7 @@ async def clone_and_sanitize_repository(ctx: dict[str, Any], project_id: str) ->
 
         project.status = "cloning"
         await session.commit()
-        github_url = project.github_url
+        github_url = await resolve_project_clone_url(project)
         branch = project.default_branch
 
     with tempfile.TemporaryDirectory(prefix="repodefense_clone_") as temp_dir_str:
