@@ -257,17 +257,14 @@ def test_extract_and_persist_evidence_db():
             snapshot_id=snapshot_id,
             path="app/main.py",
             language="python",
-            total_lines=50,
-            size_bytes=1200,
+            total_lines=50, size_bytes=1200,
         )
         sym = CodeSymbol(
             id=uuid.uuid4(),
             file_id=file_id,
             name="root_health",
             symbol_type="endpoint",
-            start_line=15,
-            end_line=25,
-            signature="@app.get('/health')",
+            start_line=15, end_line=25, signature="@app.get('/health')",
         )
         dep = Dependency(
             id=uuid.uuid4(),
@@ -280,9 +277,7 @@ def test_extract_and_persist_evidence_db():
         mock_session = AsyncMock()
         mock_session.add = MagicMock()
         mock_result_files, mock_result_syms, mock_result_deps = (
-            MagicMock(),
-            MagicMock(),
-            MagicMock(),
+            MagicMock(), MagicMock(), MagicMock()
         )
         mock_result_files.scalars.return_value.all.return_value = [af]
         mock_result_syms.scalars.return_value.all.return_value = [sym]
