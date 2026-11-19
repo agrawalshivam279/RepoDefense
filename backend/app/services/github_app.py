@@ -173,7 +173,7 @@ async def get_installation_account(
 def build_authenticated_clone_url(clone_url: str, token: str) -> str:
     """Injects short-lived installation access token into clone URL."""
     cleaned = clone_url.strip()
-    if cleaned.startswith("https://"):
+    if cleaned.startswith("https://github.com/"):
         return f"https://x-access-token:{token}@{cleaned[8:]}"
     return cleaned
 

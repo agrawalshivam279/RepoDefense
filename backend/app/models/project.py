@@ -29,6 +29,11 @@ class User(Base, TimestampMixin):
         index=True,
         nullable=False,
     )
+    github_username: Mapped[Optional[str]] = mapped_column(
+        String(255),
+        index=True,
+        nullable=True,
+    )
 
     # Relationships
     projects: Mapped[List["Project"]] = relationship(

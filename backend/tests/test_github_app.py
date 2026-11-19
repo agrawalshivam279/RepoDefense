@@ -133,6 +133,10 @@ def test_url_helpers_and_token_redaction():
     token = "ghs_supersecret12345"
     auth_url = build_authenticated_clone_url(clone_url, token)
     assert "x-access-token:ghs_supersecret12345" in auth_url
+    assert (
+        build_authenticated_clone_url("https://otherhost.com/repo.git", token)
+        == "https://otherhost.com/repo.git"
+    )
     redacted = redact_token_from_url(auth_url)
     assert "ghs_supersecret12345" not in redacted
     assert "https://[REDACTED_TOKEN]@github.com/owner/secret-repo.git" == redacted
@@ -192,7 +196,7 @@ async def test_api_status_and_webhook():
 @pytest.mark.anyio
 async def test_api_private_repo_endpoints():
     """Tests authenticated repo listing, project creation, IDOR rejection, and 503 handling."""
-    mock_user = User(id=uuid.uuid4(), email="dev@example.com")
+    mock_user = User(id=uuid.uuid4(), email="dev@example.com", github_username="dev")
     saved_overrides = dict(app.dependency_overrides)
     try:
         app.dependency_overrides[get_current_user] = lambda: mock_user

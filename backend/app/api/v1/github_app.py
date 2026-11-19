@@ -51,7 +51,6 @@ async def _authorize_installation(user: User, installation_id: int) -> Dict[str,
 
     target_type = account.get("type", "User")
     account_login = account.get("login", "").lower()
-    user_handle = user.email.split("@")[0].lower()
 
     if target_type != "User":
         logger.warning(
@@ -68,16 +67,15 @@ async def _authorize_installation(user: User, installation_id: int) -> Dict[str,
             ),
         )
 
-    if (
-        account_login
-        and user_handle != account_login
-        and account_login not in user.email.lower()
-    ):
+    user_github = (getattr(user, "github_username", None) or "").strip().lower()
+
+    if not user_github or user_github != account_login:
         logger.warning(
             "unauthorized_installation_access_attempt",
             user_id=str(user.id),
             installation_id=installation_id,
             account_login=account_login,
+            user_github=user_github,
         )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

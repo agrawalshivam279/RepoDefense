@@ -63,12 +63,23 @@ def decode_access_token(token: str) -> TokenPayload:
             headers={"WWW-Authenticate": "Bearer"},
         ) from err
 
+    user_metadata = payload.get("user_metadata") or {}
+    app_metadata = payload.get("app_metadata") or {}
+    github_user = (
+        user_metadata.get("user_name")
+        or user_metadata.get("preferred_username")
+        or payload.get("preferred_username")
+    )
+
     return TokenPayload(
         sub=user_uuid,
         email=email,
+        github_username=github_user,
         exp=payload.get("exp", 0),
         aud=payload.get("aud"),
         role=payload.get("role"),
+        user_metadata=user_metadata,
+        app_metadata=app_metadata,
     )
 
 
@@ -102,14 +113,29 @@ async def get_current_user(
 
         if existing_by_email is not None:
             user = existing_by_email
+            if token_payload.github_username and not user.github_username:
+                user.github_username = token_payload.github_username
+                await db.commit()
+                await db.refresh(user)
         else:
-            user = User(id=token_payload.sub, email=token_payload.email)
+            user = User(
+                id=token_payload.sub,
+                email=token_payload.email,
+                github_username=token_payload.github_username,
+            )
             db.add(user)
             await db.commit()
             await db.refresh(user)
-    elif user.email != token_payload.email:
-        user.email = token_payload.email
-        await db.commit()
-        await db.refresh(user)
+    else:
+        updated = False
+        if user.email != token_payload.email:
+            user.email = token_payload.email
+            updated = True
+        if token_payload.github_username and user.github_username != token_payload.github_username:
+            user.github_username = token_payload.github_username
+            updated = True
+        if updated:
+            await db.commit()
+            await db.refresh(user)
 
     return user
