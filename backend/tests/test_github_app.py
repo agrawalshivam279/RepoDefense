@@ -264,5 +264,15 @@ async def test_api_private_repo_endpoints():
             with patch_stranger:
                 unauth_resp = await ac.get("/api/v1/github-app/installations/999/repositories")
                 assert unauth_resp.status_code == 403
+
+            # 5. Organization installation rejection without verified binding
+            patch_org = patch(
+                "app.api.v1.github_app.get_installation_account",
+                new_callable=AsyncMock,
+                return_value={"login": "corp", "type": "Organization"},
+            )
+            with patch_org:
+                org_resp = await ac.get("/api/v1/github-app/installations/888/repositories")
+                assert org_resp.status_code == 403
     finally:
         app.dependency_overrides = saved_overrides

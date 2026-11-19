@@ -53,9 +53,23 @@ async def _authorize_installation(user: User, installation_id: int) -> Dict[str,
     account_login = account.get("login", "").lower()
     user_handle = user.email.split("@")[0].lower()
 
+    if target_type != "User":
+        logger.warning(
+            "unsupported_organization_installation_attempt",
+            user_id=str(user.id),
+            installation_id=installation_id,
+            target_type=target_type,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "Organization GitHub installations require verified membership "
+                "binding and are not supported."
+            ),
+        )
+
     if (
-        target_type == "User"
-        and account_login
+        account_login
         and user_handle != account_login
         and account_login not in user.email.lower()
     ):
