@@ -84,7 +84,9 @@ def decode_access_token(token: str) -> TokenPayload:
         )
     app_metadata = app_metadata or {}
 
-    # Only accept server-verified claims from app_metadata (never editable user_metadata)
+    # Server-verified claims from app_metadata (populated by Supabase Custom
+    # Access Token Auth Hook or SQL trigger from auth.identities upon OAuth login;
+    # client-editable user_metadata is excluded to prevent authorization spoofing).
     raw_github_user = (
         app_metadata.get("github_username")
         or app_metadata.get("user_name")

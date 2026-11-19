@@ -167,7 +167,7 @@ async def test_auth_me_existing_user():
 
 @pytest.mark.anyio
 async def test_auth_server_verified_github_binding_and_spoof_prevention():
-    """Verifies that github_username is bound from app_metadata and user_metadata spoofing fails."""
+    """Verifies that github_username is bound from app_metadata and rebinding is rejected."""
     user_id = uuid.uuid4()
     email = f"binding_{uuid.uuid4().hex[:6]}@repodefense.dev"
 
@@ -199,19 +199,39 @@ async def test_auth_server_verified_github_binding_and_spoof_prevention():
         assert resp.status_code == 200
         assert resp.json()["github_username"] == "verified-dev"
 
-    # 3. Malformed non-string claim in app_metadata is rejected with HTTP 401
+    # 3. Attempt to rebind already bound handle with different token value is rejected
+    rebind_token = create_test_jwt(
+        user_id, email, app_metadata={"github_username": "malicious-takeover"}
+    )
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        rebind_resp = await ac.get(
+            "/api/v1/auth/me",
+            headers={"Authorization": f"Bearer {rebind_token}"},
+        )
+        assert rebind_resp.status_code == 200
+        assert rebind_resp.json()["github_username"] == "verified-dev"
+
+    # Verify persisted User.github_username remains unchanged in PostgreSQL
+    async with AsyncSessionLocal() as session:
+        user_in_db = await session.get(User, user_id)
+        assert user_in_db is not None
+        assert user_in_db.github_username == "verified-dev"
+
+    # 4. Malformed non-string claim in app_metadata is rejected with HTTP 401
     bad_token = create_test_jwt(
         user_id, email, app_metadata={"github_username": ["invalid_list"]}
     )
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as ac:
-        resp = await ac.get(
+        bad_resp = await ac.get(
             "/api/v1/auth/me",
             headers={"Authorization": f"Bearer {bad_token}"},
         )
-        assert resp.status_code == 401
-        assert "Malformed" in resp.json()["detail"]
+        assert bad_resp.status_code == 401
+        assert "Malformed" in bad_resp.json()["detail"]
 
     # Clean up test user
     async with AsyncSessionLocal() as session:
