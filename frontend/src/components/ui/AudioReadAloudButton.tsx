@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { useSpeechSynthesis } from "@/hooks/useSpeechSynthesis";
 import { Volume2, Square } from "lucide-react";
 
@@ -17,6 +18,16 @@ export function AudioReadAloudButton({
   label,
 }: AudioReadAloudButtonProps) {
   const { isSpeaking, isSupported, speak, stop } = useSpeechSynthesis();
+  const prevTextRef = useRef(text);
+
+  useEffect(() => {
+    if (prevTextRef.current !== text) {
+      prevTextRef.current = text;
+      if (isSpeaking) {
+        stop();
+      }
+    }
+  }, [text, isSpeaking, stop]);
 
   if (!isSupported || !text.trim()) {
     return null;

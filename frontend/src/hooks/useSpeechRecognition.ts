@@ -5,18 +5,19 @@ import {
   getSpeechRecognitionConstructor,
   isSpeechRecognitionSupported,
   mapSpeechErrorToMessage,
-  normalizeTranscript,
 } from "@/lib/voice";
 import { announce } from "@/lib/accessibility";
 import type { VoiceRecognitionStatus } from "@/types/voice";
 
 interface UseSpeechRecognitionOptions {
   lang?: string;
+  disabled?: boolean;
   onFinalTranscript?: (text: string) => void;
 }
 
 export function useSpeechRecognition({
   lang = "en-US",
+  disabled = false,
   onFinalTranscript,
 }: UseSpeechRecognitionOptions = {}) {
   const [status, setStatus] = useState<VoiceRecognitionStatus>("idle");
@@ -28,23 +29,34 @@ export function useSpeechRecognition({
   const onFinalRef = useRef(onFinalTranscript);
   onFinalRef.current = onFinalTranscript;
 
-  const isSupported = typeof window !== "undefined" && isSpeechRecognitionSupported();
+  const isSupported =
+    typeof window !== "undefined" && isSpeechRecognitionSupported();
 
   const stopListening = useCallback(() => {
     isManuallyStoppedRef.current = true;
     if (recognitionRef.current) {
       try {
-        recognitionRef.current.stop();
+        recognitionRef.current.abort();
       } catch {
         // ignore already stopped error
       }
+      recognitionRef.current = null;
     }
     setStatus("idle");
     setInterimTranscript("");
     announce("Voice input stopped", "polite");
   }, []);
 
+  // When disabled changes to true (e.g. form submission starts), end recording immediately
+  useEffect(() => {
+    if (disabled && (status === "listening" || status === "processing")) {
+      stopListening();
+    }
+  }, [disabled, status, stopListening]);
+
   const startListening = useCallback(() => {
+    if (disabled) return;
+
     if (!isSupported) {
       setStatus("unsupported");
       setErrorMessage("Speech recognition is not supported in this browser.");
@@ -57,13 +69,13 @@ export function useSpeechRecognition({
       return;
     }
 
-    // Stop existing instance if running
     if (recognitionRef.current) {
       try {
         recognitionRef.current.abort();
       } catch {
         // ignore abort error
       }
+      recognitionRef.current = null;
     }
 
     setErrorMessage(null);
@@ -77,11 +89,23 @@ export function useSpeechRecognition({
       recognition.lang = lang;
 
       recognition.onstart = () => {
+        if (isManuallyStoppedRef.current) {
+          try {
+            recognition.abort();
+          } catch {
+            // ignore
+          }
+          return;
+        }
         setStatus("listening");
         announce("Microphone active. Listening...", "polite");
       };
 
       recognition.onresult = (event: any) => {
+        if (isManuallyStoppedRef.current) {
+          return; // Ignore any late results after stopping
+        }
+
         let interim = "";
         let finalSentence = "";
 
@@ -96,14 +120,14 @@ export function useSpeechRecognition({
 
         setInterimTranscript(interim);
 
-        if (finalSentence && onFinalRef.current) {
+        if (finalSentence && onFinalRef.current && !isManuallyStoppedRef.current) {
           onFinalRef.current(finalSentence);
         }
       };
 
       recognition.onerror = (event: any) => {
         const errorType = event.error || "unknown";
-        if (errorType === "aborted" && isManuallyStoppedRef.current) {
+        if (errorType === "aborted" || isManuallyStoppedRef.current) {
           return;
         }
         const errorInfo = mapSpeechErrorToMessage(errorType);
@@ -115,27 +139,28 @@ export function useSpeechRecognition({
       recognition.onend = () => {
         setInterimTranscript("");
         if (!isManuallyStoppedRef.current && status === "listening") {
-          // If browser terminated session unexpectedly, return to idle
           setStatus("idle");
         }
       };
 
       recognitionRef.current = recognition;
       recognition.start();
-    } catch (err: any) {
+    } catch {
       setStatus("error");
       setErrorMessage("Could not start microphone. Please check permissions.");
     }
-  }, [isSupported, lang, status]);
+  }, [disabled, isSupported, lang, status]);
 
   useEffect(() => {
     return () => {
+      isManuallyStoppedRef.current = true;
       if (recognitionRef.current) {
         try {
           recognitionRef.current.abort();
         } catch {
           // ignore cleanup error
         }
+        recognitionRef.current = null;
       }
     };
   }, []);

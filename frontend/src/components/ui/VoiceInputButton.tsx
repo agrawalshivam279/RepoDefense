@@ -23,6 +23,7 @@ export function VoiceInputButton({
     stopListening,
     clearError,
   } = useSpeechRecognition({
+    disabled,
     onFinalTranscript: (sentence) => {
       onTranscript(sentence);
     },

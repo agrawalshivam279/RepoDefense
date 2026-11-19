@@ -17,6 +17,7 @@ interface SpeakOptions {
 export function useSpeechSynthesis() {
   const [status, setStatus] = useState<VoiceSynthesisStatus>("idle");
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const currentUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   const isSupported =
     typeof window !== "undefined" && isSpeechSynthesisSupported();
@@ -39,25 +40,30 @@ export function useSpeechSynthesis() {
     };
 
     loadVoices();
-    if (typeof window.speechSynthesis.onvoiceschanged !== "undefined") {
-      window.speechSynthesis.onvoiceschanged = loadVoices;
-    }
+    window.speechSynthesis.addEventListener("voiceschanged", loadVoices);
 
     return () => {
-      try {
-        window.speechSynthesis.cancel();
-      } catch {
-        // ignore cleanup error
+      window.speechSynthesis.removeEventListener("voiceschanged", loadVoices);
+      if (currentUtteranceRef.current) {
+        try {
+          window.speechSynthesis.cancel();
+        } catch {
+          // ignore
+        }
+        currentUtteranceRef.current = null;
       }
     };
   }, [isSupported]);
 
   const stop = useCallback(() => {
     if (!isSupported) return;
-    try {
-      window.speechSynthesis.cancel();
-    } catch {
-      // ignore
+    if (currentUtteranceRef.current) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch {
+        // ignore
+      }
+      currentUtteranceRef.current = null;
     }
     setStatus("idle");
     announce("Audio playback stopped", "polite");
@@ -71,10 +77,15 @@ export function useSpeechSynthesis() {
       if (!trimmed) return;
 
       try {
-        // Cancel any active speech before starting new
+        // Resume synthesis engine before cancelling/starting fresh so paused state is not retained
+        if (window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
         window.speechSynthesis.cancel();
 
         const utterance = new SpeechSynthesisUtterance(trimmed);
+        currentUtteranceRef.current = utterance;
+
         const persona = options.persona || "principal";
         const selectedVoice = selectPersonaVoice(voices, persona);
 
@@ -82,9 +93,6 @@ export function useSpeechSynthesis() {
           utterance.voice = selectedVoice;
         }
 
-        // Persona default presets:
-        // Principal: slightly slower (0.95), neutral pitch (0.95) for authoritative tone
-        // Mentor: standard rate (1.0), slightly higher pitch (1.05) for warm encouragement
         const defaultRate = persona === "principal" ? 0.95 : 1.0;
         const defaultPitch = persona === "principal" ? 0.95 : 1.05;
 
@@ -92,20 +100,29 @@ export function useSpeechSynthesis() {
         utterance.pitch = options.pitch ?? defaultPitch;
 
         utterance.onstart = () => {
-          setStatus("speaking");
-          announce("Audio playback started", "polite");
+          if (currentUtteranceRef.current === utterance) {
+            setStatus("speaking");
+            announce("Audio playback started", "polite");
+          }
         };
 
         utterance.onend = () => {
-          setStatus("idle");
+          if (currentUtteranceRef.current === utterance) {
+            currentUtteranceRef.current = null;
+            setStatus("idle");
+          }
         };
 
         utterance.onerror = () => {
-          setStatus("idle");
+          if (currentUtteranceRef.current === utterance) {
+            currentUtteranceRef.current = null;
+            setStatus("idle");
+          }
         };
 
         window.speechSynthesis.speak(utterance);
       } catch {
+        currentUtteranceRef.current = null;
         setStatus("idle");
       }
     },
