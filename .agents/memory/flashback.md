@@ -46,7 +46,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **Incident Simulation & War Room** | SRE Chaos Engine + Next.js 15 War Room UI | 🟢 Milestone 3.4 Complete (Steps 3.4a & 3.4b) |
 | **Stress Test / What-If Mode** | Scaling Scenario Generator & Next.js 15 Arena UI | 🟢 Milestone 3.5 Complete (Steps 3.5a & 3.5b) |
 | **IDE Code Viewer** | Monaco / Prism code viewer with AST evidence highlights | ⚪ Phase 4 Planned |
-| **Evaluation & Export** | Public Verification Service + Dynamic SVG Badges + Rubrics | 🟡 In Progress (Step 5.1a Complete) |
+| **Evaluation & Export** | Public Verification Service + Dynamic SVG Badges + Rubrics | 🟢 Milestone 5.1 Complete (Steps 5.1a & 5.1b Complete) |
 
 ---
 
@@ -139,11 +139,16 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **Phase 2** | Differentiation (Claims Extraction, Verification, Adaptive Questioning, Pushback Logic, Coverage Tracking, Ownership Engine, Architecture Audit, Mermaid Diagrams, Tech Audit, Enhanced Report) | 🟢 Complete (Milestones 2.1 - 2.12 Complete) |
 | **Phase 3** | The State Machine & Advanced Defense (PR Fetch & Diff Defense, Stress Testing, Incident Simulation, Architecture Defense, Bounded Simulation Stores & Unified Simulation Arena Hub) | 🟢 Complete (Milestones 3.1 - 3.8 Complete) |
 | **Phase 4** | Learning Loop & Weakness Tracking (UserSkill Models, Weakness Tracker, Mentor Mode, Targeted Re-Testing, Skill Gap Analysis, Learning Hub) | 🟢 Complete (Milestones 4.1 - 4.7 Complete) |
-| **Phase 5** | Evaluation & Export (Rubric Scoring, Transcript Generation, PDF & Badge Export) | 🟡 In Progress (Step 5.1a Complete) |
+| **Phase 5** | Evaluation & Export (Rubric Scoring, Transcript Generation, PDF & Badge Export) | 🟢 Milestone 5.1 Complete (Steps 5.1a & 5.1b Complete) |
 
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-11-19] — Step 5.1b: Next.js 15 Public Defense Verification Portal, Embeddable Badge Dialog & Shareable Report UI
+- **Scope / Module**: Frontend Public Verification Portal & Embeddable Badge Dialog (`frontend/src/types/publicReport.ts`, `frontend/src/lib/publicReportApi.ts`, `frontend/src/lib/__tests__/publicReportApi.test.ts`, `frontend/src/components/domain/ShareBadgeModal.tsx`, `frontend/src/app/verify/[token]/page.tsx`, `frontend/src/app/report/[id]/page.tsx`, `docs/specs/step-5-1b-public-defense-portal.md`)
+- **Details**: Designed and implemented the complete candidate-facing and recruiter-facing public verification portal and dynamic badge sharing modal in Next.js 15 App Router concluding Milestone 5.1 (Shareable Defense Reports & Resume Badges). Defined TypeScript contracts in `types/publicReport.ts` for public reports, categories, and share tokens. Implemented typed REST client in `lib/publicReportApi.ts` supporting unauthenticated public report fetching, authenticated token creation with duration options (30d, 90d, 365d, never), info inspection, and link revocation, verified via 5/5 unit tests in `publicReportApi.test.ts` (47/47 passing across suite). Built `ShareBadgeModal.tsx` on the debrief page featuring live vector SVG badge preview, one-click copy buttons for Web verification URL, Markdown badge (for GitHub READMEs), and HTML badge (for personal portfolios), plus revocation controls. Authored recruiter-facing public verification portal at `/verify/[token]` with responsive design, tier certification badge (Principal Emerald, Architect Sky, Remediation Amber), overall score dial, verified commit hash, architecture pattern, tech health score, category competency cards, key strengths list, and tamper-proof verification seal. Handled 404/410 error recovery gracefully. Integrated "Share & Badge" button into `/report/[id]` debrief header. Verified 100% via `npm run typecheck` (0 errors), Next.js 15 production build (`next build`, all 26 routes compiled cleanly), zero arbitrary code execution, and strict <= 300 LOC limit across all files. Concludes Milestone 5.1.
+- **Key Files**: `frontend/src/types/publicReport.ts`, `frontend/src/lib/publicReportApi.ts`, `frontend/src/lib/__tests__/publicReportApi.test.ts`, `frontend/src/components/domain/ShareBadgeModal.tsx`, `frontend/src/app/verify/[token]/page.tsx`, `frontend/src/app/report/[id]/page.tsx`, `docs/specs/step-5-1b-public-defense-portal.md`
 
 ### [2026-11-19] — Step 5.1a: Backend Public Defense Reports, Cryptographic Verification Tokens & Dynamic SVG Resume Badges
 - **Scope / Module**: Backend Public Reports & SVG Badge Engine (`backend/app/schemas/public_report.py`, `backend/app/services/public_report.py`, `backend/app/api/v1/public_reports.py`, `backend/app/main.py`, `backend/tests/test_public_reports.py`, `docs/specs/step-5-1a-public-defense-reports.md`)

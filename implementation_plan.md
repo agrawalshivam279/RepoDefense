@@ -596,7 +596,7 @@ gantt
 - **Goal:** Public links for verified defense scores and dynamic embeddable SVG resume badges.
 - **Sub-tasks:**
   - [x] **Step 5.1a: Backend Public Report Verification Engine, Cryptographic Share Token & Dynamic SVG Resume Badge REST API** (schemas/public_report.py, services/public_report.py, api/v1/public_reports.py, main.py, tests/test_public_reports.py)
-  - [ ] **Step 5.1b: Next.js 15 Public Defense Verification Portal, Embeddable Badge Dialog & Shareable Report UI** (types/publicReport.ts, lib/publicReportApi.ts, PublicReportView.tsx, ShareBadgeModal.tsx, app/verify/[token]/page.tsx)
+  - [x] **Step 5.1b: Next.js 15 Public Defense Verification Portal, Embeddable Badge Dialog & Shareable Report UI** (types/publicReport.ts, lib/publicReportApi.ts, ShareBadgeModal.tsx, app/verify/[token]/page.tsx, report/[id]/page.tsx integration, 5/5 tests passing)
 - **Components:** Cryptographic token generation, public-safe report sanitization, SVG badge generator, and public verification portal.
 - **Dependencies:** 2.11, 4.7
 
