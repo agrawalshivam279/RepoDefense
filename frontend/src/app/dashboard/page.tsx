@@ -29,10 +29,10 @@ export default function DashboardPage() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
-      const instId = params.get('installation_id');
-      if (instId) {
-        const parsed = parseInt(instId, 10);
-        if (!isNaN(parsed) && parsed > 0) {
+      const rawInstId = params.get('installation_id')?.trim();
+      if (rawInstId && /^\d{1,18}$/.test(rawInstId)) {
+        const parsed = Number(rawInstId);
+        if (Number.isSafeInteger(parsed) && parsed > 0) {
           setInitialInstallationId(parsed);
           setIsModalOpen(true);
         }

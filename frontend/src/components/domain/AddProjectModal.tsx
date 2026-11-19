@@ -120,7 +120,9 @@ export function AddProjectModal({
       <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-lg w-full p-6 text-slate-100 shadow-2xl relative">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-slate-500 hover:text-slate-300 p-1 rounded-lg transition-colors"
+          disabled={loading}
+          aria-label="Close dialog"
+          className="absolute top-4 right-4 text-slate-500 hover:text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed p-1 rounded-lg transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
@@ -141,8 +143,9 @@ export function AddProjectModal({
         <div className="flex border-b border-slate-800 mb-5">
           <button
             type="button"
+            disabled={loading}
             onClick={() => setActiveTab("public")}
-            className={`pb-2.5 px-3 text-xs font-semibold border-b-2 transition-colors ${
+            className={`pb-2.5 px-3 text-xs font-semibold border-b-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
               activeTab === "public"
                 ? "border-emerald-400 text-emerald-400"
                 : "border-transparent text-slate-400 hover:text-slate-200"
@@ -152,8 +155,9 @@ export function AddProjectModal({
           </button>
           <button
             type="button"
+            disabled={loading}
             onClick={() => setActiveTab("private")}
-            className={`pb-2.5 px-3 text-xs font-semibold border-b-2 transition-colors flex items-center gap-1.5 ${
+            className={`pb-2.5 px-3 text-xs font-semibold border-b-2 transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed ${
               activeTab === "private"
                 ? "border-emerald-400 text-emerald-400"
                 : "border-transparent text-slate-400 hover:text-slate-200"

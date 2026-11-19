@@ -6,6 +6,19 @@ import type {
 } from "@/types/githubApp";
 import type { Project } from "@/types/project";
 
+interface ApiErrorPayload {
+  detail?: string | Record<string, unknown> | Array<unknown>;
+}
+
+function parseApiErrorMessage(data: unknown, fallback: string): string {
+  if (data && typeof data === "object" && "detail" in data) {
+    const detail = (data as ApiErrorPayload).detail;
+    if (typeof detail === "string") return detail;
+    if (detail) return JSON.stringify(detail);
+  }
+  return fallback;
+}
+
 const getApiBaseUrl = (): string => {
   return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 };
@@ -50,15 +63,18 @@ export async function fetchInstallationRepositories(
   });
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => null);
-    const detail = errorData?.detail || `Request failed with status ${response.status}`;
+    const errorData: unknown = await response.json().catch(() => null);
+    const detail = parseApiErrorMessage(
+      errorData,
+      `Request failed with status ${response.status}`
+    );
     if (response.status === 403) {
       throw new Error(`Access Denied: ${detail}`);
     }
     if (response.status === 404) {
       throw new Error(`Installation #${installationId} not found or inaccessible.`);
     }
-    throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
+    throw new Error(detail);
   }
 
   return response.json();
@@ -84,8 +100,11 @@ export async function createPrivateRepoProject(
   });
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => null);
-    const detail = errorData?.detail || `Failed to register project (status ${response.status})`;
+    const errorData: unknown = await response.json().catch(() => null);
+    const detail = parseApiErrorMessage(
+      errorData,
+      `Failed to register project (status ${response.status})`
+    );
 
     if (response.status === 409) {
       throw new Error("This repository is already registered in your projects.");
@@ -96,7 +115,7 @@ export async function createPrivateRepoProject(
     if (response.status === 503) {
       throw new Error("Cloning worker queue is currently offline. Please try again shortly.");
     }
-    throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
+    throw new Error(detail);
   }
 
   return response.json();
