@@ -3,6 +3,8 @@ import Link from "next/link";
 import "./globals.css";
 import { AuthStatus } from "@/components/domain/AuthStatus";
 import { SystemHealthBadge } from "@/components/domain/SystemHealthBadge";
+import { LiveAnnouncer } from "@/components/ui/LiveAnnouncer";
+import { SkipToContent } from "@/components/ui/SkipToContent";
 
 export const metadata: Metadata = {
   title: "RepoDefense | Architectural Stress-Testing for Codebases",
@@ -18,7 +20,9 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className="antialiased bg-[#0b0f19] text-slate-100 min-h-screen flex flex-col font-sans selection:bg-emerald-500/20 selection:text-emerald-300">
-        <header className="border-b border-slate-800/80 bg-[#0b0f19]/90 backdrop-blur-md sticky top-0 z-50">
+        <SkipToContent />
+        <LiveAnnouncer />
+        <header aria-label="Global Navigation" className="border-b border-slate-800/80 bg-[#0b0f19]/90 backdrop-blur-md sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <Link href="/" className="flex items-center gap-3 group">
               <span className="h-8 w-8 rounded-lg bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center font-black text-emerald-400 text-sm shadow-lg shadow-emerald-500/10 group-hover:border-emerald-500/50 transition-colors">
@@ -72,7 +76,7 @@ export default function RootLayout({
           </div>
         </header>
 
-        <main className="flex-1">{children}</main>
+        <main id="main-content" tabIndex={-1} className="flex-1 focus:outline-none">{children}</main>
 
         <footer className="border-t border-slate-800/80 bg-slate-950/60 py-10 text-xs text-slate-500">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-6">
