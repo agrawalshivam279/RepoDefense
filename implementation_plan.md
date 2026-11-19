@@ -602,6 +602,11 @@ gantt
 
 ### Milestone 5.2: GitHub OAuth App
 - **Goal:** Dedicated GitHub App integration for private repo access.
+- **Sub-tasks:**
+  - [x] **Step 5.2a: Backend GitHub App Installation Webhook, Private Repo Token Exchange & Ingestion Router** (schemas/github_app.py, services/github_app.py, api/v1/github_app.py, models/project.py installation_id, migration 5d9e2f3a4b5c, tests/test_github_app.py)
+  - [ ] **Step 5.2b: Next.js 15 GitHub App Installation Flow & Private Repository Selector UI** (types/githubApp.ts, lib/githubAppApi.ts, GitHubAppRepoSelector.tsx, dashboard integration)
+- **Components:** Webhook HMAC SHA-256 verifier, RS256 App JWT generator, scoped installation access token exchanger, credential redactor, private project registration API.
+- **Dependencies:** 1.4, 1.5
 
 ### Milestone 5.3: Enhanced Onboarding
 - **Goal:** Tooltips, tours, and empty states.

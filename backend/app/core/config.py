@@ -85,6 +85,32 @@ class Settings(BaseSettings):
         description="Maximum retry attempts on transient LLM failures",
     )
 
+    # GitHub App Settings for Private Repository Integration
+    GITHUB_APP_ID: str = Field(
+        default="",
+        description="GitHub App numeric ID for private repo authentication",
+    )
+    GITHUB_APP_PRIVATE_KEY: str = Field(
+        default="",
+        description="GitHub App RS256 private key PEM string (or base64 encoded)",
+    )
+    GITHUB_APP_WEBHOOK_SECRET: str = Field(
+        default="",
+        description="HMAC SHA-256 secret for verifying GitHub App webhooks",
+    )
+    GITHUB_APP_CLIENT_ID: str = Field(
+        default="",
+        description="GitHub App OAuth Client ID",
+    )
+    GITHUB_APP_CLIENT_SECRET: str = Field(
+        default="",
+        description="GitHub App OAuth Client Secret",
+    )
+    GITHUB_APP_SLUG: str = Field(
+        default="repodefense-app",
+        description="GitHub App URL slug for installation flow",
+    )
+
 
 settings = Settings()
 
