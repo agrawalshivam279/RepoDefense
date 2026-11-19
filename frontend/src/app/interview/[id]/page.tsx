@@ -4,18 +4,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
-  AlertCircle,
-  ArrowLeft,
-  Award,
-  CheckCircle2,
-  FileCode,
-  Loader2,
-  Send,
-  Shield,
-  Sparkles,
+  AlertCircle, ArrowLeft, Award, CheckCircle2,
+  FileCode, Loader2, Send, Shield, Sparkles,
 } from "lucide-react";
 
 import { DefenseTurnBubble } from "@/components/domain/DefenseTurnBubble";
+import { VoiceInputButton } from "@/components/ui/VoiceInputButton";
+import { AudioReadAloudButton } from "@/components/ui/AudioReadAloudButton";
+import { normalizeTranscript } from "@/lib/voice";
 import { EvidencePanel } from "@/components/domain/EvidencePanel";
 import { getProjectEvidence, startDefenseSession, submitDefenseAnswer } from "@/lib/defenseApi";
 import { supabase } from "@/lib/supabase";
@@ -64,9 +60,26 @@ export default function DefenseInterviewPage() {
   useEffect(() => { initSession(); }, [initSession]);
   useEffect(() => { scrollToBottom(); }, [session?.turns]);
 
+  const handleVoiceTranscript = (text: string) => {
+    setAnswer((prev) => {
+      const merged = normalizeTranscript(prev, text);
+      if ([...merged.trim()].length > 5000) {
+        setError("Answer exceeds the maximum length of 5,000 characters.");
+        return prev;
+      }
+      setError(null);
+      return merged;
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!session || submitting || answer.trim().length < 5) return;
+    const trimmed = answer.trim();
+    if (!session || submitting || trimmed.length < 5) return;
+    if ([...trimmed].length > 5000) {
+      setError("Answer exceeds the maximum length of 5,000 characters.");
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
@@ -166,7 +179,10 @@ export default function DefenseInterviewPage() {
               <span>Inspect {activeQuestion.cited_evidence_ids.length} Anchors</span>
             </button>
           </div>
-          <h2 className="text-sm sm:text-base font-semibold text-slate-100 leading-snug">{activeQuestion.question_text}</h2>
+          <div className="flex items-start justify-between gap-3">
+            <h2 className="text-sm sm:text-base font-semibold text-slate-100 leading-snug">{activeQuestion.question_text}</h2>
+            <AudioReadAloudButton key={activeQuestion.id || activeQuestion.question_text} text={activeQuestion.question_text} persona="principal" />
+          </div>
           <p className="text-xs text-slate-400 font-mono italic">Grounding Anchor: {activeQuestion.context_hint}</p>
         </div>
       )}
@@ -239,7 +255,10 @@ export default function DefenseInterviewPage() {
               className="w-full resize-none bg-transparent p-4 text-sm text-slate-100 placeholder-slate-500 focus:outline-none"
             />
             <div className="flex items-center justify-between border-t border-slate-800/80 px-4 py-2 text-xs font-mono text-slate-500">
-              <span>{answer.length} / 5000 chars (min 5)</span>
+              <div className="flex items-center gap-3">
+                <VoiceInputButton onTranscript={handleVoiceTranscript} disabled={submitting} />
+                <span>{answer.length} / 5000 chars (min 5)</span>
+              </div>
               <button
                 type="submit"
                 disabled={submitting || answer.trim().length < 5}

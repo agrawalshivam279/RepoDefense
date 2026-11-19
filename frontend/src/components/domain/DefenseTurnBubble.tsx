@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertTriangle, Award, Bot, FileCode, Lightbulb, ShieldAlert, User } from "lucide-react";
+import { AudioReadAloudButton } from "@/components/ui/AudioReadAloudButton";
 import type { DefenseTurn } from "@/types/defense";
 
 interface DefenseTurnBubbleProps {
@@ -55,6 +56,10 @@ export function DefenseTurnBubble({ turn }: DefenseTurnBubbleProps) {
             <span className="text-slate-500">
               {new Date(turn.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
             </span>
+            <AudioReadAloudButton
+              text={turn.content}
+              persona={isMentor ? "mentor" : "principal"}
+            />
           </>
         )}
       </div>
