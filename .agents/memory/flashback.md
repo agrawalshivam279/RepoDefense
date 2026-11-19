@@ -3,7 +3,7 @@
 > **Product**: RepoDefense  
 > **Tagline**: "Prove that you understand — and can defend — the software you built."  
 > **Core Loop**: Evidence → Claim → Defense → Stress Test → Evaluation → Mentor → Re-test  
-> **Status**: 🟢 Phase 1, 2, 3 & 4 Complete — Phase 5 Ready  
+> **Status**: 🟢 Phase 1, 2, 3, 4 & 5 Complete  
 > **Last Synchronized**: 2026-11-20  
 
 ---
@@ -50,6 +50,7 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **GitHub App & Private Repos** | Webhook HMAC Verifier + App JWT + Installation Token Exchanger + Selector UI | 🟢 Milestone 5.2 Complete (Steps 5.2a & 5.2b Complete) |
 | **Enhanced Onboarding** | Spotlight Halo Tour + Contextual Tooltips + Zero-Data Empty States | 🟢 Milestone 5.3 Complete |
 | **Accessibility (WCAG 2.1 AA)** | Live Announcer Queue + WCAG Contrast Helpers + Skip Links + Reduced Motion | 🟢 Milestone 5.4 Complete |
+| **Voice Interaction** | Browser-Native Web Speech API (STT Voice Dictation + TTS Persona Playback) | 🟢 Milestone 5.5 Complete |
 
 ---
 
@@ -149,11 +150,16 @@ RepoDefense is a structured, AI-driven technical interview simulation platform t
 | **Phase 2** | Differentiation (Claims Extraction, Verification, Adaptive Questioning, Pushback Logic, Coverage Tracking, Ownership Engine, Architecture Audit, Mermaid Diagrams, Tech Audit, Enhanced Report) | 🟢 Complete (Milestones 2.1 - 2.12 Complete) |
 | **Phase 3** | The State Machine & Advanced Defense (PR Fetch & Diff Defense, Stress Testing, Incident Simulation, Architecture Defense, Bounded Simulation Stores & Unified Simulation Arena Hub) | 🟢 Complete (Milestones 3.1 - 3.8 Complete) |
 | **Phase 4** | Learning Loop & Weakness Tracking (UserSkill Models, Weakness Tracker, Mentor Mode, Targeted Re-Testing, Skill Gap Analysis, Learning Hub) | 🟢 Complete (Milestones 4.1 - 4.7 Complete) |
-| **Phase 5** | Polish / Optional (Public Defense Reports, Resume Badges, Dedicated GitHub App for Private Repos, Onboarding Tours & Empty States, WCAG 2.1 AA Accessibility) | 🟢 Milestone 5.1, 5.2, 5.3 & 5.4 Complete |
+| **Phase 5** | Polish / Optional (Public Defense Reports, Resume Badges, Dedicated GitHub App for Private Repos, Onboarding Tours & Empty States, WCAG 2.1 AA Accessibility, Web Speech Voice Interaction) | 🟢 Complete (Milestones 5.1 - 5.5 Complete) |
 
 ---
 
 ## 4. Chronological Activity & Change Log
+
+### [2026-11-20] — Milestone 5.5: Web Speech API Voice Dictation & Text-to-Speech Oral Defense
+- **Scope / Module**: Frontend Voice Interaction Subsystem (`frontend/src/types/voice.ts`, `frontend/src/lib/voice.ts`, `frontend/src/hooks/useSpeechRecognition.ts`, `frontend/src/hooks/useSpeechSynthesis.ts`, `frontend/src/components/ui/VoiceInputButton.tsx`, `frontend/src/components/ui/AudioReadAloudButton.tsx`, `frontend/src/components/domain/DefenseTurnBubble.tsx`, `frontend/src/app/interview/[id]/page.tsx`, `frontend/src/lib/__tests__/voice.test.ts`, `docs/specs/step-5-5-voice-interaction.md`)
+- **Details**: Designed and implemented the browser-native Voice Interaction subsystem for RepoDefense concluding Milestone 5.5 and completing Phase 5. Defined TypeScript contracts in `types/voice.ts` for recognition status, synthesis status, voice persona presets, error details, and voice settings. Authored `lib/voice.ts` offering feature detection guards (`isSpeechRecognitionSupported`, `isSpeechSynthesisSupported`), transcript normalization with sentence punctuation handling (`normalizeTranscript`), error mapping, and persona voice selection (`selectPersonaVoice` choosing authoritative voices for Principal Engineer and warm voices for Mentor). Created `useSpeechRecognition` hook featuring continuous speech recognition, interim transcript streaming, cancellation on submit to prevent late-arriving transcripts, and screen reader announcements. Created `useSpeechSynthesis` hook with persona presets, dynamic voice loading via `addEventListener("voiceschanged", ...)`, engine unpause recovery, and isolated utterance cancellation. Built `VoiceInputButton` with microphone icon, animated ping (respecting `prefers-reduced-motion`), floating interim transcript preview, error tooltip, and ARIA labels. Built `AudioReadAloudButton` with speaker playback controls and text-change invalidation. Integrated voice dictation and read-aloud buttons into `/interview/[id]` and `DefenseTurnBubble`. Authored 4 unit tests in `voice.test.ts`. Addressed all CodeRabbit review feedback. Verified 100% via `npx tsx --test` (8/8 passed across voice and accessibility suites), `npx tsc --noEmit` (0 errors), Next.js 15 production build (`next build`, 26 routes compiled cleanly), zero arbitrary code execution, and strict <= 300 LOC limit across all files. Merged into `main` via PR #93 (`1ae92e8`). Concludes Milestone 5.5 and completes Phase 5.
+- **Key Files**: `frontend/src/types/voice.ts`, `frontend/src/lib/voice.ts`, `frontend/src/hooks/useSpeechRecognition.ts`, `frontend/src/hooks/useSpeechSynthesis.ts`, `frontend/src/components/ui/VoiceInputButton.tsx`, `frontend/src/components/ui/AudioReadAloudButton.tsx`, `frontend/src/components/domain/DefenseTurnBubble.tsx`, `frontend/src/app/interview/[id]/page.tsx`, `frontend/src/lib/__tests__/voice.test.ts`, `docs/specs/step-5-5-voice-interaction.md`
 
 ### [2026-11-20] — Milestone 5.4: WCAG 2.1 AA Accessibility, Live Announcer Queue & Skip Navigation
 - **Scope / Module**: Frontend Accessibility & WCAG 2.1 AA Compliance (`frontend/src/types/accessibility.ts`, `frontend/src/lib/accessibility.ts`, `frontend/src/hooks/useAnnouncer.ts`, `frontend/src/components/ui/SkipToContent.tsx`, `frontend/src/components/ui/LiveAnnouncer.tsx`, `frontend/src/app/layout.tsx`, `frontend/src/app/globals.css`, `frontend/src/hooks/useOnboardingTour.ts`, `frontend/src/lib/__tests__/accessibility.test.ts`, `docs/specs/step-5-4-accessibility.md`)

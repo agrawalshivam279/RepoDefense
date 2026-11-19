@@ -623,7 +623,11 @@ gantt
 - **Dependencies:** 5.1, 5.2, 5.3
 
 ### Milestone 5.5: Voice Interaction (optional)
-- **Goal:** Web Speech API integration for spoken defense.
+- **Goal:** [x] Web Speech API integration for spoken defense.
+- **Sub-tasks:**
+  - [x] **Step 5.5: Web Speech API Voice Dictation & Text-to-Speech Oral Defense** (types/voice.ts, lib/voice.ts, hooks/useSpeechRecognition.ts, hooks/useSpeechSynthesis.ts, VoiceInputButton.tsx, AudioReadAloudButton.tsx, DefenseTurnBubble.tsx, interview/[id]/page.tsx, voice.test.ts)
+- **Components:** Browser-native speech recognition with continuous interim streaming and Unicode character bounds, text-to-speech synthesis with authoritative Principal Engineer and Mentor persona presets, active playback invalidation on question turn changes, and accessibility/reduced-motion integration.
+- **Dependencies:** 1.14, 5.4
 
 ## 9. AI Coding Prompt Strategy (DELIVERABLE 17)
 
