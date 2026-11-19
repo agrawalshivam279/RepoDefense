@@ -17,6 +17,8 @@ def create_test_jwt(
     expires_in_sec: int = 3600,
     secret: str = settings.SUPABASE_JWT_SECRET,
     aud: str = "authenticated",
+    app_metadata: dict | None = None,
+    user_metadata: dict | None = None,
 ) -> str:
     """Generate a test JWT token signed with the configured secret and Supabase claims."""
     now = int(time.time())
@@ -28,6 +30,10 @@ def create_test_jwt(
         "exp": now + expires_in_sec,
         "iat": now,
     }
+    if app_metadata is not None:
+        payload["app_metadata"] = app_metadata
+    if user_metadata is not None:
+        payload["user_metadata"] = user_metadata
     return jwt.encode(payload, secret, algorithm="HS256")
 
 
@@ -150,6 +156,62 @@ async def test_auth_me_existing_user():
         assert response.status_code == 200
         assert response.json()["id"] == str(user_id)
         assert response.json()["email"] == email
+
+    # Clean up test user
+    async with AsyncSessionLocal() as session:
+        user_in_db = await session.get(User, user_id)
+        if user_in_db:
+            await session.delete(user_in_db)
+            await session.commit()
+
+
+@pytest.mark.anyio
+async def test_auth_server_verified_github_binding_and_spoof_prevention():
+    """Verifies that github_username is bound from app_metadata and user_metadata spoofing fails."""
+    user_id = uuid.uuid4()
+    email = f"binding_{uuid.uuid4().hex[:6]}@repodefense.dev"
+
+    # 1. User metadata alone must NOT bind github_username
+    spoof_token = create_test_jwt(
+        user_id, email, user_metadata={"user_name": "spoofed_login"}
+    )
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        resp = await ac.get(
+            "/api/v1/auth/me",
+            headers={"Authorization": f"Bearer {spoof_token}"},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["github_username"] is None
+
+    # 2. Server-verified app_metadata properly binds github_username
+    verified_token = create_test_jwt(
+        user_id, email, app_metadata={"github_username": "verified-dev"}
+    )
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        resp = await ac.get(
+            "/api/v1/auth/me",
+            headers={"Authorization": f"Bearer {verified_token}"},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["github_username"] == "verified-dev"
+
+    # 3. Malformed non-string claim in app_metadata is rejected with HTTP 401
+    bad_token = create_test_jwt(
+        user_id, email, app_metadata={"github_username": ["invalid_list"]}
+    )
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        resp = await ac.get(
+            "/api/v1/auth/me",
+            headers={"Authorization": f"Bearer {bad_token}"},
+        )
+        assert resp.status_code == 401
+        assert "Malformed" in resp.json()["detail"]
 
     # Clean up test user
     async with AsyncSessionLocal() as session:

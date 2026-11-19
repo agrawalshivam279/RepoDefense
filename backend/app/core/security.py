@@ -1,6 +1,7 @@
 import uuid
 
 import jwt
+import structlog
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
@@ -10,6 +11,8 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.models.project import User
 from app.schemas.auth import TokenPayload
+
+logger = structlog.get_logger(__name__)
 
 security_scheme = HTTPBearer(
     auto_error=True,
@@ -63,13 +66,42 @@ def decode_access_token(token: str) -> TokenPayload:
             headers={"WWW-Authenticate": "Bearer"},
         ) from err
 
-    user_metadata = payload.get("user_metadata") or {}
-    app_metadata = payload.get("app_metadata") or {}
-    github_user = (
-        user_metadata.get("user_name")
-        or user_metadata.get("preferred_username")
-        or payload.get("preferred_username")
+    user_metadata = payload.get("user_metadata")
+    if user_metadata is not None and not isinstance(user_metadata, dict):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Malformed user_metadata claim in token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    user_metadata = user_metadata or {}
+
+    app_metadata = payload.get("app_metadata")
+    if app_metadata is not None and not isinstance(app_metadata, dict):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Malformed app_metadata claim in token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    app_metadata = app_metadata or {}
+
+    # Only accept server-verified claims from app_metadata (never editable user_metadata)
+    raw_github_user = (
+        app_metadata.get("github_username")
+        or app_metadata.get("user_name")
+        or app_metadata.get("preferred_username")
     )
+
+    github_user: str | None = None
+    if raw_github_user is not None:
+        if not isinstance(raw_github_user, str):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Malformed github_username claim in token",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        cleaned_handle = raw_github_user.strip()
+        if cleaned_handle:
+            github_user = cleaned_handle
 
     return TokenPayload(
         sub=user_uuid,
@@ -131,9 +163,20 @@ async def get_current_user(
         if user.email != token_payload.email:
             user.email = token_payload.email
             updated = True
-        if token_payload.github_username and user.github_username != token_payload.github_username:
+        if token_payload.github_username and not user.github_username:
             user.github_username = token_payload.github_username
             updated = True
+        elif (
+            token_payload.github_username
+            and user.github_username
+            and user.github_username != token_payload.github_username
+        ):
+            logger.warning(
+                "rejected_github_handle_rebinding_attempt",
+                user_id=str(user.id),
+                current_handle=user.github_username,
+                attempted_handle=token_payload.github_username,
+            )
         if updated:
             await db.commit()
             await db.refresh(user)
