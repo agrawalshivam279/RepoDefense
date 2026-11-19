@@ -16,6 +16,9 @@ import {
 } from "lucide-react";
 
 import { DefenseTurnBubble } from "@/components/domain/DefenseTurnBubble";
+import { VoiceInputButton } from "@/components/ui/VoiceInputButton";
+import { AudioReadAloudButton } from "@/components/ui/AudioReadAloudButton";
+import { normalizeTranscript } from "@/lib/voice";
 import { EvidencePanel } from "@/components/domain/EvidencePanel";
 import { getProjectEvidence, startDefenseSession, submitDefenseAnswer } from "@/lib/defenseApi";
 import { supabase } from "@/lib/supabase";
@@ -166,7 +169,10 @@ export default function DefenseInterviewPage() {
               <span>Inspect {activeQuestion.cited_evidence_ids.length} Anchors</span>
             </button>
           </div>
-          <h2 className="text-sm sm:text-base font-semibold text-slate-100 leading-snug">{activeQuestion.question_text}</h2>
+          <div className="flex items-start justify-between gap-3">
+            <h2 className="text-sm sm:text-base font-semibold text-slate-100 leading-snug">{activeQuestion.question_text}</h2>
+            <AudioReadAloudButton text={activeQuestion.question_text} persona="principal" />
+          </div>
           <p className="text-xs text-slate-400 font-mono italic">Grounding Anchor: {activeQuestion.context_hint}</p>
         </div>
       )}
@@ -239,7 +245,13 @@ export default function DefenseInterviewPage() {
               className="w-full resize-none bg-transparent p-4 text-sm text-slate-100 placeholder-slate-500 focus:outline-none"
             />
             <div className="flex items-center justify-between border-t border-slate-800/80 px-4 py-2 text-xs font-mono text-slate-500">
-              <span>{answer.length} / 5000 chars (min 5)</span>
+              <div className="flex items-center gap-3">
+                <VoiceInputButton
+                  onTranscript={(text) => setAnswer((prev) => normalizeTranscript(prev, text))}
+                  disabled={submitting}
+                />
+                <span>{answer.length} / 5000 chars (min 5)</span>
+              </div>
               <button
                 type="submit"
                 disabled={submitting || answer.trim().length < 5}
