@@ -24,6 +24,7 @@ from app.schemas.github_app import (
 from app.schemas.project import ProjectResponse
 from app.services.github_app import (
     get_github_app_status,
+    get_installation_account,
     list_installation_repositories,
     verify_webhook_signature,
 )
@@ -31,6 +32,44 @@ from app.services.github_app import (
 logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/github-app", tags=["GitHub App"])
+
+
+async def _authorize_installation(user: User, installation_id: int) -> Dict[str, Any]:
+    """Verifies that user is authorized to access the given installation ID."""
+    try:
+        account = await get_installation_account(installation_id)
+    except Exception as exc:
+        logger.warning(
+            "installation_lookup_failed",
+            installation_id=installation_id,
+            error=str(exc),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"GitHub App installation {installation_id} not found or inaccessible",
+        )
+
+    target_type = account.get("type", "User")
+    account_login = account.get("login", "").lower()
+    user_handle = user.email.split("@")[0].lower()
+
+    if (
+        target_type == "User"
+        and account_login
+        and user_handle != account_login
+        and account_login not in user.email.lower()
+    ):
+        logger.warning(
+            "unauthorized_installation_access_attempt",
+            user_id=str(user.id),
+            installation_id=installation_id,
+            account_login=account_login,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorized to access this GitHub App installation",
+        )
+    return account
 
 
 @router.get(
@@ -100,6 +139,8 @@ async def get_installation_repositories(
     current_user: User = Depends(get_current_user),
 ) -> GitHubAppRepoListResponse:
     """Fetches repositories accessible under the specified GitHub App installation."""
+    await _authorize_installation(current_user, installation_id)
+
     try:
         total, raw_repos = await list_installation_repositories(installation_id)
     except Exception as exc:
@@ -147,6 +188,27 @@ async def create_private_project(
     db: AsyncSession = Depends(get_db),
 ) -> ProjectResponse:
     """Registers a private repository accessed via GitHub App and kicks off background analysis."""
+    await _authorize_installation(current_user, payload.installation_id)
+
+    # Ensure repository is accessible under this installation
+    try:
+        _, raw_repos = await list_installation_repositories(payload.installation_id)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Failed to verify repository with GitHub App: {str(exc)}",
+        )
+
+    target_name = payload.full_name.strip().lower()
+    if not any(r["full_name"].lower() == target_name for r in raw_repos):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                f"Repository '{payload.full_name}' is not accessible by "
+                f"installation {payload.installation_id}"
+            ),
+        )
+
     repo_name = payload.full_name.split("/")[-1].strip()
     canonical_url = f"https://github.com/{payload.full_name.strip()}"
 
@@ -177,6 +239,16 @@ async def create_private_project(
     await db.commit()
     await db.refresh(project)
 
-    await enqueue_clone_job(project.id)
+    job_id = await enqueue_clone_job(project.id)
+    if not job_id:
+        await db.delete(project)
+        await db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "Background cloning service is temporarily unavailable. "
+                "Project creation cancelled; please retry."
+            ),
+        )
 
     return ProjectResponse.model_validate(project)

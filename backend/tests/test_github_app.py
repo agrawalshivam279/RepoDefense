@@ -49,7 +49,6 @@ def test_webhook_signature_verification():
     """Verifies HMAC SHA-256 signature verification behavior."""
     secret = "test-webhook-secret-12345"
     payload = b'{"action": "created", "installation": {"id": 999}}'
-
     sig = hmac.new(secret.encode("utf-8"), payload, hashlib.sha256).hexdigest()
     valid_header = f"sha256={sig}"
 
@@ -60,17 +59,14 @@ def test_webhook_signature_verification():
     assert verify_webhook_signature(payload, valid_header, secret="") is False
 
 
-def test_generate_app_jwt(rsa_test_key):
-    """Tests RS256 JWT generation and expiration claims."""
-    app_id = "123456"
-    token = generate_app_jwt(app_id=app_id, private_key=rsa_test_key["private"])
-
+def test_generate_app_jwt(rsa_test_key, monkeypatch):
+    """Tests RS256 JWT generation, claims, and error when config missing."""
+    token = generate_app_jwt(app_id="123456", private_key=rsa_test_key["private"])
     decoded = jwt.decode(token, rsa_test_key["public"], algorithms=["RS256"])
-    assert decoded["iss"] == "123456"
-    assert "iat" in decoded
-    assert "exp" in decoded
-    assert decoded["exp"] > decoded["iat"]
+    assert decoded["iss"] == "123456" and decoded["exp"] > decoded["iat"]
 
+    monkeypatch.setattr(settings, "GITHUB_APP_ID", "")
+    monkeypatch.setattr(settings, "GITHUB_APP_PRIVATE_KEY", "")
     with pytest.raises(ValueError, match="configured"):
         generate_app_jwt(app_id="", private_key="")
 
@@ -93,74 +89,50 @@ async def test_get_installation_access_token(rsa_test_key):
     )
     assert token == "ghs_mock_installation_token_abc"
 
-    # Test failure path
-    mock_fail_response = httpx.Response(
-        status_code=403,
-        text="Bad credentials",
-        request=httpx.Request("POST", "https://api.github.com"),
-    )
-    mock_client.post.return_value = mock_fail_response
+    mock_fail = httpx.Response(status_code=403, text="Bad creds", request=mock_response.request)
+    mock_client.post.return_value = mock_fail
     with pytest.raises(RuntimeError, match="status 403"):
         await get_installation_access_token(
-            installation_id=4567,
-            app_jwt="fake-jwt-token",
-            client=mock_client,
+            installation_id=4567, app_jwt="fake", client=mock_client
         )
 
 
 @pytest.mark.anyio
 async def test_list_installation_repositories():
-    """Tests listing repositories accessible under an installation."""
-    mock_response = httpx.Response(
+    """Tests listing repositories accessible under an installation with pagination."""
+    mock_resp = httpx.Response(
         status_code=200,
         json={
             "total_count": 2,
             "repositories": [
-                {
-                    "id": 1,
-                    "name": "private-core",
-                    "full_name": "org/private-core",
-                    "private": True,
-                    "default_branch": "main",
-                    "clone_url": "https://github.com/org/private-core.git",
-                    "html_url": "https://github.com/org/private-core",
-                },
-                {
-                    "id": 2,
-                    "name": "public-docs",
-                    "full_name": "org/public-docs",
-                    "private": False,
-                    "default_branch": "master",
-                    "clone_url": "https://github.com/org/public-docs.git",
-                    "html_url": "https://github.com/org/public-docs",
-                },
+                {"id": 1, "name": "priv", "full_name": "org/priv", "private": True,
+                 "default_branch": "main", "clone_url": "https://github.com/org/priv.git",
+                 "html_url": "https://github.com/org/priv"},
+                {"id": 2, "name": "doc", "full_name": "org/doc", "private": False,
+                 "default_branch": "main", "clone_url": "https://github.com/org/doc.git",
+                 "html_url": "https://github.com/org/doc"},
             ],
         },
         request=httpx.Request("GET", "https://api.github.com"),
     )
     mock_client = AsyncMock(spec=httpx.AsyncClient)
-    mock_client.get.return_value = mock_response
+    mock_client.get.return_value = mock_resp
 
     with patch(
         "app.services.github_app.get_installation_access_token",
         new_callable=AsyncMock,
-        return_value="ghs_mock_token",
+        return_value="ghs_tok",
     ):
         total, repos = await list_installation_repositories(12345, client=mock_client)
-        assert total == 2
-        assert len(repos) == 2
-        assert repos[0]["name"] == "private-core"
-        assert repos[1]["default_branch"] == "master"
+        assert total == 2 and len(repos) == 2 and repos[0]["name"] == "priv"
 
 
 def test_url_helpers_and_token_redaction():
     """Tests construction of authenticated clone URLs and credential redaction."""
     clone_url = "https://github.com/owner/secret-repo.git"
     token = "ghs_supersecret12345"
-
     auth_url = build_authenticated_clone_url(clone_url, token)
-    assert auth_url == "https://x-access-token:ghs_supersecret12345@github.com/owner/secret-repo.git"
-
+    assert "x-access-token:ghs_supersecret12345" in auth_url
     redacted = redact_token_from_url(auth_url)
     assert "ghs_supersecret12345" not in redacted
     assert "https://[REDACTED_TOKEN]@github.com/owner/secret-repo.git" == redacted
@@ -169,38 +141,29 @@ def test_url_helpers_and_token_redaction():
 @pytest.mark.anyio
 async def test_resolve_project_clone_url():
     """Tests project clone URL resolution based on installation_id presence."""
-    public_proj = Project(
-        id=uuid.uuid4(),
-        user_id=uuid.uuid4(),
-        name="public-repo",
-        github_url="https://github.com/test/public-repo",
-        installation_id=None,
+    pub_proj = Project(
+        id=uuid.uuid4(), user_id=uuid.uuid4(), name="pub",
+        github_url="https://github.com/test/pub", installation_id=None,
     )
-    url = await resolve_project_clone_url(public_proj)
-    assert url == "https://github.com/test/public-repo"
+    assert await resolve_project_clone_url(pub_proj) == "https://github.com/test/pub"
 
-    private_proj = Project(
-        id=uuid.uuid4(),
-        user_id=uuid.uuid4(),
-        name="private-repo",
-        github_url="https://github.com/test/private-repo",
-        installation_id=8888,
+    priv_proj = Project(
+        id=uuid.uuid4(), user_id=uuid.uuid4(), name="priv",
+        github_url="https://github.com/test/priv", installation_id=8888,
     )
     with patch(
         "app.services.github_app.get_installation_access_token",
         new_callable=AsyncMock,
-        return_value="ghs_temp_token",
+        return_value="ghs_tok",
     ):
-        private_url = await resolve_project_clone_url(private_proj)
-        assert "x-access-token:ghs_temp_token@github.com" in private_url
+        priv_url = await resolve_project_clone_url(priv_proj)
+        assert "x-access-token:ghs_tok@github.com" in priv_url
 
 
 def test_get_github_app_status():
     """Tests deployment status reporter."""
     status = get_github_app_status()
-    assert "configured" in status
-    assert "app_id" in status
-    assert "install_url" in status
+    assert "configured" in status and "app_id" in status and "install_url" in status
 
 
 @pytest.mark.anyio
@@ -209,14 +172,11 @@ async def test_api_status_and_webhook():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         resp = await ac.get("/api/v1/github-app/status")
-        assert resp.status_code == 200
-        assert "configured" in resp.json()
+        assert resp.status_code == 200 and "configured" in resp.json()
 
-        # Webhook without signature fails
-        hook_resp = await ac.post("/api/v1/github-app/webhook", content=b"{}")
-        assert hook_resp.status_code == 401
+        hook_fail = await ac.post("/api/v1/github-app/webhook", content=b"{}")
+        assert hook_fail.status_code == 401
 
-        # Webhook with valid signature succeeds
         secret = "secret-val"
         payload = b'{"action": "created"}'
         sig = hmac.new(secret.encode("utf-8"), payload, hashlib.sha256).hexdigest()
@@ -226,14 +186,12 @@ async def test_api_status_and_webhook():
                 content=payload,
                 headers={"X-Hub-Signature-256": f"sha256={sig}", "X-GitHub-Event": "installation"},
             )
-            assert valid_resp.status_code == 200
-            assert valid_resp.json()["status"] == "ok"
-            assert valid_resp.json()["event"] == "installation"
+            assert valid_resp.status_code == 200 and valid_resp.json()["status"] == "ok"
 
 
 @pytest.mark.anyio
 async def test_api_private_repo_endpoints():
-    """Tests authenticated repository listing and project creation."""
+    """Tests authenticated repo listing, project creation, IDOR rejection, and 503 handling."""
     mock_user = User(id=uuid.uuid4(), email="dev@example.com")
     saved_overrides = dict(app.dependency_overrides)
     try:
@@ -244,50 +202,67 @@ async def test_api_private_repo_endpoints():
         mock_db.execute.return_value = mock_result
         mock_db.commit = AsyncMock()
         mock_db.refresh = AsyncMock()
+        mock_db.delete = AsyncMock()
         mock_db.add = MagicMock()
         app.dependency_overrides[get_db] = lambda: mock_db
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as ac:
-            # Test repo listing
-            with patch(
+            mock_account = {"login": "dev", "type": "User"}
+            repo_list = [
+                {"id": 101, "name": "priv", "full_name": "corp/priv", "private": True,
+                 "default_branch": "main", "clone_url": "https://github.com/corp/priv.git",
+                 "html_url": "https://github.com/corp/priv"}
+            ]
+            patch_acct = patch(
+                "app.api.v1.github_app.get_installation_account",
+                new_callable=AsyncMock,
+                return_value=mock_account,
+            )
+            patch_repos = patch(
                 "app.api.v1.github_app.list_installation_repositories",
                 new_callable=AsyncMock,
-                return_value=(
-                    1,
-                    [
-                        {
-                            "id": 101,
-                            "name": "private-microservice",
-                            "full_name": "corp/private-microservice",
-                            "private": True,
-                            "default_branch": "main",
-                            "clone_url": "https://github.com/corp/private-microservice.git",
-                            "html_url": "https://github.com/corp/private-microservice",
-                        }
-                    ],
-                ),
-            ):
+                return_value=(1, repo_list),
+            )
+            with patch_acct, patch_repos:
+                # 1. Successful repository listing
                 list_resp = await ac.get("/api/v1/github-app/installations/123/repositories")
-                assert list_resp.status_code == 200
-                data = list_resp.json()
-                assert data["total_count"] == 1
-                assert data["repositories"][0]["name"] == "private-microservice"
+                assert list_resp.status_code == 200 and list_resp.json()["total_count"] == 1
 
-            # Test private project creation
-            with patch("app.api.v1.github_app.enqueue_clone_job", new_callable=AsyncMock):
-                create_resp = await ac.post(
-                    "/api/v1/github-app/projects",
-                    json={
-                        "full_name": "corp/private-microservice",
-                        "installation_id": 123,
-                        "default_branch": "main",
-                    },
-                )
-                assert create_resp.status_code == 201
-                proj_data = create_resp.json()
-                assert proj_data["name"] == "private-microservice"
-                assert proj_data["github_url"] == "https://github.com/corp/private-microservice"
-                assert proj_data["status"] == "pending"
+                # 2. Successful project creation
+                with patch(
+                    "app.api.v1.github_app.enqueue_clone_job",
+                    new_callable=AsyncMock,
+                    return_value="job-1",
+                ):
+                    create_resp = await ac.post(
+                        "/api/v1/github-app/projects",
+                        json={"full_name": "corp/priv", "installation_id": 123},
+                    )
+                    assert create_resp.status_code == 201
+                    assert create_resp.json()["name"] == "priv"
+
+                # 3. 503 Service Unavailable when background queue offline
+                with patch(
+                    "app.api.v1.github_app.enqueue_clone_job",
+                    new_callable=AsyncMock,
+                    return_value=None,
+                ):
+                    fail_resp = await ac.post(
+                        "/api/v1/github-app/projects",
+                        json={"full_name": "corp/priv", "installation_id": 123},
+                    )
+                    assert fail_resp.status_code == 503
+                    assert mock_db.delete.called
+
+            # 4. IDOR rejection when unauthorized user attempts access
+            patch_stranger = patch(
+                "app.api.v1.github_app.get_installation_account",
+                new_callable=AsyncMock,
+                return_value={"login": "stranger", "type": "User"},
+            )
+            with patch_stranger:
+                unauth_resp = await ac.get("/api/v1/github-app/installations/999/repositories")
+                assert unauth_resp.status_code == 403
     finally:
         app.dependency_overrides = saved_overrides

@@ -111,7 +111,7 @@ async def list_installation_repositories(
     installation_id: int,
     client: Optional[httpx.AsyncClient] = None,
 ) -> Tuple[int, List[Dict[str, Any]]]:
-    """Retrieves all repositories accessible by the given installation."""
+    """Retrieves all repositories accessible by the given installation with pagination."""
     token = await get_installation_access_token(installation_id, client=client)
     url = "https://api.github.com/installation/repositories"
     headers = {
@@ -121,19 +121,53 @@ async def list_installation_repositories(
     }
 
     async def _get(c: httpx.AsyncClient) -> Tuple[int, List[Dict[str, Any]]]:
-        resp = await c.get(url, headers=headers, timeout=20.0)
-        if resp.status_code != 200:
-            logger.error("github_list_repos_failed", status=resp.status_code, text=resp.text)
-            raise RuntimeError(f"Failed to fetch repositories: {resp.status_code}")
-        data = resp.json()
-        total = data.get("total_count", 0)
-        repos = data.get("repositories", [])
-        return total, repos
+        all_repos: List[Dict[str, Any]] = []
+        page = 1
+        total = 0
+        while True:
+            params = {"per_page": 100, "page": page}
+            resp = await c.get(url, headers=headers, params=params, timeout=20.0)
+            if resp.status_code != 200:
+                logger.error("github_list_repos_failed", status=resp.status_code, text=resp.text)
+                raise RuntimeError(f"Failed to fetch repositories: {resp.status_code}")
+            data = resp.json()
+            total = data.get("total_count", total)
+            page_repos = data.get("repositories", [])
+            all_repos.extend(page_repos)
+            if not page_repos or len(all_repos) >= total or page >= 5:
+                break
+            page += 1
+        return total, all_repos
 
     if client:
         return await _get(client)
     async with httpx.AsyncClient() as c:
         return await _get(c)
+
+
+async def get_installation_account(
+    installation_id: int,
+    client: Optional[httpx.AsyncClient] = None,
+) -> Dict[str, Any]:
+    """Retrieves account metadata for an installation using the GitHub App JWT."""
+    token_jwt = generate_app_jwt()
+    url = f"https://api.github.com/app/installations/{installation_id}"
+    headers = {
+        "Authorization": f"Bearer {token_jwt}",
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+
+    async def _fetch(c: httpx.AsyncClient) -> Dict[str, Any]:
+        resp = await c.get(url, headers=headers, timeout=15.0)
+        if resp.status_code != 200:
+            raise RuntimeError(f"Installation {installation_id} inaccessible: {resp.status_code}")
+        return resp.json().get("account", {})
+
+    if client:
+        return await _fetch(client)
+    async with httpx.AsyncClient() as c:
+        return await _fetch(c)
 
 
 def build_authenticated_clone_url(clone_url: str, token: str) -> str:
