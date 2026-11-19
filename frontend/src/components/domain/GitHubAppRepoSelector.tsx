@@ -24,6 +24,7 @@ export function GitHubAppRepoSelector({
   const [appStatus, setAppStatus] = useState<GitHubAppStatusResponse | null>(null);
   const [statusLoading, setStatusLoading] = useState(true);
   const [statusError, setStatusError] = useState<string | null>(null);
+  const [statusTrigger, setStatusTrigger] = useState(0);
   const [installationIdInput, setInstallationIdInput] = useState<string>(
     initialInstallationId ? String(initialInstallationId) : ""
   );
@@ -36,50 +37,52 @@ export function GitHubAppRepoSelector({
   const [searchQuery, setSearchQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const mountedRef = useRef(true);
+  const fetchReqIdRef = useRef(0);
+  const importReqIdRef = useRef(0);
 
   useEffect(() => {
-    mountedRef.current = true;
     return () => {
-      mountedRef.current = false;
+      fetchReqIdRef.current++;
+      importReqIdRef.current++;
     };
   }, []);
 
-  const loadAppStatus = useCallback(() => {
+  useEffect(() => {
+    let ignored = false;
     setStatusLoading(true);
     setStatusError(null);
     fetchGitHubAppStatus()
       .then((status) => {
-        if (mountedRef.current) setAppStatus(status);
+        if (!ignored) setAppStatus(status);
       })
       .catch((err: unknown) => {
-        if (mountedRef.current) {
+        if (!ignored) {
           setStatusError(err instanceof Error ? err.message : "Unable to load GitHub App status");
         }
       })
       .finally(() => {
-        if (mountedRef.current) setStatusLoading(false);
+        if (!ignored) setStatusLoading(false);
       });
-  }, []);
-
-  useEffect(() => {
-    loadAppStatus();
-  }, [loadAppStatus]);
+    return () => {
+      ignored = true;
+    };
+  }, [statusTrigger]);
 
   const loadRepositories = useCallback(async (id: number) => {
+    const currentReqId = ++fetchReqIdRef.current;
     setError(null);
     setLoadingRepos(true);
     try {
       const data = await fetchInstallationRepositories(id);
-      if (!mountedRef.current) return;
+      if (currentReqId !== fetchReqIdRef.current) return;
       setRepositories(data.repositories);
       setLoadedInstallationId(id);
     } catch (err: unknown) {
-      if (!mountedRef.current) return;
+      if (currentReqId !== fetchReqIdRef.current) return;
       setRepositories([]);
       setError(err instanceof Error ? err.message : "Failed to load installation repositories");
     } finally {
-      if (mountedRef.current) setLoadingRepos(false);
+      if (currentReqId === fetchReqIdRef.current) setLoadingRepos(false);
     }
   }, []);
 
@@ -87,6 +90,9 @@ export function GitHubAppRepoSelector({
     if (initialInstallationId) {
       loadRepositories(initialInstallationId);
     }
+    return () => {
+      fetchReqIdRef.current++;
+    };
   }, [initialInstallationId, loadRepositories]);
 
   const handleFetchClick = (e: React.FormEvent) => {
@@ -101,6 +107,7 @@ export function GitHubAppRepoSelector({
 
   const handleImport = async (repo: GitHubAppRepoItem) => {
     if (!loadedInstallationId || importingId !== null) return;
+    const currentReqId = ++importReqIdRef.current;
     setError(null);
     setSuccessMsg(null);
     setImportingId(repo.id);
@@ -112,15 +119,15 @@ export function GitHubAppRepoSelector({
         installation_id: loadedInstallationId,
         default_branch: branch,
       });
-      if (!mountedRef.current) return;
+      if (currentReqId !== importReqIdRef.current) return;
       setSuccessMsg(`Imported ${repo.name} successfully! Cloner worker initiated.`);
       onProjectCreated(project);
     } catch (err: unknown) {
-      if (mountedRef.current) {
+      if (currentReqId === importReqIdRef.current) {
         setError(err instanceof Error ? err.message : "Failed to import repository");
       }
     } finally {
-      if (mountedRef.current) setImportingId(null);
+      if (currentReqId === importReqIdRef.current) setImportingId(null);
     }
   };
 
@@ -142,7 +149,7 @@ export function GitHubAppRepoSelector({
           <span className="truncate">{statusError}</span>
           <button
             type="button"
-            onClick={loadAppStatus}
+            onClick={() => setStatusTrigger((prev) => prev + 1)}
             className="px-2 py-1 rounded bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 text-xs font-semibold flex items-center gap-1 flex-shrink-0"
           >
             <RefreshCw className="w-3 h-3" />
