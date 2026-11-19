@@ -86,19 +86,21 @@ export function calculateCardPosition(
   targetRect: TourRect | null,
   placement: TourPlacement = "bottom",
   viewportWidth = 1024,
-  viewportHeight = 768
-): { top: number; left: number; isCentered: boolean } {
+  viewportHeight = 768,
+  cardWidth = 360,
+  cardHeight = 220
+): { top: number; left: number; width: number; isCentered: boolean } {
+  const margin = 14;
+  const usableWidth = Math.max(280, Math.min(cardWidth, viewportWidth - margin * 2));
+
   if (!targetRect || placement === "center") {
     return {
       top: Math.round(viewportHeight / 2),
       left: Math.round(viewportWidth / 2),
+      width: usableWidth,
       isCentered: true,
     };
   }
-
-  const margin = 14;
-  const cardWidth = 360;
-  const cardHeight = 220;
 
   let top = targetRect.bottom + margin;
   let left = targetRect.left;
@@ -107,14 +109,19 @@ export function calculateCardPosition(
     top = Math.max(margin, targetRect.top - cardHeight - margin);
   } else if (placement === "left") {
     top = targetRect.top;
-    left = Math.max(margin, targetRect.left - cardWidth - margin);
+    left = Math.max(margin, targetRect.left - usableWidth - margin);
   } else if (placement === "right") {
     top = targetRect.top;
-    left = Math.min(viewportWidth - cardWidth - margin, targetRect.right + margin);
+    left = Math.min(viewportWidth - usableWidth - margin, targetRect.right + margin);
   }
 
-  left = Math.max(margin, Math.min(left, viewportWidth - cardWidth - margin));
+  left = Math.max(margin, Math.min(left, viewportWidth - usableWidth - margin));
   top = Math.max(margin, Math.min(top, viewportHeight - cardHeight - margin));
 
-  return { top: Math.round(top), left: Math.round(left), isCentered: false };
+  return {
+    top: Math.round(top),
+    left: Math.round(left),
+    width: usableWidth,
+    isCentered: false,
+  };
 }

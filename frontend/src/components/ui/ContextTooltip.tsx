@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import React, { useId, useState } from "react";
 
 interface ContextTooltipProps {
   content: React.ReactNode;
@@ -46,6 +46,18 @@ export function ContextTooltip({
     }
   };
 
+  // Merge aria-describedby onto focused child control directly
+  let triggerChild = children;
+  if (React.isValidElement<Record<string, unknown>>(children)) {
+    const existingDescribedBy = children.props["aria-describedby"] as string | undefined;
+    const mergedDescribedBy = isVisible
+      ? [existingDescribedBy, tooltipId].filter(Boolean).join(" ")
+      : existingDescribedBy;
+    triggerChild = React.cloneElement(children, {
+      "aria-describedby": mergedDescribedBy,
+    });
+  }
+
   return (
     <div
       className={`relative inline-flex items-center ${className}`}
@@ -56,9 +68,8 @@ export function ContextTooltip({
       onKeyDown={(e) => {
         if (e.key === "Escape") setIsVisible(false);
       }}
-      aria-describedby={isVisible ? tooltipId : undefined}
     >
-      {children}
+      {triggerChild}
       {isVisible && (
         <div
           id={tooltipId}

@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, Compass, Sparkles, X } from "lucide-react";
+import { calculateCardPosition } from "@/lib/onboarding";
 import type { TourRect, TourStep } from "@/types/onboarding";
 
 interface OnboardingTourModalProps {
@@ -28,19 +29,60 @@ export function OnboardingTourModal({
   onFinish,
 }: OnboardingTourModalProps) {
   const [mounted, setMounted] = useState(false);
+  const modalRef = useRef<HTMLDivElement>(null);
+  const previousActiveElementRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  // Focus management & trap
+  useEffect(() => {
+    if (isActive) {
+      previousActiveElementRef.current = document.activeElement as HTMLElement | null;
+      const timer = setTimeout(() => {
+        const focusable = modalRef.current?.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusable && focusable.length > 0) {
+          focusable[0].focus();
+        }
+      }, 50);
+      return () => clearTimeout(timer);
+    } else if (previousActiveElementRef.current) {
+      previousActiveElementRef.current.focus();
+    }
+  }, [isActive, currentStepIndex]);
+
   if (!mounted || !isActive || !currentStep) return null;
 
   const isLastStep = currentStepIndex === totalSteps - 1;
 
-  // Calculate card position relative to target or center screen
-  const getCardStyle = (): React.CSSProperties => {
-    if (!targetRect || currentStep.placement === "center") {
-      return {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Tab") {
+      const focusable = modalRef.current?.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      if (!focusable || focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+  };
+
+  const vpW = typeof window !== "undefined" ? window.innerWidth : 1024;
+  const vpH = typeof window !== "undefined" ? window.innerHeight : 768;
+  const pos = calculateCardPosition(targetRect, currentStep.placement, vpW, vpH, 360, 240);
+
+  const cardStyle: React.CSSProperties = pos.isCentered
+    ? {
         position: "fixed",
         top: "50%",
         left: "50%",
@@ -48,43 +90,21 @@ export function OnboardingTourModal({
         maxWidth: "420px",
         width: "90vw",
         zIndex: 60,
+      }
+    : {
+        position: "fixed",
+        top: `${pos.top}px`,
+        left: `${pos.left}px`,
+        width: `${pos.width}px`,
+        zIndex: 60,
       };
-    }
-
-    const margin = 14;
-    const cardWidth = 360;
-
-    let top = targetRect.bottom + margin;
-    let left = targetRect.left;
-
-    if (currentStep.placement === "top") {
-      top = Math.max(margin, targetRect.top - 200);
-    } else if (currentStep.placement === "left") {
-      top = targetRect.top;
-      left = Math.max(margin, targetRect.left - cardWidth - margin);
-    } else if (currentStep.placement === "right") {
-      top = targetRect.top;
-      left = Math.min(window.innerWidth - cardWidth - margin, targetRect.right + margin);
-    }
-
-    // Viewport clamp guards
-    left = Math.max(margin, Math.min(left, window.innerWidth - cardWidth - margin));
-    top = Math.max(margin, Math.min(top, window.innerHeight - 260));
-
-    return {
-      position: "fixed",
-      top: `${top}px`,
-      left: `${left}px`,
-      width: `${cardWidth}px`,
-      zIndex: 60,
-    };
-  };
 
   return (
     <div
       role="dialog"
       aria-modal="true"
       aria-labelledby="tour-step-title"
+      onKeyDown={handleKeyDown}
       className="fixed inset-0 z-50 pointer-events-auto"
     >
       {/* 1. Backdrop */}
@@ -109,7 +129,8 @@ export function OnboardingTourModal({
 
       {/* 3. Floating Step Card */}
       <div
-        style={getCardStyle()}
+        ref={modalRef}
+        style={cardStyle}
         className="bg-slate-900 border border-slate-700/80 rounded-xl p-5 text-slate-100 shadow-2xl shadow-black/80 space-y-3.5 animate-in fade-in-0 zoom-in-95"
       >
         <div className="flex items-center justify-between">
