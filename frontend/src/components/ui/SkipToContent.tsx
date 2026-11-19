@@ -15,7 +15,12 @@ export function SkipToContent({
     if (target) {
       target.setAttribute("tabindex", "-1");
       target.focus();
-      target.scrollIntoView({ behavior: "smooth" });
+      const prefersReducedMotion =
+        typeof window !== "undefined" &&
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      target.scrollIntoView({
+        behavior: prefersReducedMotion ? "auto" : "smooth",
+      });
     }
   };
 

@@ -58,7 +58,13 @@ export function useOnboardingTour({
           bottom: rect.bottom,
           right: rect.right,
         });
-        el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        const prefersReducedMotion =
+          typeof window !== "undefined" &&
+          window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        el.scrollIntoView({
+          behavior: prefersReducedMotion ? "auto" : "smooth",
+          block: "nearest",
+        });
       } else {
         setTargetRect(null);
       }

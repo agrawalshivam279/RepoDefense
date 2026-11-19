@@ -7,32 +7,39 @@ import type { Announcement } from "@/types/accessibility";
 const CLEAR_DELAY_MS = 8000;
 
 export function LiveAnnouncer() {
-  const [politeMessage, setPoliteMessage] = useState("");
-  const [assertiveMessage, setAssertiveMessage] = useState("");
-  const politeTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const assertiveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [politeQueue, setPoliteQueue] = useState<Announcement[]>([]);
+  const [assertiveQueue, setAssertiveQueue] = useState<Announcement[]>([]);
+  const timeoutsRef = useRef<Set<NodeJS.Timeout>>(new Set());
 
   useEffect(() => {
+    const timeouts = timeoutsRef.current;
+
     const unsubscribe = subscribeAnnouncements((announcement: Announcement) => {
       if (announcement.politeness === "assertive") {
-        setAssertiveMessage(announcement.message);
-        if (assertiveTimerRef.current) clearTimeout(assertiveTimerRef.current);
-        assertiveTimerRef.current = setTimeout(() => {
-          setAssertiveMessage("");
+        setAssertiveQueue((prev) => [...prev, announcement]);
+        const timer = setTimeout(() => {
+          setAssertiveQueue((prev) =>
+            prev.filter((a) => a.id !== announcement.id)
+          );
+          timeouts.delete(timer);
         }, CLEAR_DELAY_MS);
+        timeouts.add(timer);
       } else {
-        setPoliteMessage(announcement.message);
-        if (politeTimerRef.current) clearTimeout(politeTimerRef.current);
-        politeTimerRef.current = setTimeout(() => {
-          setPoliteMessage("");
+        setPoliteQueue((prev) => [...prev, announcement]);
+        const timer = setTimeout(() => {
+          setPoliteQueue((prev) =>
+            prev.filter((a) => a.id !== announcement.id)
+          );
+          timeouts.delete(timer);
         }, CLEAR_DELAY_MS);
+        timeouts.add(timer);
       }
     });
 
     return () => {
       unsubscribe();
-      if (politeTimerRef.current) clearTimeout(politeTimerRef.current);
-      if (assertiveTimerRef.current) clearTimeout(assertiveTimerRef.current);
+      timeouts.forEach((timer) => clearTimeout(timer));
+      timeouts.clear();
     };
   }, []);
 
@@ -41,18 +48,22 @@ export function LiveAnnouncer() {
       <div
         role="status"
         aria-live="polite"
-        aria-atomic="true"
+        aria-atomic="false"
         className="sr-only"
       >
-        {politeMessage}
+        {politeQueue.map((item) => (
+          <p key={item.id}>{item.message}</p>
+        ))}
       </div>
       <div
         role="alert"
         aria-live="assertive"
-        aria-atomic="true"
+        aria-atomic="false"
         className="sr-only"
       >
-        {assertiveMessage}
+        {assertiveQueue.map((item) => (
+          <p key={item.id}>{item.message}</p>
+        ))}
       </div>
     </div>
   );

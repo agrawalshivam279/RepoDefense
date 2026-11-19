@@ -57,8 +57,11 @@ export function calculateContrastRatio(
   const lum2 = getRelativeLuminance(...rgb2);
   const lighter = Math.max(lum1, lum2);
   const darker = Math.min(lum1, lum2);
-  const ratio = (lighter + 0.05) / (darker + 0.05);
-  return Math.round(ratio * 100) / 100;
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+export function formatContrastRatio(ratio: number): string {
+  return `${(Math.round(ratio * 100) / 100).toFixed(2)}:1`;
 }
 
 export function isWcagAACompliant(

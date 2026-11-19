@@ -59,5 +59,15 @@ describe("accessibility - Assistive Telemetry & WCAG 2.1 Contrast Helpers", () =
     assert.strictEqual(isWcagAACompliant(emeraldText, darkBg, false), true);
     assert.strictEqual(isWcagAACompliant(lowContrastGray, darkBg, false), false);
     assert.strictEqual(isWcagAACompliant(lowContrastGray, darkBg, true), false);
+
+    // Boundary check: [119, 119, 115] against white produces ~4.496:1.
+    // WCAG prohibits rounding before threshold checks, so it must not pass 4.5:1.
+    const white: [number, number, number] = [255, 255, 255];
+    const boundaryGray: [number, number, number] = [119, 119, 115];
+    const boundaryRatio = calculateContrastRatio(boundaryGray, white);
+    assert.ok(boundaryRatio < 4.5);
+    assert.strictEqual(isWcagAACompliant(boundaryGray, white, false), false);
+    // But it passes large text threshold (3.0:1)
+    assert.strictEqual(isWcagAACompliant(boundaryGray, white, true), true);
   });
 });
