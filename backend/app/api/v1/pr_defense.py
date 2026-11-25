@@ -20,7 +20,7 @@ from app.ai.pr_question_generator import generate_pr_defense_questions
 from app.analyzers.diff_parser import DiffParsingError, parse_unified_diff
 from app.api.v1.pull_requests import fetch_github_pr_data, parse_github_pr_url
 from app.core.database import get_db
-from app.core.security import get_current_user
+from app.core.security import get_current_user, verify_project_ownership
 from app.models.project import Project, User
 from app.schemas.defense import (
     DefenseQuestionProgress,
@@ -151,6 +151,7 @@ async def start_pr_defense_session(
 async def get_pr_defense_session(
     session_id: str,
     current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ) -> PRDefenseSessionState:
     session = await defense_store.get(session_id)
     if not session or not isinstance(session, PRDefenseSessionState):
@@ -158,6 +159,7 @@ async def get_pr_defense_session(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"PR defense session '{session_id}' not found.",
         )
+    await verify_project_ownership(session.project_id, current_user.id, db)
     return session
 
 
@@ -226,6 +228,7 @@ async def submit_pr_defense_answer(
     session_id: str,
     payload: SubmitAnswerRequest,
     current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ) -> PRDefenseSessionState:
     raw_session = await defense_store.get(session_id)
     if not raw_session or not isinstance(raw_session, PRDefenseSessionState):
@@ -234,6 +237,7 @@ async def submit_pr_defense_answer(
             detail=f"PR defense session '{session_id}' not found.",
         )
     session: PRDefenseSessionState = raw_session
+    await verify_project_ownership(session.project_id, current_user.id, db)
     if session.status == DefenseStage.SESSION_COMPLETED:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

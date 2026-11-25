@@ -31,7 +31,6 @@ from app.schemas.defense import (
     SubmitAnswerRequest,
     TurnRole,
 )
-from app.schemas.pr_defense import DiffGroundedQuestion
 from app.schemas.question import QuestionCategory
 
 
@@ -159,11 +158,11 @@ class TestCommitDefenseEndpoints:
             message="Add endpoint", html_url="https://github.com/owner/repo/commit/a1b2c3d4e5f6",
             total_additions=2, total_deletions=0, total_files=1,
         )
-        fake_q = DiffGroundedQuestion(
+        fake_q = CommitGroundedQuestion(
             id="q-1", category=QuestionCategory.ARCHITECTURE, question_text="Why this change?",
             context_hint="hint", cited_evidence_ids=[], cited_files=["src/app.py"],
             diff_file_path="src/app.py", diff_hunk_header="@@ -10,3 +10,5 @@",
-            change_type="addition", cited_lines=["+ ok"],
+            change_type="addition", cited_lines=["+ ok"], commit_hash="a1b2c3d4e5f6",
         )
         fetch_patch = patch(
             "app.api.v1.commit_defense.fetch_github_commit_data", new_callable=AsyncMock
@@ -199,19 +198,35 @@ class TestCommitDefenseEndpoints:
         sess_id = f"commit-test-{uuid.uuid4()}"
         sess = self._make_test_session(sess_id)
         _drive_coro(defense_store.save(sess))
-        res = _drive_coro(get_commit_defense_session(sess_id, current_user=user))
+        mock_db = self._mock_db(self._mock_project(uuid.UUID(sess.project_id), user.id))
+        res = _drive_coro(get_commit_defense_session(sess_id, current_user=user, db=mock_db))
         assert res.session_id == sess_id
+
+    def test_get_commit_defense_session_idor_rejected(self):
+        user = User(id=uuid.uuid4(), email="attacker@test.com")
+        sess_id = f"commit-idor-{uuid.uuid4()}"
+        sess = self._make_test_session(sess_id)
+        _drive_coro(defense_store.save(sess))
+        with pytest.raises(HTTPException) as exc:
+            _drive_coro(
+                get_commit_defense_session(sess_id, current_user=user, db=self._mock_db(None))
+            )
+        assert exc.value.status_code == 404
 
     def test_get_commit_defense_session_not_found(self):
         user = User(id=uuid.uuid4(), email="dev@test.com")
         with pytest.raises(HTTPException) as exc:
-            _drive_coro(get_commit_defense_session("missing-session", current_user=user))
+            _drive_coro(
+                get_commit_defense_session("missing-session", current_user=user, db=self._mock_db())
+            )
         assert exc.value.status_code == 404
 
     def test_submit_commit_answer_passed_stress(self):
         user = User(id=uuid.uuid4(), email="dev@test.com")
         sess_id = f"commit-ans-{uuid.uuid4()}"
-        _drive_coro(defense_store.save(self._make_test_session(sess_id)))
+        sess = self._make_test_session(sess_id)
+        _drive_coro(defense_store.save(sess))
+        mock_db = self._mock_db(self._mock_project(uuid.UUID(sess.project_id), user.id))
 
         eval_out = EvaluationOutput(
             depth_score=8, feedback="Solid.", passed_initial_defense=True,
@@ -223,7 +238,9 @@ class TestCommitDefenseEndpoints:
         with eval_patch as mock_eval:
             mock_eval.return_value = eval_out
             payload = SubmitAnswerRequest(answer="I chose this pattern because of async I/O.")
-            res = _drive_coro(submit_commit_defense_answer(sess_id, payload, current_user=user))
+            res = _drive_coro(
+                submit_commit_defense_answer(sess_id, payload, current_user=user, db=mock_db)
+            )
 
         assert res.status == DefenseStage.STRESS_TEST_ACTIVE
         assert any("Production Stress-Test" in t.content for t in res.turns)
@@ -231,7 +248,9 @@ class TestCommitDefenseEndpoints:
     def test_submit_commit_answer_vague_pushback(self):
         user = User(id=uuid.uuid4(), email="dev@test.com")
         sess_id = f"commit-pb-{uuid.uuid4()}"
-        _drive_coro(defense_store.save(self._make_test_session(sess_id)))
+        sess = self._make_test_session(sess_id)
+        _drive_coro(defense_store.save(sess))
+        mock_db = self._mock_db(self._mock_project(uuid.UUID(sess.project_id), user.id))
 
         eval_out = EvaluationOutput(
             depth_score=3, feedback="Too brief.", passed_initial_defense=False,
@@ -243,7 +262,9 @@ class TestCommitDefenseEndpoints:
         with eval_patch as mock_eval:
             mock_eval.return_value = eval_out
             payload = SubmitAnswerRequest(answer="It just works better.")
-            res = _drive_coro(submit_commit_defense_answer(sess_id, payload, current_user=user))
+            res = _drive_coro(
+                submit_commit_defense_answer(sess_id, payload, current_user=user, db=mock_db)
+            )
 
         assert res.status == DefenseStage.PUSHBACK_ACTIVE
         assert any("Pushback" in t.content for t in res.turns)
@@ -251,11 +272,9 @@ class TestCommitDefenseEndpoints:
     def test_submit_commit_answer_stress_turn_advances(self):
         user = User(id=uuid.uuid4(), email="dev@test.com")
         sess_id = f"commit-sec-{uuid.uuid4()}"
-        _drive_coro(
-            defense_store.save(
-                self._make_test_session(sess_id, status=DefenseStage.STRESS_TEST_ACTIVE, score=7)
-            )
-        )
+        sess = self._make_test_session(sess_id, status=DefenseStage.STRESS_TEST_ACTIVE, score=7)
+        _drive_coro(defense_store.save(sess))
+        mock_db = self._mock_db(self._mock_project(uuid.UUID(sess.project_id), user.id))
 
         sec_out = SecondaryEvaluationOutput(
             handled_successfully=True, follow_up_score=9, feedback="Handled stress well."
@@ -266,7 +285,9 @@ class TestCommitDefenseEndpoints:
         with sec_patch as mock_sec:
             mock_sec.return_value = sec_out
             payload = SubmitAnswerRequest(answer="I would add Redis caching with TTL.")
-            res = _drive_coro(submit_commit_defense_answer(sess_id, payload, current_user=user))
+            res = _drive_coro(
+                submit_commit_defense_answer(sess_id, payload, current_user=user, db=mock_db)
+            )
 
         assert res.status == DefenseStage.SESSION_COMPLETED
 

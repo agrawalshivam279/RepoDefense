@@ -1,12 +1,15 @@
 import time
 import uuid
+from unittest.mock import MagicMock, patch
 
 import jwt
 import pytest
+from cryptography.hazmat.primitives.asymmetric import ec
 from httpx import ASGITransport, AsyncClient
 
 from app.core.config import settings
 from app.core.database import AsyncSessionLocal, engine
+from app.core.security import decode_access_token
 from app.main import app
 from app.models.project import User
 
@@ -239,3 +242,47 @@ async def test_auth_server_verified_github_binding_and_spoof_prevention():
         if user_in_db:
             await session.delete(user_in_db)
             await session.commit()
+
+
+def test_es256_jwks_token_verification_and_rejection():
+    """Verifies ES256 Supabase JWKS validation and rejection of tampered/none alg tokens."""
+    from fastapi import HTTPException
+
+    private_key = ec.generate_private_key(ec.SECP256R1())
+    other_private_key = ec.generate_private_key(ec.SECP256R1())
+    user_id = uuid.uuid4()
+    now = int(time.time())
+    payload = {
+        "sub": str(user_id),
+        "email": "es256@repodefense.dev",
+        "aud": "authenticated",
+        "role": "authenticated",
+        "exp": now + 3600,
+        "iat": now,
+    }
+    valid_es256 = jwt.encode(payload, private_key, algorithm="ES256", headers={"kid": "kid-1"})
+    wrong_es256 = jwt.encode(
+        payload, other_private_key, algorithm="ES256", headers={"kid": "kid-1"}
+    )
+    none_alg = jwt.encode(payload, "", algorithm="none")
+
+    mock_jwk_client = MagicMock()
+    mock_jwk_client.get_signing_key_from_jwt.return_value = MagicMock(
+        key=private_key.public_key()
+    )
+
+    with (
+        patch("app.core.security.settings.SUPABASE_URL", "https://example.supabase.co"),
+        patch("app.core.security._get_jwk_client", return_value=mock_jwk_client),
+    ):
+        decoded = decode_access_token(valid_es256)
+        assert decoded.sub == user_id
+        assert decoded.email == "es256@repodefense.dev"
+
+        with pytest.raises(HTTPException) as bad_sig:
+            decode_access_token(wrong_es256)
+        assert bad_sig.value.status_code == 401
+
+        with pytest.raises(HTTPException) as bad_alg:
+            decode_access_token(none_alg)
+        assert bad_alg.value.status_code == 401

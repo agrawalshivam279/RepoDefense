@@ -1,5 +1,6 @@
 import uuid
 from typing import Optional
+from urllib.parse import urlsplit, urlunsplit
 
 import structlog
 from arq.connections import ArqRedis, RedisSettings, create_pool
@@ -10,6 +11,20 @@ logger = structlog.get_logger(__name__)
 
 # Global cached ARQ Redis pool instance
 _arq_redis_pool: Optional[ArqRedis] = None
+
+
+def _redact_redis_url(url: str) -> str:
+    """Masks embedded password credentials in a Redis DSN before logging."""
+    try:
+        parts = urlsplit(url)
+        if parts.password is None:
+            return url
+        user_prefix = f"{parts.username}:" if parts.username else ""
+        host_port = f"{parts.hostname or ''}{f':{parts.port}' if parts.port else ''}"
+        masked_netloc = f"{user_prefix}***@{host_port}"
+        return urlunsplit((parts.scheme, masked_netloc, parts.path, parts.query, parts.fragment))
+    except Exception:
+        return "<redacted>"
 
 
 def get_redis_settings() -> RedisSettings:
@@ -39,7 +54,7 @@ async def get_arq_redis_pool() -> Optional[ArqRedis]:
         logger.warning(
             "arq_redis_pool_connection_failed",
             error=str(exc),
-            redis_url=settings.REDIS_URL,
+            redis_url=_redact_redis_url(settings.REDIS_URL),
         )
         return None
 

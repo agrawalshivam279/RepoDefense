@@ -2,7 +2,7 @@
 
 Tests:
   Unit (TestPRQuestionGenerator): 8 tests for generator, fallback, parsing, and serialization.
-  Endpoint (TestPRDefenseEndpoints): 7 tests for start, get, and answer endpoints.
+  Endpoint (TestPRDefenseEndpoints): 8 tests for start, get, IDOR guard, and answer endpoints.
 Uses isolated _drive_coro runner to avoid socket-bound event loops in sandboxed environments.
 """
 
@@ -187,7 +187,7 @@ def _make_session(status=DefenseStage.QUESTION_ACTIVE) -> PRDefenseSessionState:
         question=q, status=status, difficulty=DifficultyLevel.INTERMEDIATE,
     )
     return PRDefenseSessionState(
-        project_id="proj-1", status=status, current_question_index=0,
+        project_id=str(uuid.uuid4()), status=status, current_question_index=0,
         total_questions=1, questions=[prog], diff_questions=[q],
         pr_number=42, pr_title="PR", pr_html_url="http://pr", pr_author="u",
         pr_analysis_summary="summary", created_at="2026-11-09T00:00:00Z",
@@ -199,10 +199,32 @@ class TestPRDefenseEndpoints:
     def setup_method(self):
         self.mock_user = User(id=uuid.uuid4(), email="tester@repodefense.dev")
 
+    def _mock_db(self, owned: bool = True):
+        proj = MagicMock(id=uuid.uuid4(), user_id=self.mock_user.id) if owned else None
+        return AsyncMock(
+            execute=AsyncMock(return_value=MagicMock(scalar_one_or_none=lambda: proj))
+        )
+
     def test_get_session_not_found(self):
         with pytest.raises(HTTPException) as exc_info:
-            _drive_coro(get_pr_defense_session("missing-id", current_user=self.mock_user))
+            _drive_coro(
+                get_pr_defense_session(
+                    "missing-id", current_user=self.mock_user, db=self._mock_db()
+                )
+            )
         assert exc_info.value.status_code == 404
+
+    def test_get_session_idor_rejected(self):
+        session = _make_session()
+        _drive_coro(defense_store.save(session))
+        with pytest.raises(HTTPException) as exc_info:
+            _drive_coro(
+                get_pr_defense_session(
+                    session.session_id, current_user=self.mock_user, db=self._mock_db(owned=False)
+                )
+            )
+        assert exc_info.value.status_code == 404
+        _drive_coro(defense_store.delete(session.session_id))
 
     def test_submit_answer_session_completed_409(self):
         session = _make_session(status=DefenseStage.SESSION_COMPLETED)
@@ -210,7 +232,7 @@ class TestPRDefenseEndpoints:
         req = SubmitAnswerRequest(answer="My answer")
         with pytest.raises(HTTPException) as exc_info:
             _drive_coro(submit_pr_defense_answer(
-                session.session_id, payload=req, current_user=self.mock_user
+                session.session_id, payload=req, current_user=self.mock_user, db=self._mock_db()
             ))
         assert exc_info.value.status_code == 409
         _drive_coro(defense_store.delete(session.session_id))
@@ -218,7 +240,11 @@ class TestPRDefenseEndpoints:
     def test_get_existing_session_200(self):
         session = _make_session()
         _drive_coro(defense_store.save(session))
-        res = _drive_coro(get_pr_defense_session(session.session_id, current_user=self.mock_user))
+        res = _drive_coro(
+            get_pr_defense_session(
+                session.session_id, current_user=self.mock_user, db=self._mock_db()
+            )
+        )
         assert res.pr_number == 42
         assert res.status == DefenseStage.QUESTION_ACTIVE
         _drive_coro(defense_store.delete(session.session_id))
@@ -237,7 +263,7 @@ class TestPRDefenseEndpoints:
         ):
             req = SubmitAnswerRequest(answer="it just works")
             res = _drive_coro(submit_pr_defense_answer(
-                session.session_id, payload=req, current_user=self.mock_user
+                session.session_id, payload=req, current_user=self.mock_user, db=self._mock_db()
             ))
         assert res.status == DefenseStage.PUSHBACK_ACTIVE
         _drive_coro(defense_store.delete(session.session_id))
@@ -256,7 +282,7 @@ class TestPRDefenseEndpoints:
         ):
             req = SubmitAnswerRequest(answer="I added caching and connection pooling.")
             res = _drive_coro(submit_pr_defense_answer(
-                session.session_id, payload=req, current_user=self.mock_user
+                session.session_id, payload=req, current_user=self.mock_user, db=self._mock_db()
             ))
         assert res.status == DefenseStage.STRESS_TEST_ACTIVE
         _drive_coro(defense_store.delete(session.session_id))
@@ -277,14 +303,13 @@ class TestPRDefenseEndpoints:
         ):
             req = SubmitAnswerRequest(answer="We use Redis with circuit breaking.")
             res = _drive_coro(submit_pr_defense_answer(
-                session.session_id, payload=req, current_user=self.mock_user
+                session.session_id, payload=req, current_user=self.mock_user, db=self._mock_db()
             ))
         assert res.status == DefenseStage.SESSION_COMPLETED
         _drive_coro(defense_store.delete(session.session_id))
 
     def test_start_session_project_not_found(self):
-        mock_db = AsyncMock()
-        mock_db.execute = AsyncMock(return_value=MagicMock(scalar_one_or_none=lambda: None))
+        mock_db = self._mock_db(owned=False)
         req = StartPRDefenseRequest(pr_url="https://github.com/o/r/pull/1", num_questions=2)
         with pytest.raises(HTTPException) as exc_info:
             _drive_coro(start_pr_defense_session(

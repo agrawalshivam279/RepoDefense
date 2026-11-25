@@ -1,5 +1,7 @@
 import uuid
+from typing import Any
 
+import anyio
 import jwt
 import structlog
 from fastapi import Depends, HTTPException, status
@@ -9,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import get_db
-from app.models.project import User
+from app.models.project import Project, User
 from app.schemas.auth import TokenPayload
 
 logger = structlog.get_logger(__name__)
@@ -19,28 +21,66 @@ security_scheme = HTTPBearer(
     description="Supabase JWT Bearer Token",
 )
 
+_ASYMMETRIC_ALGS = frozenset({"ES256", "RS256", "EdDSA"})
+_jwk_clients: dict[str, jwt.PyJWKClient] = {}
+
+
+def _get_jwk_client(jwks_url: str) -> jwt.PyJWKClient:
+    """Returns a cached PyJWKClient instance for the configured Supabase JWKS URL."""
+    client = _jwk_clients.get(jwks_url)
+    if client is None:
+        client = jwt.PyJWKClient(jwks_url, cache_jwk_set=True, lifespan=300)
+        _jwk_clients[jwks_url] = client
+    return client
+
+
+def _get_supabase_jwks_url() -> str:
+    """Builds the Supabase Auth JWKS discovery endpoint URL."""
+    base = settings.SUPABASE_URL.strip().rstrip("/")
+    if not base or "localhost.supabase.co" in base:
+        raise jwt.InvalidTokenError("Supabase URL not configured for asymmetric JWT verification")
+    return f"{base}/auth/v1/.well-known/jwks.json"
+
+
+def _decode_jwt_payload(token: str) -> dict[str, Any]:
+    """Decodes and validates a JWT using the configured HS256 secret or Supabase JWKS."""
+    header = jwt.get_unverified_header(token)
+    alg = header.get("alg")
+    if alg == settings.JWT_ALGORITHM:
+        return jwt.decode(
+            token,
+            settings.SUPABASE_JWT_SECRET,
+            algorithms=[settings.JWT_ALGORITHM],
+            audience="authenticated",
+        )
+    if alg in _ASYMMETRIC_ALGS:
+        jwk_client = _get_jwk_client(_get_supabase_jwks_url())
+        signing_key = jwk_client.get_signing_key_from_jwt(token)
+        return jwt.decode(
+            token,
+            signing_key.key,
+            algorithms=[alg],
+            audience="authenticated",
+        )
+    raise jwt.InvalidAlgorithmError(f"Unsupported JWT algorithm: {alg}")
+
 
 def decode_access_token(token: str) -> TokenPayload:
-    """Decodes and cryptographically validates a Supabase-issued JWT.
+    """Decodes and cryptographically validates a Supabase-issued JWT (HS256 or JWKS).
 
     Raises:
         HTTPException: 401 if token is expired, has an invalid signature,
                        or contains malformed claims.
     """
     try:
-        payload = jwt.decode(
-            token,
-            settings.SUPABASE_JWT_SECRET,
-            algorithms=[settings.JWT_ALGORITHM],
-            audience="authenticated",
-        )
+        payload = _decode_jwt_payload(token)
     except jwt.ExpiredSignatureError as err:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token has expired",
             headers={"WWW-Authenticate": "Bearer"},
         ) from err
-    except jwt.InvalidTokenError as err:
+    except (jwt.InvalidTokenError, jwt.PyJWKClientError) as err:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
@@ -117,11 +157,27 @@ def decode_access_token(token: str) -> TokenPayload:
     )
 
 
-def get_current_token_payload(
+async def decode_access_token_async(token: str) -> TokenPayload:
+    """Non-blocking wrapper validating HS256 synchronously and JWKS tokens off-thread."""
+    try:
+        alg = jwt.get_unverified_header(token).get("alg")
+    except jwt.InvalidTokenError as err:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from err
+
+    if alg in _ASYMMETRIC_ALGS:
+        return await anyio.to_thread.run_sync(decode_access_token, token)
+    return decode_access_token(token)
+
+
+async def get_current_token_payload(
     credentials: HTTPAuthorizationCredentials = Depends(security_scheme),
 ) -> TokenPayload:
     """FastAPI dependency validating the Bearer token without querying PostgreSQL."""
-    return decode_access_token(credentials.credentials)
+    return await decode_access_token_async(credentials.credentials)
 
 
 async def get_current_user(
@@ -133,7 +189,7 @@ async def get_current_user(
     If the user does not yet exist in the local database (first-time login via Supabase),
     the user record is idempotently provisioned.
     """
-    token_payload = decode_access_token(credentials.credentials)
+    token_payload = await decode_access_token_async(credentials.credentials)
 
     stmt = select(User).where(User.id == token_payload.sub)
     result = await db.execute(stmt)
@@ -184,3 +240,29 @@ async def get_current_user(
             await db.refresh(user)
 
     return user
+
+
+async def verify_project_ownership(
+    project_id_raw: str | uuid.UUID,
+    user_id: uuid.UUID,
+    db: AsyncSession,
+) -> Project:
+    """Verifies that a project ID is valid and owned by the given user."""
+    try:
+        project_uuid = (
+            project_id_raw if isinstance(project_id_raw, uuid.UUID) else uuid.UUID(project_id_raw)
+        )
+    except (ValueError, TypeError) as err:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found or unauthorized.",
+        ) from err
+
+    stmt = select(Project).where(Project.id == project_uuid, Project.user_id == user_id)
+    project = (await db.execute(stmt)).scalar_one_or_none()
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found or unauthorized.",
+        )
+    return project

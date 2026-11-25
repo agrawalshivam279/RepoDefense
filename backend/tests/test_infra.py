@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from app.core.redis import _redact_redis_url
+
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
 
@@ -65,3 +67,11 @@ def test_dockerfile_security_and_non_root():
     assert "USER appuser" in content
     assert "EXPOSE 8000" in content
     assert "uvicorn" in content
+
+
+def test_redact_redis_url_masks_password():
+    """Verify that _redact_redis_url strips embedded credentials before logging."""
+    masked = _redact_redis_url("rediss://default:super-secret-token@upstash.io:6379")
+    assert "super-secret-token" not in masked
+    assert "upstash.io:6379" in masked
+    assert _redact_redis_url("redis://localhost:6379/0") == "redis://localhost:6379/0"

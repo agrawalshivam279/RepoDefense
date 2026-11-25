@@ -17,9 +17,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.stress_test_generator import evaluate_stress_defense, generate_stress_scenarios
 from app.core.database import get_db
-from app.core.security import get_current_user
+from app.core.security import get_current_user, verify_project_ownership
 from app.models.analysis import Dependency, Evidence
-from app.models.project import Project, User
+from app.models.project import User
 from app.schemas.stress_test import (
     GenerateStressScenariosRequest,
     StartStressDefenseRequest,
@@ -52,17 +52,6 @@ logger = structlog.get_logger(__name__)
 router = APIRouter(tags=["Stress Test / What-If Mode"])
 
 
-async def _get_owned_project(
-    project_id: uuid.UUID, user_id: uuid.UUID, db: AsyncSession
-) -> Project:
-    """Fetch a user-owned project or raise HTTP 404."""
-    stmt = select(Project).where(Project.id == project_id, Project.user_id == user_id)
-    project = (await db.execute(stmt)).scalar_one_or_none()
-    if not project:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
-    return project
-
-
 async def _gather_evidence_context(project_id: uuid.UUID, db: AsyncSession) -> List[dict]:
     """Collects deterministic ordered evidence and dependencies for context grounding."""
     ev_q = select(Evidence).where(Evidence.project_id == project_id).order_by(Evidence.id)
@@ -93,7 +82,7 @@ async def get_or_generate_stress_scenarios(
     db: AsyncSession = Depends(get_db),
 ) -> StressScenarioListResponse:
     """Returns scaling scenarios grounded in committed repository evidence."""
-    project = await _get_owned_project(project_id, current_user.id, db)
+    project = await verify_project_ownership(project_id, current_user.id, db)
 
     req = payload or GenerateStressScenariosRequest()
     if project_id not in project_stress_cache:
@@ -130,7 +119,7 @@ async def get_or_generate_stress_scenarios(
                 api_key=req.api_key,
                 base_url=req.base_url,
             )
-            post_project = await _get_owned_project(project_id, current_user.id, db)
+            post_project = await verify_project_ownership(project_id, current_user.id, db)
             post_evidence = await _gather_evidence_context(project_id, db)
             post_version = compute_evidence_version(post_project, post_evidence)
             if post_version == evidence_version:
@@ -176,7 +165,7 @@ async def start_stress_defense_session(
     db: AsyncSession = Depends(get_db),
 ) -> StressDefenseSessionState:
     """Launches an interactive what-if defense session for a chosen scenario."""
-    await _get_owned_project(project_id, current_user.id, db)
+    await verify_project_ownership(project_id, current_user.id, db)
     cached_list = project_stress_cache.get(project_id, [])
     target_scenario = next((s for s in cached_list if s.id == payload.scenario_id), None)
     if not target_scenario:
@@ -217,11 +206,13 @@ async def start_stress_defense_session(
 async def get_stress_session(
     session_id: str,
     current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ) -> StressDefenseSessionState:
     """Returns the current transcript, progress, and scores for a stress defense session."""
     session = stress_session_store.get(session_id)
     if not session:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+    await verify_project_ownership(session.project_id, current_user.id, db)
     return session
 
 
@@ -235,11 +226,13 @@ async def submit_stress_defense_turn(
     session_id: str,
     payload: SubmitStressAnswerRequest,
     current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ) -> StressDefenseSessionState:
     """Evaluates candidate scaling mitigation and advances interview stage."""
     session = stress_session_store.get(session_id)
     if not session:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+    await verify_project_ownership(session.project_id, current_user.id, db)
     if session.stage == StressSessionStage.COMPLETED:
         raise HTTPException(status_code=400, detail="Session is already completed")
 
@@ -294,4 +287,5 @@ async def submit_stress_defense_turn(
             )
         )
 
+    stress_session_store[session_id] = session
     return session

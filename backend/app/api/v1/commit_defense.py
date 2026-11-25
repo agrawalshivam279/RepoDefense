@@ -24,7 +24,7 @@ from app.analyzers.commit_fetcher import (
 )
 from app.analyzers.diff_parser import DiffParsingError, parse_unified_diff
 from app.core.database import get_db
-from app.core.security import get_current_user
+from app.core.security import get_current_user, verify_project_ownership
 from app.models.project import Project, User
 from app.schemas.commit_defense import (
     CommitAnalysisResponse,
@@ -76,12 +76,14 @@ async def start_commit_defense_session(
 async def get_commit_defense_session(
     session_id: str,
     current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ) -> CommitDefenseSessionState:
     session = await defense_store.get(session_id)
     if not session or not isinstance(session, CommitDefenseSessionState):
         raise HTTPException(
             status.HTTP_404_NOT_FOUND, f"Commit defense session '{session_id}' not found."
         )
+    await verify_project_ownership(session.project_id, current_user.id, db)
     return session
 
 
@@ -153,6 +155,7 @@ async def submit_commit_defense_answer(
     session_id: str,
     payload: SubmitAnswerRequest,
     current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ) -> CommitDefenseSessionState:
     raw_session = await defense_store.get(session_id)
     if not raw_session or not isinstance(raw_session, CommitDefenseSessionState):
@@ -160,6 +163,7 @@ async def submit_commit_defense_answer(
             status.HTTP_404_NOT_FOUND, f"Commit defense session '{session_id}' not found."
         )
     session: CommitDefenseSessionState = raw_session
+    await verify_project_ownership(session.project_id, current_user.id, db)
     if session.status == DefenseStage.SESSION_COMPLETED:
         raise HTTPException(
             status.HTTP_409_CONFLICT, "This commit defense session has already been completed."

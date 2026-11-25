@@ -217,7 +217,7 @@ class TestStressEndpoints:
             )
         assert exc_info.value.status_code == 404
 
-    def test_full_stress_defense_flow(self):
+    def test_full_stress_defense_flow_and_idor_guard(self):
         db = self._mock_db(project_found=True)
         scen_resp = _drive_coro(
             get_or_generate_stress_scenarios(
@@ -239,7 +239,17 @@ class TestStressEndpoints:
         assert session.stage == StressSessionStage.SCENARIO_ACTIVE
         assert len(session.turns) == 1
 
-        fetched = _drive_coro(get_stress_session(session.session_id, current_user=self.user))
+        # Cross-tenant IDOR check
+        attacker = User(id=uuid.uuid4(), email="other@repodefense.dev")
+        with pytest.raises(HTTPException) as idor_exc:
+            _drive_coro(
+                get_stress_session(
+                    session.session_id, current_user=attacker, db=self._mock_db(project_found=False)
+                )
+            )
+        assert idor_exc.value.status_code == 404
+
+        fetched = _drive_coro(get_stress_session(session.session_id, current_user=self.user, db=db))
         assert fetched.session_id == session.session_id
 
         strong_ans = (
@@ -252,6 +262,7 @@ class TestStressEndpoints:
                 session.session_id,
                 SubmitStressAnswerRequest(answer=strong_ans, api_key=""),
                 current_user=self.user,
+                db=db,
             )
         )
         assert t1_resp.stage == StressSessionStage.FOLLOW_UP_CONSTRAINED
@@ -263,6 +274,7 @@ class TestStressEndpoints:
                 session.session_id,
                 SubmitStressAnswerRequest(answer=t2_ans, api_key=""),
                 current_user=self.user,
+                db=db,
             )
         )
         assert t2_resp.stage == StressSessionStage.COMPLETED
@@ -274,6 +286,7 @@ class TestStressEndpoints:
                     session.session_id,
                     SubmitStressAnswerRequest(answer="Extra answer", api_key=""),
                     current_user=self.user,
+                    db=db,
                 )
             )
         assert exc_info.value.status_code == 400
