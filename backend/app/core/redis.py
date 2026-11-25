@@ -16,13 +16,26 @@ _arq_redis_pool: Optional[ArqRedis] = None
 def _redact_redis_url(url: str) -> str:
     """Masks embedded password credentials in a Redis DSN before logging."""
     try:
-        parts = urlsplit(url)
-        if parts.password is None:
-            return url
-        user_prefix = f"{parts.username}:" if parts.username else ""
+        scheme_sep = url.find("://")
+        if scheme_sep == -1:
+            return "<redacted>" if "@" in url or "#" in url else url
+        prefix = url[: scheme_sep + 3]
+        rest = url[scheme_sep + 3 :]
+        if "#" in rest:
+            before_hash, after_hash = rest.split("#", 1)
+            if "@" in after_hash:
+                host_part = after_hash.split("@", 1)[1].split("#", 1)[0]
+                return f"{prefix}***@{host_part}"
+            rest = before_hash
+        parts = urlsplit(prefix + rest)
+        if parts.password is None and not parts.username:
+            return prefix + rest
+        user_prefix = (
+            f"{parts.username}:" if parts.username and parts.password is not None else ""
+        )
         host_port = f"{parts.hostname or ''}{f':{parts.port}' if parts.port else ''}"
         masked_netloc = f"{user_prefix}***@{host_port}"
-        return urlunsplit((parts.scheme, masked_netloc, parts.path, parts.query, parts.fragment))
+        return urlunsplit((parts.scheme, masked_netloc, parts.path, parts.query, ""))
     except Exception:
         return "<redacted>"
 

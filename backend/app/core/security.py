@@ -46,6 +46,8 @@ def _decode_jwt_payload(token: str) -> dict[str, Any]:
     """Decodes and validates a JWT using the configured HS256 secret or Supabase JWKS."""
     header = jwt.get_unverified_header(token)
     alg = header.get("alg")
+    if not isinstance(alg, str):
+        raise jwt.InvalidAlgorithmError("JWT alg header must be a string")
     if alg == settings.JWT_ALGORITHM:
         return jwt.decode(
             token,
@@ -167,6 +169,13 @@ async def decode_access_token_async(token: str) -> TokenPayload:
             detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
         ) from err
+
+    if not isinstance(alg, str):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
     if alg in _ASYMMETRIC_ALGS:
         return await anyio.to_thread.run_sync(decode_access_token, token)

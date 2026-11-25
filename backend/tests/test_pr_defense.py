@@ -197,7 +197,12 @@ def _make_session(status=DefenseStage.QUESTION_ACTIVE) -> PRDefenseSessionState:
 
 class TestPRDefenseEndpoints:
     def setup_method(self):
+        self._saved_sessions = dict(defense_store._sessions)
         self.mock_user = User(id=uuid.uuid4(), email="tester@repodefense.dev")
+
+    def teardown_method(self):
+        defense_store._sessions.clear()
+        defense_store._sessions.update(self._saved_sessions)
 
     def _mock_db(self, owned: bool = True):
         proj = MagicMock(id=uuid.uuid4(), user_id=self.mock_user.id) if owned else None
@@ -217,14 +222,19 @@ class TestPRDefenseEndpoints:
     def test_get_session_idor_rejected(self):
         session = _make_session()
         _drive_coro(defense_store.save(session))
+        mock_db = self._mock_db(owned=False)
         with pytest.raises(HTTPException) as exc_info:
             _drive_coro(
                 get_pr_defense_session(
-                    session.session_id, current_user=self.mock_user, db=self._mock_db(owned=False)
+                    session.session_id, current_user=self.mock_user, db=mock_db
                 )
             )
         assert exc_info.value.status_code == 404
-        _drive_coro(defense_store.delete(session.session_id))
+        compiled = mock_db.execute.call_args.args[0].compile()
+        assert "projects.id" in compiled.string and "projects.user_id" in compiled.string
+        assert {uuid.UUID(session.project_id), self.mock_user.id}.issubset(
+            set(compiled.params.values())
+        )
 
     def test_submit_answer_session_completed_409(self):
         session = _make_session(status=DefenseStage.SESSION_COMPLETED)

@@ -241,13 +241,15 @@ class TestStressEndpoints:
 
         # Cross-tenant IDOR check
         attacker = User(id=uuid.uuid4(), email="other@repodefense.dev")
+        idor_db = self._mock_db(project_found=False)
         with pytest.raises(HTTPException) as idor_exc:
             _drive_coro(
-                get_stress_session(
-                    session.session_id, current_user=attacker, db=self._mock_db(project_found=False)
-                )
+                get_stress_session(session.session_id, current_user=attacker, db=idor_db)
             )
         assert idor_exc.value.status_code == 404
+        compiled = idor_db.execute.call_args.args[0].compile()
+        assert "projects.id" in compiled.string and "projects.user_id" in compiled.string
+        assert {self.project_id, attacker.id}.issubset(set(compiled.params.values()))
 
         fetched = _drive_coro(get_stress_session(session.session_id, current_user=self.user, db=db))
         assert fetched.session_id == session.session_id

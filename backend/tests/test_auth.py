@@ -9,7 +9,11 @@ from httpx import ASGITransport, AsyncClient
 
 from app.core.config import settings
 from app.core.database import AsyncSessionLocal, engine
-from app.core.security import decode_access_token
+from app.core.security import (
+    decode_access_token,
+    decode_access_token_async,
+    verify_project_ownership,
+)
 from app.main import app
 from app.models.project import User
 
@@ -286,3 +290,41 @@ def test_es256_jwks_token_verification_and_rejection():
         with pytest.raises(HTTPException) as bad_alg:
             decode_access_token(none_alg)
         assert bad_alg.value.status_code == 401
+
+
+def test_non_string_jwt_alg_rejected_with_401():
+    """Rejects non-string alg headers (e.g. list) with 401 in sync and async decoders."""
+    import asyncio
+    import base64
+    import json
+
+    from fastapi import HTTPException
+
+    def b64(d: dict) -> str:
+        return base64.urlsafe_b64encode(json.dumps(d).encode()).rstrip(b"=").decode()
+
+    token = f"{b64({'alg': [], 'typ': 'JWT'})}.{b64({'sub': str(uuid.uuid4())})}.sig"
+
+    with pytest.raises(HTTPException) as sync_exc:
+        decode_access_token(token)
+    assert sync_exc.value.status_code == 401
+
+    with pytest.raises(HTTPException) as async_exc:
+        asyncio.run(decode_access_token_async(token))
+    assert async_exc.value.status_code == 401
+
+
+def test_verify_project_ownership_query_predicates():
+    """Verifies verify_project_ownership filters by both Project.id and Project.user_id."""
+    import asyncio
+    from unittest.mock import AsyncMock
+
+    proj_id, user_id = uuid.uuid4(), uuid.uuid4()
+    mock_db = AsyncMock(
+        execute=AsyncMock(return_value=MagicMock(scalar_one_or_none=lambda: MagicMock()))
+    )
+    asyncio.run(verify_project_ownership(str(proj_id), user_id, mock_db))
+    stmt = mock_db.execute.call_args.args[0]
+    compiled = stmt.compile()
+    assert "projects.id" in compiled.string and "projects.user_id" in compiled.string
+    assert {proj_id, user_id}.issubset(set(compiled.params.values()))

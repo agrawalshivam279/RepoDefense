@@ -120,6 +120,13 @@ class TestCommitFetcher:
 class TestCommitDefenseEndpoints:
     """Endpoint tests for commit-scoped defense sessions and answer submission."""
 
+    def setup_method(self):
+        self._saved_sessions = dict(defense_store._sessions)
+
+    def teardown_method(self):
+        defense_store._sessions.clear()
+        defense_store._sessions.update(self._saved_sessions)
+
     def _mock_project(self, proj_id: uuid.UUID, user_id: uuid.UUID):
         return MagicMock(id=proj_id, user_id=user_id, github_url="https://github.com/owner/repo")
 
@@ -207,11 +214,13 @@ class TestCommitDefenseEndpoints:
         sess_id = f"commit-idor-{uuid.uuid4()}"
         sess = self._make_test_session(sess_id)
         _drive_coro(defense_store.save(sess))
+        mock_db = self._mock_db(None)
         with pytest.raises(HTTPException) as exc:
-            _drive_coro(
-                get_commit_defense_session(sess_id, current_user=user, db=self._mock_db(None))
-            )
+            _drive_coro(get_commit_defense_session(sess_id, current_user=user, db=mock_db))
         assert exc.value.status_code == 404
+        compiled = mock_db.execute.call_args.args[0].compile()
+        assert "projects.id" in compiled.string and "projects.user_id" in compiled.string
+        assert {uuid.UUID(sess.project_id), user.id}.issubset(set(compiled.params.values()))
 
     def test_get_commit_defense_session_not_found(self):
         user = User(id=uuid.uuid4(), email="dev@test.com")
