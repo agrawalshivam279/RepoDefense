@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from app.core.redis import _redact_redis_url
+
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
 
@@ -65,3 +67,47 @@ def test_dockerfile_security_and_non_root():
     assert "USER appuser" in content
     assert "EXPOSE 8000" in content
     assert "uvicorn" in content
+
+
+def test_redact_redis_url_masks_password():
+    """Verify that _redact_redis_url strips embedded credentials including unescaped '#'."""
+    masked = _redact_redis_url("rediss://default:super-secret-token@upstash.io:6379")
+    assert "super-secret-token" not in masked
+    assert "upstash.io:6379" in masked
+    assert _redact_redis_url("redis://localhost:6379/0") == "redis://localhost:6379/0"
+
+    hash_masked = _redact_redis_url("redis://default:abc123#xyz789@redis.example:6379/0")
+    assert "abc123" not in hash_masked and "xyz789" not in hash_masked
+    assert "redis.example:6379/0" in hash_masked
+
+    no_colon_hash = _redact_redis_url("redis://prefixSecret#suffixSecret@redis.example:6379/0")
+    assert "prefixSecret" not in no_colon_hash and "suffixSecret" not in no_colon_hash
+
+
+def test_get_arq_redis_pool_failure_logs_redacted_url():
+    """Verify connection failure warning logs never expose password prefix/suffix around '#'."""
+    import asyncio
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    import app.core.redis as redis_mod
+
+    saved_pool = redis_mod._arq_redis_pool
+    redis_mod._arq_redis_pool = None
+    mock_logger = MagicMock()
+    try:
+        for bad_dsn, prefix, suffix in [
+            ("redis://default:abcPrefix#xyzSuffix@redis.example:6379/0", "abcPrefix", "xyzSuffix"),
+            ("redis://onlyPrefix#onlySuffix@redis.example:6379/0", "onlyPrefix", "onlySuffix"),
+        ]:
+            with (
+                patch.object(redis_mod.settings, "REDIS_URL", bad_dsn),
+                patch.object(redis_mod, "create_pool", AsyncMock(side_effect=OSError("conn err"))),
+                patch.object(redis_mod, "logger", mock_logger),
+            ):
+                pool = asyncio.run(redis_mod.get_arq_redis_pool())
+                assert pool is None
+            logged_kwargs = mock_logger.warning.call_args.kwargs
+            assert prefix not in logged_kwargs["redis_url"]
+            assert suffix not in logged_kwargs["redis_url"]
+    finally:
+        redis_mod._arq_redis_pool = saved_pool
